@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page="chapter" data-chapter="ch4" data-subpage="structural">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="面向对象设计模式 · 结构型：适配器、桥接、组合、装饰器、外观、享元、代理的意图、结构、协作、适用场景、优缺点与代码实现，含对比表、易错点、自测与记忆卡片。">
+<meta name="color-scheme" content="light dark">
+<title>第 4 章 结构型模式 · 软件设计与体系架构</title>
+<link rel="stylesheet" href="../../assets/css/site.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%238a5a2b'/%3E%3Cpath d='M6 8h12M6 12h12M6 16h7' stroke='%23fff' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
+<script>
+  /* 主题初始化：必须内联在 <head> 中，且必须一字不改地保留 */
+  (function () {
+    try {
+      var t = JSON.parse(localStorage.getItem('sda.theme'));
+      if (t !== 'dark' && t !== 'light') {
+        t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      document.documentElement.setAttribute('data-theme', t);
+    } catch (e) {
+      document.documentElement.setAttribute('data-theme', 'light');
+    }
+  })();
+</script>
+<style>
+  /* ===== ch4 章节本地样式：子页导航 / 类图 / 模式详述块 ===== */
+  /* 知识地图 4 列与学习目标文本流已由共享样式 assets/css/site.css 统一修复，此处不再覆盖。 */
+
+  .subnav {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem;
+    margin: var(--sp-5) 0 0; padding: 0.55rem 0.7rem;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--surface);
+  }
+  .subnav__label {
+    font-size: var(--fs-tiny); font-weight: 700; letter-spacing: 0.06em;
+    color: var(--text-3); margin-right: 0.2rem;
+  }
+  .subnav a {
+    font-size: var(--fs-small); padding: 0.3rem 0.75rem; text-decoration: none;
+    border: 1px solid var(--border); border-radius: var(--radius-pill);
+    color: var(--text-2);
+  }
+  .subnav a:hover { border-color: var(--accent-ui); color: var(--accent-strong); }
+  .subnav a[aria-current="page"] {
+    background: var(--accent-fill); border-color: var(--accent-fill); color: var(--on-accent); font-weight: 600;
+  }
+  html[data-theme="dark"] .subnav a[aria-current="page"] { color: #12161d; }
+
+  /* 类图：纯 CSS 角色框图 */
+  .cd {
+    display: flex; flex-direction: column; gap: 0.4rem;
+    padding: var(--sp-4); margin: 0 0 var(--sp-4);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--surface);
+  }
+  .cd__row {
+    display: flex; flex-wrap: wrap; gap: 0.5rem;
+    align-items: center; justify-content: center;
+  }
+  .cd__box {
+    padding: 0.4rem 0.7rem; min-width: 6rem; text-align: center;
+    border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+    background: var(--surface-2); font-size: var(--fs-small);
+    font-weight: 600; line-height: 1.35;
+  }
+  .cd__box small {
+    display: block; font-weight: 400; font-size: var(--fs-tiny);
+    color: var(--text-3); font-family: var(--font-mono);
+  }
+  .cd__box--abs {
+    background: var(--surface); border: 1.5px dashed var(--accent-ui);
+    color: var(--accent-strong);
+  }
+  html[data-theme="dark"] .cd__box--abs { color: var(--accent-ui); }
+  .cd__box--key { background: var(--accent-fill); border-color: var(--accent-fill); color: var(--on-accent); }
+  .cd__box--key small { color: var(--on-accent); opacity: .78; }
+  .cd__arrow {
+    display: flex; flex-direction: column; align-items: center; gap: 0.15rem;
+    font-size: var(--fs-tiny); font-family: var(--font-mono);
+    color: var(--text-3); line-height: 1.1; white-space: nowrap;
+  }
+  .cd__arrow::after {
+    content: ""; border-left: 5px solid transparent; border-right: 5px solid transparent;
+    border-top: 7px solid var(--border-strong);
+  }
+  .cd__arrow--h { flex-direction: row; justify-content: center; width: 100%; }
+  .cd__arrow--h::after {
+    border-left: 7px solid var(--border-strong); border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent; border-right: 0;
+  }
+  .cd__note {
+    margin: 0.15rem 0 0; text-align: center;
+    font-size: var(--fs-tiny); color: var(--text-3);
+  }
+  /* 窄屏修正：类图箭头上的说明可能很长（如「双重分派：element.accept(v) → v.visitXxx(this)」），
+     .cd__arrow 的 white-space:nowrap 会把整页撑出横向滚动条。手机上允许换行。 */
+  @media (max-width: 640px) {
+    .cd { overflow-x: auto; }
+    .cd__arrow { white-space: normal; max-width: 100%; text-align: center; }
+  }
+
+  /* 模式详述块 */
+  .pblock {
+    border: 1px solid var(--border); border-radius: var(--radius-lg);
+    background: var(--surface); padding: var(--sp-5);
+    margin: 0 0 var(--sp-6); box-shadow: var(--shadow-sm);
+    scroll-margin-top: calc(var(--topbar-h) + 1rem);
+  }
+  .pblock__head {
+    display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
+    margin-bottom: 0.7rem;
+  }
+  .pblock__no {
+    font-family: var(--font-mono); font-size: var(--fs-tiny); font-weight: 700;
+    color: var(--accent-ui); background: var(--accent-soft);
+    border-radius: var(--radius-sm); padding: 0.1rem 0.45rem;
+  }
+  .pblock__title { margin: 0; font-size: 1.25rem; }
+  .pblock__title span {
+    font-family: var(--font-mono); font-size: var(--fs-small);
+    font-weight: 500; color: var(--text-3);
+  }
+  .pblock__intent {
+    margin: 0 0 var(--sp-3); padding: 0.6rem 0.9rem;
+    border-left: 3px solid var(--accent-ui); border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    background: var(--accent-softer); font-size: 0.9688rem;
+  }
+  .pblock h4 { margin: var(--sp-4) 0 0.4rem; font-size: 1rem; }
+  .pblock > p { color: var(--text-2); }
+  .pblock ul, .pblock ol { margin: 0 0 var(--sp-3); padding-left: 1.35rem; }
+  .pblock li { margin: 0.2rem 0; color: var(--text-2); }
+  .pros-cons {
+    display: grid; gap: var(--sp-3); margin: 0 0 var(--sp-3);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  }
+  .pros-cons__col {
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: var(--sp-3) var(--sp-4); background: var(--surface-2);
+  }
+  .pros-cons__col h5 { margin: 0 0 0.3rem; font-size: var(--fs-small); }
+  .pros-cons__col ul { margin: 0; padding-left: 1.2rem; font-size: var(--fs-small); }
+
+  /* 决策树 SVG */
+  .dt { display: block; width: 100%; height: auto; margin: 0 0 var(--sp-3); }
+  .dt-box { fill: var(--surface-2); stroke: var(--border-strong); stroke-width: 1.2; }
+  .dt-box--root { fill: var(--accent-soft); stroke: var(--accent-ui); stroke-width: 1.6; }
+  .dt-box--leaf { fill: var(--surface); stroke: var(--accent-ui); stroke-width: 1.2; }
+  .dt-line { fill: none; stroke: var(--border-strong); stroke-width: 1.5; }
+  .dt-t { font-family: var(--font-sans); font-size: 15.5px; fill: var(--text); }
+  .dt-t--b { font-weight: 700; }
+  .dt-t--sm { font-family: var(--font-mono); font-size: 12px; fill: var(--text-3); }
+
+  /* 决策清单三栏 */
+  .decide {
+    display: grid; gap: var(--sp-3); margin: 0 0 var(--sp-4);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  @media (max-width: 720px) {
+    .decide { grid-template-columns: minmax(0, 1fr); }
+  }
+  .decide__col {
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--surface); padding: var(--sp-4);
+  }
+  .decide__col h4 { margin: 0 0 0.5rem; font-size: var(--fs-small); }
+  .decide__row {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.5rem;
+    align-items: baseline; padding: 0.32rem 0; font-size: var(--fs-small);
+    border-bottom: 1px dashed var(--border);
+  }
+  .decide__row:last-child { border-bottom: 0; }
+  .decide__row span { color: var(--text-2); }
+  .decide__row a { font-weight: 700; white-space: nowrap; }
+
+  /* 模式索引条 */
+  .pindex { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0 0 var(--sp-5); }
+  .pindex a {
+    font-size: var(--fs-tiny); padding: 0.22rem 0.6rem; text-decoration: none;
+    border: 1px solid var(--border); border-radius: var(--radius-pill);
+    color: var(--text-2); background: var(--surface);
+  }
+  .pindex a:hover { border-color: var(--accent-ui); color: var(--accent-strong); }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">跳到正文</a>
+
+<div class="progress-bar" aria-hidden="true"><div class="progress-bar__fill" id="progress-fill"></div></div>
+
+<header class="topbar" id="topbar-root"></header>
+
+<div class="wrap">
+  <div class="layout">
+    <aside class="sidebar" id="sidebar-root" aria-label="章节目录"></aside>
+
+    <main class="main" id="main">
+      <div class="main__inner">
+<section class="section" id="overview" data-title="本章导览">
+<div class="hero">
+<span class="hero__eyebrow">第 4 章 · 面向对象设计模式 / 结构型</span>
+<h1>结构型模式：用「组合」而不是「继承」搭出更大的结构</h1>
+<p class="hero__lead">结构型模式关心如何把类或对象组合成更大的结构，就像用积木搭出复杂形状。七个模式共用一条主线：把「继承」这种编译期强耦合，换成「组合/聚合」这种运行期弱关联，从而让抽象与实现、对象与子系统、整体与部分都能独立变化。</p>
+<div class="hero__meta"><span class="chip chip--accent"><svg class="icon" aria-hidden="true"><use href="#i-target"></use></svg>考试重点</span><span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-clock"></use></svg>约 40 分钟</span><span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-puzzle"></use></svg>结构型 ×7</span><span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg>高频类图题</span></div>
+<div class="hero__actions"><a class="btn btn--primary" href="#concepts"><svg class="icon" aria-hidden="true"><use href="#i-play"></use></svg>开始阅读</a><a class="btn" href="#detail"><svg class="icon" aria-hidden="true"><use href="#i-list"></use></svg>看七个模式</a><a class="btn" href="#quiz"><svg class="icon" aria-hidden="true"><use href="#i-target"></use></svg>直接自测</a></div>
+</div><nav class="subnav" aria-label="第 4 章子页面导航">
+<span class="subnav__label">第 4 章 · 子页面</span>
+<a href="index.html">模式总览</a>
+<a href="creation.html">创建型 ×5</a>
+<a href="structural.html" aria-current="page">结构型 ×7</a>
+<a href="behavioral.html">行为型 ×11</a>
+</nav><h2 class="section-title" style="margin-top:var(--sp-5)"><svg class="icon" aria-hidden="true"><use href="#i-target"></use></svg>学习目标</h2><p class="section-lead">读完这一页，应当能独立完成下列动作。</p><ol class="objectives"><li><span>能说出「类结构型模式」与「对象结构型模式」的划分依据，并指出只有适配器有类/对象两种形态。</span></li><li><span>能画出适配器、装饰器、代理三者的类图并说清它们「都包一层」却意图完全不同。</span></li><li><span>能解释桥接模式为什么能把 m×n 个子类降成 m+n 个，并说清「脱耦」的含义。</span></li><li><span>能区分组合模式（树）与装饰器模式（链）在结构上的异同。</span></li><li><span>能在给定场景（旧接口改造、动态加功能、远程访问、大量小对象）中选出正确的结构型模式。</span></li></ol><h2 class="section-title" style="margin-top:var(--sp-6)"><svg class="icon" aria-hidden="true"><use href="#i-network"></use></svg>知识地图</h2><p class="section-lead">七个模式可以按「解决什么问题」归成四组，记组比记单个更容易。</p><div class="kmap"><div class="kmap__col"><p class="kmap__title">问题</p><ul class="kmap__list"><li>接口不兼容，不能一起工作</li><li>抽象与实现被继承绑死</li><li>动态加功能，不想改类</li><li>对象太多、访问太远、太复杂</li></ul></div><div class="kmap__col"><p class="kmap__title">角色</p><ul class="kmap__list"><li>适配器：Target / Adaptee</li><li>桥接：Abstraction / Implementor</li><li>组合：Component / Leaf / Composite</li><li>装饰器·代理：与主体同接口</li></ul></div><div class="kmap__col"><p class="kmap__title">协作</p><ul class="kmap__list"><li>转换接口后转发请求</li><li>抽象持有实现引用</li><li>递归处理子节点</li><li>包一层，转发前后加动作</li></ul></div><div class="kmap__col"><p class="kmap__title">代价</p><ul class="kmap__list"><li>多一层间接，调试变难</li><li>类数量增加</li><li>小对象多、理解成本高</li><li>某些模式牺牲了透明性</li></ul></div></div>
+</section><section class="section" id="concepts" data-title="核心概念与模式卡">
+<div class="section-head">
+<span class="section-head__num">02</span>
+<h2 class="section-title">核心概念与模式卡</h2>
+<a class="section-anchor" href="#concepts" aria-label="本节链接">#</a>
+</div>
+
+<p class="section-lead">结构型模式的分类轴有两条：按「目的」（类/对象）和按「手段」（继承/组合）。先分清这两条，七个模式的位置就不会错。</p><div class="grid"><div class="concept">
+<p class="concept__term">结构型模式 <span class="concept__en">Structural Patterns</span></p>
+<p class="concept__body">处理<b>类或对象的组合</b>，把简单结构拼成更大的结构。目标是让系统在扩展时不必改动已有结构，即用组合替代继承。</p>
+<div class="concept__tags"><span class="chip chip--accent">总览</span><span class="chip">GoF 三大类之一</span></div>
+</div><div class="concept">
+<p class="concept__term">类结构型模式 <span class="concept__en">Class Structural</span></p>
+<p class="concept__body">通过<b>继承</b>组合类，一般只存在继承与实现关系。七种里只有<b>类适配器</b>属于这一类，其余都是对象结构型。</p>
+<div class="concept__tags"><span class="chip chip--accent">分类</span><span class="chip">易错</span></div>
+</div><div class="concept">
+<p class="concept__term">对象结构型模式 <span class="concept__en">Object Structural</span></p>
+<p class="concept__body">通过<b>关联/聚合</b>在一个类里持有另一个类的实例，再委托它完成任务。依据合成复用原则，大部分结构型模式都是这一类。</p>
+<div class="concept__tags"><span class="chip chip--accent">分类</span><span class="chip">合成复用</span></div>
+</div><div class="concept">
+<p class="concept__term">合成复用原则 <span class="concept__en">Composition over Inheritance</span></p>
+<p class="concept__body">优先使用<b>组合/聚合</b>而不是继承。继承是「白箱复用」，父类细节对子类可见、编译期绑定；组合是「黑箱复用」，只依赖接口、运行期可替换。</p>
+<div class="concept__tags"><span class="chip chip--accent">原则</span><span class="chip">核心思想</span></div>
+</div><div class="concept">
+<p class="concept__term">脱耦 <span class="concept__en">Decoupling</span></p>
+<p class="concept__body">桥接模式的核心术语：把抽象与实现之间的<b>继承（强关联）</b>改为<b>聚合（弱关联）</b>。强关联编译期确定、不可动态改变；弱关联运行期可替换。</p>
+<div class="concept__tags"><span class="chip chip--accent">桥接</span><span class="chip">术语</span></div>
+</div><div class="concept">
+<p class="concept__term">透明性 vs 安全性 <span class="concept__en">Transparency vs Safety</span></p>
+<p class="concept__body">组合模式的经典权衡：把 <code>add/remove</code> 提到 Component 里叫<b>透明</b>（叶子节点调用会抛异常），放在 Composite 里叫<b>安全</b>（但失去一致性接口）。</p>
+<div class="concept__tags"><span class="chip chip--accent">组合</span><span class="chip">易混淆</span></div>
+</div><div class="concept">
+<p class="concept__term">内部状态 vs 外部状态 <span class="concept__en">Intrinsic / Extrinsic</span></p>
+<p class="concept__body">享元模式的关键：<b>内部状态</b>存在享元对象里、与场景无关、可共享；<b>外部状态</b>随场景变化、由客户端保存并在调用时传入、不可共享。</p>
+<div class="concept__tags"><span class="chip chip--accent">享元</span><span class="chip">核心概念</span></div>
+</div><div class="concept">
+<p class="concept__term">包装器 <span class="concept__en">Wrapper</span></p>
+<p class="concept__body">适配器与装饰器的共同别名。两者都「包一层」，但适配器<b>改接口不改功能</b>，装饰器<b>不改接口只加功能</b>——这是最常考的一句辨析。</p>
+<div class="concept__tags"><span class="chip chip--accent">辨析</span><span class="chip">高频</span></div>
+</div></div><h3 style="margin-top:var(--sp-6)">七个模式卡（速览）</h3><p>先记住每个模式的「一句话意图 + 一句话代价」，下一节再逐个展开结构。</p><div class="pattern">
+<div class="pattern__head">
+<h4 class="pattern__name">适配器模式</h4>
+<span class="pattern__en">Adapter Pattern</span>
+<span class="pattern__type">结构型</span>
+</div>
+<div class="pattern__body"><dl class="pattern__rows"><div class="pattern__row"><dt>意图</dt><dd>将一个类的接口转换成客户希望的另一个接口，使原本接口不兼容的类可以一起工作。</dd></div><div class="pattern__row"><dt>别名</dt><dd>包装器（Wrapper）</dd></div><div class="pattern__row"><dt>适用场景</dt><dd>要复用已有类但其接口不符；想创建一个可与不相关/不可预见类协同工作的可复用类。</dd></div><div class="pattern__row"><dt>参与角色</dt><dd>Target、Adaptee、Adapter、Client</dd></div><div class="pattern__row"><dt>主要代价</dt><dd>类适配器受单继承限制；对象适配器多一层转发，实现较复杂。</dd></div></dl></div>
+</div><div class="pattern">
+<div class="pattern__head">
+<h4 class="pattern__name">桥接模式</h4>
+<span class="pattern__en">Bridge Pattern</span>
+<span class="pattern__type">结构型</span>
+</div>
+<div class="pattern__body"><dl class="pattern__rows"><div class="pattern__row"><dt>意图</dt><dd>将抽象部分与它的实现部分分离，使它们都可以独立地变化。</dd></div><div class="pattern__row"><dt>别名</dt><dd>Handle / Body（柄体模式）</dd></div><div class="pattern__row"><dt>适用场景</dt><dd>不希望在抽象与实现间有固定绑定；两者都需通过子类扩展；实现细节要对客户透明。</dd></div><div class="pattern__row"><dt>参与角色</dt><dd>Abstraction、RefinedAbstraction、Implementor、ConcreteImplementor</dd></div><div class="pattern__row"><dt>主要代价</dt><dd>要求设计之初就能正确识别出两个变化维度，识别错反而增加复杂度。</dd></div></dl></div>
+</div><div class="pattern">
+<div class="pattern__head">
+<h4 class="pattern__name">组合模式</h4>
+<span class="pattern__en">Composite Pattern</span>
+<span class="pattern__type">结构型</span>
+</div>
+<div class="pattern__body"><dl class="pattern__rows"><div class="pattern__row"><dt>意图</dt><dd>将对象组合成树形结构表示「部分-整体」层次，使客户端对单个对象和组合对象的使用具有一致性。</dd></div><div class="pattern__row"><dt>别名</dt><dd>合成模式、部分-整体模式</dd></div><div class="pattern__row"><dt>适用场景</dt><dd>想表示对象的部分-整体层次结构；希望忽略组合对象与单个对象的不同，统一使用。</dd></div><div class="pattern__row"><dt>参与角色</dt><dd>Component、Leaf、Composite、Client</dd></div><div class="pattern__row"><dt>主要代价</dt><dd>过度泛化的接口让设计过于抽象；叶子节点可能被迫实现无意义的 add/remove。</dd></div></dl></div>
+</div><div class="pattern">
+<div class="pattern__head">
+<h4 class="pattern__name">装饰器模式</h4>
+<span class="pattern__en">Decorator Pattern</span>
+<span class="pattern__type">结构型</span>
+</div>
+<div class="pattern__body"><dl class="pattern__rows"><div class="pattern__row"><dt>意图</dt><dd>动态地给一个对象添加一些额外的职责。就增加功能而言，比生成子类更灵活。</dd></div><div class="pattern__row"><dt>别名</dt><dd>包装器（Wrapper）</dd></div><div class="pattern__row"><dt>适用场景</dt><dd>不影响其他对象的前提下动态、透明地给单个对象加职责；职责可撤销；子类扩展会爆炸时。</dd></div><div class="pattern__row"><dt>参与角色</dt><dd>Component、ConcreteComponent、Decorator、ConcreteDecorator</dd></div><div class="pattern__row"><dt>主要代价</dt><dd>产生许多小对象，学习与调试困难；使用装饰时不应依赖对象标识。</dd></div></dl></div>
+</div><div class="pattern">
+<div class="pattern__head">
+<h4 class="pattern__name">外观模式</h4>
+<span class="pattern__en">Facade Pattern</span>
+<span class="pattern__type">结构型</span>
+</div>
+<div class="pattern__body"><dl class="pattern__rows"><div class="pattern__row"><dt>意图</dt><dd>为子系统中的一组接口提供一个统一的高层接口，使子系统更容易使用。</dd></div><div class="pattern__row"><dt>别名</dt><dd>门面模式</dd></div><div class="pattern__row"><dt>适用场景</dt><dd>为复杂子系统提供简单入口；解除客户与子系统内部实现的依赖；为分层结构定义每层入口。</dd></div><div class="pattern__row"><dt>参与角色</dt><dd>Facade、Subsystem classes、Client</dd></div><div class="pattern__row"><dt>主要代价</dt><dd>增加一层间接调用；子系统的功能被门面限制；子系统接口变化会波及门面。</dd></div></dl></div>
+</div><div class="pattern">
+<div class="pattern__head">
+<h4 class="pattern__name">包装器家族对照</h4>
+<span class="pattern__en">Wrapper Family</span>
+<span class="pattern__type">结构型</span>
+</div>
+<div class="pattern__body"><dl class="pattern__rows"><div class="pattern__row"><dt>意图</dt><dd>把适配器、装饰器、代理三个「都包一层」的模式放在一起对照，避免在类图题里互相冒充。</dd></div><div class="pattern__row"><dt>别名</dt><dd>三兄弟（Adapter / Decorator / Proxy）</dd></div><div class="pattern__row"><dt>适用场景</dt><dd>题干出现「包装」「转发」「增强」「控制访问」等模糊措辞时，用本卡逐项排除。</dd></div><div class="pattern__row"><dt>参与角色</dt><dd>三者结构均为「实现/继承同一抽象 + 持有一个真实对象 + 转发请求」。</dd></div><div class="pattern__row"><dt>主要代价</dt><dd>只看类图无法区分，必须结合意图判断：改接口 / 加功能 / 控访问。</dd></div></dl></div>
+</div><div class="pattern">
+<div class="pattern__head">
+<h4 class="pattern__name">享元模式</h4>
+<span class="pattern__en">Flyweight Pattern</span>
+<span class="pattern__type">结构型</span>
+</div>
+<div class="pattern__body"><dl class="pattern__rows"><div class="pattern__row"><dt>意图</dt><dd>运用共享技术有效地支持大量细粒度的对象。</dd></div><div class="pattern__row"><dt>别名</dt><dd>轻量级模式</dd></div><div class="pattern__row"><dt>适用场景</dt><dd>系统中有大量相似对象、耗费大量内存；对象外部状态接近而内部状态与环境无关；需要缓冲池。</dd></div><div class="pattern__row"><dt>参与角色</dt><dd>Flyweight、ConcreteFlyweight、UnsharedConcreteFlyweight、FlyweightFactory</dd></div><div class="pattern__row"><dt>主要代价</dt><dd>把状态拆成内/外部，增加实现复杂度；以时间换空间，查找有额外开销。</dd></div></dl></div>
+</div><div class="pattern">
+<div class="pattern__head">
+<h4 class="pattern__name">代理模式</h4>
+<span class="pattern__en">Proxy Pattern</span>
+<span class="pattern__type">结构型</span>
+</div>
+<div class="pattern__body"><dl class="pattern__rows"><div class="pattern__row"><dt>意图</dt><dd>为其他对象提供一种代理以控制对这个对象的访问。</dd></div><div class="pattern__row"><dt>别名</dt><dd>Surrogate（替身）</dd></div><div class="pattern__row"><dt>适用场景</dt><dd>远程代理、虚拟代理、保护代理、智能引用代理（缓存、计数、加锁）。</dd></div><div class="pattern__row"><dt>参与角色</dt><dd>Subject、RealSubject、Proxy、Client</dd></div><div class="pattern__row"><dt>主要代价</dt><dd>请求多经过一层，响应可能变慢；某些代理（如远程）引入网络异常处理复杂度。</dd></div></dl></div>
+</div>
+</section><section class="section" id="detail" data-title="结构与实现（七个模式详解）">
+<div class="section-head">
+<span class="section-head__num">03</span>
+<h2 class="section-title">结构与实现（七个模式详解）</h2>
+<a class="section-anchor" href="#detail" aria-label="本节链接">#</a>
+</div>
+
+<p class="section-lead">七个模式逐个过九段式。建议先看结构图，再读协作要点，最后对照代码确认「谁持有谁、请求怎么转发」。</p><div class="pindex"><a href="#p-adapter">适配器</a><a href="#p-bridge">桥接</a><a href="#p-composite">组合</a><a href="#p-decorator">装饰器</a><a href="#p-facade">外观</a><a href="#p-flyweight">享元</a><a href="#p-proxy">代理</a></div><article class="pblock" id="p-adapter">
+<div class="pblock__head">
+<span class="pblock__no">01</span>
+<h3 class="pblock__title">适配器模式 <span>Adapter Pattern</span></h3>
+<span class="chip chip--accent">结构型</span>
+</div>
+<p class="pblock__intent"><b>意图：</b>将一个类的接口转换成客户希望的另一个接口。适配器让原本因接口不兼容而无法一起工作的类可以协同工作。</p>
+<h4>动机 / 问题场景</h4>
+<p>课程用一个很形象的类比：团队要对外提供 S 类服务，但团队里没人会做，只有团队外的 A 会。要么把 A 招安进来（类适配器：继承 A 同时实现 S 接口），要么派 B 去对接、B 干活时向 A 请教（对象适配器：B 实现 S 接口，内部持有一个 A）。现实中的例子是电源转接头：插座是两孔，电器是三角插头，转接头不改变电的本质，只改变接口形状。</p>
+<h4>结构</h4>
+<div class="cd"><div class="cd__row"><span class="cd__box">Client<small>只认 Target 接口</small></span></div><div class="cd__arrow">调用 request()</div><div class="cd__row"><span class="cd__box cd__box--abs">Target<small>+ request()</small></span></div><div class="cd__arrow cd__arrow--h">Adapter 实现 Target，同时持有/继承 Adaptee</div><div class="cd__row"><span class="cd__box cd__box--key">Adapter<small>+ request()<br>→ 转调 specificRequest()</small></span></div><div class="cd__arrow">转发</div><div class="cd__row"><span class="cd__box cd__box--abs">Adaptee<small>+ specificRequest()</small></span></div><p class="cd__note">适配器不新增功能，只做「接口翻译」：把 request() 的调用翻译成 specificRequest()。</p></div>
+<ul><li><b>Target</b> —— 定义 Client 使用的、与特定领域相关的接口。</li><li><b>Adaptee</b> —— 已存在的、需要被适配的接口（接口与 Target 不兼容）。</li><li><b>Adapter</b> —— 负责把 Adaptee 的接口适配成 Target 接口。</li><li><b>Client</b> —— 与符合 Target 接口的对象协同工作，不知道 Adaptee 的存在。</li></ul>
+<h4>协作要点</h4>
+<ol><li>Client 针对 Target 接口编程，调用 <code>request()</code>。</li><li>实际执行的是 Adapter 的 <code>request()</code> 实现。</li><li>Adapter 内部把调用转发给 Adaptee 的 <code>specificRequest()</code>（可能做参数转换）。</li><li>Adaptee 完成真正的业务，结果原路返回，Client 全程不知道 Adaptee。</li></ol>
+<h4>适用场景</h4>
+<ul><li>想使用一个已存在的类，但它的接口不符合要求。</li><li>想创建一个可以复用的类，该类能与接口不一定兼容的其他类协同工作。</li><li>想使用一些已存在的子类，但无法通过子类化匹配接口——此时用<b>对象适配器</b>适配其父类接口。</li></ul>
+<h4>优缺点</h4>
+<div class="pros-cons">
+<div class="pros-cons__col"><h5>优点</h5><ul><li>将目标类与适配者类解耦，增加了类的透明性与复用性。</li><li>灵活性和扩展性好：换一个适配者只需换一个适配器。</li><li>对象适配器可以同时适配一个类的所有子类，比类适配器更灵活。</li></ul></div>
+<div class="pros-cons__col"><h5>代价 / 缺点</h5><ul><li>类适配器采用继承，属于<b>静态结构</b>，且受 Java 单继承限制（只能适配一个类）。</li><li>对象适配器实现过程较复杂，需要额外的转发代码。</li><li>多了一层间接调用，调试时调用链变长。</li></ul></div>
+</div>
+<h4>与相似模式的区别</h4>
+<div class="table-wrap"><table>
+<thead><tr><th>维度</th><th>类适配器</th><th>对象适配器</th><th>装饰器</th></tr></thead>
+<tbody><tr><td>实现手段</td><td>继承 Adaptee + 实现 Target</td><td>持有 Adaptee 引用 + 实现 Target</td><td>继承/实现 Component</td></tr><tr><td>接口</td><td>改变接口</td><td>改变接口</td><td>不改变接口</td></tr><tr><td>功能</td><td>不改变功能</td><td>不改变功能</td><td>增强功能</td></tr><tr><td>适配范围</td><td>只能适配一个具体类</td><td>可适配该类及其所有子类</td><td>装饰同接口的任意实现</td></tr><tr><td>耦合程度</td><td>高（编译期绑定）</td><td>低（运行期可替换）</td><td>低</td></tr></tbody>
+</table></div>
+<h4>参考实现</h4>
+<figure class="code" data-lang="java" data-file="AdapterDemo.java">
+<pre><code>// Target：Client 期望的接口
+public interface Target {
+    void request();
+}
+
+// Adaptee：已存在但接口不兼容的类
+public class Adaptee {
+    public void specificRequest() {
+        System.out.println("Adaptee 的特定请求");
+    }
+}
+
+// ---------- 形态一：类适配器（继承 + 实现） ----------
+public class ClassAdapter extends Adaptee implements Target {
+    public void request() {
+        super.specificRequest();      // 直接复用父类实现
+    }
+}
+
+// ---------- 形态二：对象适配器（组合 + 实现，推荐） ----------
+public class ObjectAdapter implements Target {
+    private final Adaptee adaptee;    // 持有被适配者
+
+    public ObjectAdapter(Adaptee adaptee) {
+        this.adaptee = adaptee;
+    }
+
+    public void request() {
+        adaptee.specificRequest();    // 转发，可在此做参数/返回值转换
+    }
+}
+
+// Client：只依赖 Target
+public class Client {
+    public static void main(String[] args) {
+        Target t1 = new ClassAdapter();
+        t1.request();
+
+        Target t2 = new ObjectAdapter(new Adaptee());
+        t2.request();
+    }
+}</code></pre>
+</figure>
+<div class="callout callout--danger">
+<span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-stop"></use></svg></span>
+<div class="callout__body"><p><span class="callout__title">易错点 · 把适配器和装饰器混为一谈，只说「都是包装」。</span>两者的关键差别是<b>接口是否改变</b>：适配器把 Adaptee 的接口<b>转换成</b> Target，Client 看到的是全新的方法名；装饰器<b>保持 Component 接口不变</b>，只是在转发前后加动作，因此可以层层嵌套且对客户完全透明。口诀：<b>适配器改接口不改功能，装饰器加功能不改接口</b>。</p></div>
+</div>
+
+</article><article class="pblock" id="p-bridge">
+<div class="pblock__head">
+<span class="pblock__no">02</span>
+<h3 class="pblock__title">桥接模式 <span>Bridge Pattern</span></h3>
+<span class="chip chip--accent">结构型</span>
+</div>
+<p class="pblock__intent"><b>意图：</b>将抽象部分与它的实现部分分离，使它们都可以独立地变化。</p>
+<h4>动机 / 问题场景</h4>
+<p>课程用「同一模块跨平台使用」举例：模块 A 和 B 要同时跑在 X、Y 两个操作系统上。用继承的做法是 A-X、A-Y、B-X、B-Y 四个类；每加一个模块或一个平台，类数量按 m×n 爆炸。桥接的做法是：把「平台」抽象成 Implementor 层次，把「模块」抽象成 Abstraction 层次，Abstraction 持有一个 Implementor 引用，于是 m 个模块 + n 个平台 = m+n 个类。窗口与窗口实现的例子同理。</p>
+<h4>结构</h4>
+<div class="cd"><div class="cd__row"><span class="cd__box cd__box--abs">Abstraction<small>+ operation()<br>持有 implementor</small></span></div><div class="cd__arrow">继承</div><div class="cd__row"><span class="cd__box cd__box--key">RefinedAbstraction<small>+ operation()</small></span></div><div class="cd__arrow cd__arrow--h">operation() 委托给 implementor.operationImpl()</div><div class="cd__row"><span class="cd__box cd__box--abs">Implementor<small>+ operationImpl()</small></span></div><div class="cd__arrow">继承</div><div class="cd__row"><span class="cd__box">ConcreteImplementorA</span><span class="cd__box">ConcreteImplementorB</span></div><p class="cd__note">两个独立的继承层次，中间用一条「聚合」的桥连接——这就是「桥接」名字的由来。</p></div>
+<ul><li><b>Abstraction</b> —— 定义抽象类的接口，并维护一个指向 Implementor 类型对象的引用。</li><li><b>RefinedAbstraction</b> —— 扩充由 Abstraction 定义的接口（模块侧的扩展）。</li><li><b>Implementor</b> —— 定义实现类的接口，不一定要与 Abstraction 的接口一致，甚至可以完全不同。</li><li><b>ConcreteImplementor</b> —— 实现 Implementor 接口并定义它的具体实现（平台侧的扩展）。</li></ul>
+<h4>协作要点</h4>
+<ol><li>Client 创建某个 ConcreteImplementor，把它注入给 RefinedAbstraction。</li><li>Client 调用 Abstraction 的 <code>operation()</code>。</li><li><code>operation()</code> 内部把请求<b>委托</b>给持有的 implementor。</li><li>ConcreteImplementor 完成平台相关的实现细节。</li><li>运行期可以替换 implementor，即动态改变实现。</li></ol>
+<h4>适用场景</h4>
+<ul><li>不希望在抽象和它的实现部分之间有一个固定的绑定关系。</li><li>类的抽象以及它的实现都应该可以通过生成子类的方法加以扩充。</li><li>实现部分的修改应对客户不产生影响，即实现细节要对客户透明。</li><li>想对客户完全隐藏抽象的实现部分。</li></ul>
+<h4>优缺点</h4>
+<div class="pros-cons">
+<div class="pros-cons__col"><h5>优点</h5><ul><li>分离接口及其实现部分：实现可以在运行时刻配置，甚至动态替换。</li><li>提高可扩充性：抽象与实现两个维度可以独立扩充，类数量从 m×n 降到 m+n。</li><li>实现细节对客户透明，客户只看到 Abstraction。</li></ul></div>
+<div class="pros-cons__col"><h5>代价 / 缺点</h5><ul><li>要求在设计之初就能正确识别出「两个独立变化的维度」，识别错会白增复杂度。</li><li>引入了额外的抽象层次，对只有一个变化维度的场景是过度设计。</li><li>聚合关系的引入让对象图更复杂，调试时要跨两个层次看。</li></ul></div>
+</div>
+<h4>与相似模式的区别</h4>
+<div class="table-wrap"><table>
+<thead><tr><th>维度</th><th>桥接</th><th>适配器</th><th>策略</th></tr></thead>
+<tbody><tr><td>目的</td><td>分离抽象与实现，两者独立变化</td><td>让不兼容的接口能协作</td><td>封装可互换的算法</td></tr><tr><td>结构特征</td><td>两个继承层次 + 聚合桥</td><td>一个类实现目标接口并转发</td><td>Context 持有 Strategy</td></tr><tr><td>设计时机</td><td>设计之初（预防性）</td><td>事后补救（已有类无法改）</td><td>设计之初或重构</td></tr><tr><td>关注点</td><td>结构维度</td><td>接口兼容</td><td>算法选择</td></tr></tbody>
+</table></div>
+<h4>参考实现</h4>
+<figure class="code" data-lang="java" data-file="ShapeColorBridge.java">
+<pre><code>// 实现侧（Implementor）：颜色维度
+public interface Color {
+    String getColor();
+}
+public class Red implements Color {
+    public String getColor() { return "红色"; }
+}
+public class Green implements Color {
+    public String getColor() { return "绿色"; }
+}
+
+// 抽象侧（Abstraction）：形状维度，持有一个实现侧引用 —— 这就是「桥」
+public abstract class AbstractShape {
+    protected Color color;                 // 聚合，而不是继承
+
+    public AbstractShape(Color color) { this.color = color; }
+
+    public abstract void draw();
+}
+
+public class Circle extends AbstractShape {
+    public Circle(Color color) { super(color); }
+    public void draw() {
+        System.out.println("使用" + color.getColor() + "画圆形");
+    }
+}
+public class Square extends AbstractShape {
+    public Square(Color color) { super(color); }
+    public void draw() {
+        System.out.println("使用" + color.getColor() + "画正方形");
+    }
+}
+
+// 客户端：形状与颜色可自由组合，2 + 2 = 4 个类覆盖 4 种组合
+public class Client {
+    public static void main(String[] args) {
+        AbstractShape s1 = new Circle(new Red());
+        AbstractShape s2 = new Square(new Green());
+        s1.draw();
+        s2.draw();
+    }
+}</code></pre>
+</figure>
+<div class="callout callout--danger">
+<span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-stop"></use></svg></span>
+<div class="callout__body"><p><span class="callout__title">易错点 · 以为桥接和适配器都是「连接两个东西」，所以可以互换。</span>适配器是<b>事后补救</b>：两个类已经存在、接口不兼容，用一个 Adapter 硬接起来；桥接是<b>事前设计</b>：预见到抽象与实现会各自演化，一开始就把它们分成两个层次。考试若问「桥接与适配器的区别」，第一句就答<b>设计时机</b>，第二句答<b>目的</b>（适配器改接口，桥接分离抽象与实现）。</p></div>
+</div>
+
+</article><article class="pblock" id="p-composite">
+<div class="pblock__head">
+<span class="pblock__no">03</span>
+<h3 class="pblock__title">组合模式 <span>Composite Pattern</span></h3>
+<span class="chip chip--accent">结构型</span>
+</div>
+<p class="pblock__intent"><b>意图：</b>将对象组合成树形结构来表示「部分-整体」的层次结构，使得用户对单个对象和组合对象的使用具有一致性。</p>
+<h4>动机 / 问题场景</h4>
+<p>课程用「计算机」举例：计算机由机箱、显示器、键盘、鼠标组成；机箱里又有主板、CPU、硬盘、显卡、电源；主板里还有网卡……如果客户端要统计整台机器的价格，难道要写一堆 <code>if (是机箱) ... else if (是CPU) ...</code>？组合模式把「单一对象（Leaf）」和「组合对象（Composite）」统一到 Component 接口下，客户端调用 <code>operation()</code> 时，Composite 递归调用子节点的 operation，整棵树的遍历就自然完成了。</p>
+<h4>结构</h4>
+<div class="cd"><div class="cd__row"><span class="cd__box cd__box--abs">Component<small>+ operation()<br>+ add() / remove() / getChild()</small></span></div><div class="cd__arrow">实现</div><div class="cd__row"><span class="cd__box cd__box--key">Leaf<small>+ operation()</small></span><span class="cd__box cd__box--key">Composite<small>+ operation()<br>+ add() / remove()</small></span></div><div class="cd__arrow cd__arrow--h">Composite 持有 0..* 个 Component（自引用）</div><div class="cd__row"><span class="cd__box cd__box--abs">children<small>List&lt;Component&gt;</small></span></div><p class="cd__note">Composite 里存的是 Component 的集合，所以组合对象里既能放叶子，也能放另一个组合对象——树就长出来了。</p></div>
+<ul><li><b>Component</b> —— 为组合对象声明接口；声明访问和管理子组件的接口（add/remove/getChild）。</li><li><b>Leaf</b> —— 叶节点对象，没有子节点，定义图元对象的行为。</li><li><b>Composite</b> —— 定义复合部件的行为，存储子部件，并在 operation 里递归转发给子部件。</li><li><b>Client</b> —— 通过 Component 接口操纵组合部件中的对象。</li></ul>
+<h4>协作要点</h4>
+<ol><li>Client 拿到一个 Component 引用（可能是 Leaf，也可能是 Composite）。</li><li>Client 调用 <code>operation()</code>。</li><li>若接收者是 Leaf，直接处理请求。</li><li>若接收者是 Composite，先遍历子部件，对每个子部件调用 <code>operation()</code>（递归）。</li><li>转发前后可以执行一些辅助操作（如累加统计、加缩进）。</li></ol>
+<h4>适用场景</h4>
+<ul><li>想表示对象的部分-整体层次结构（树形）。</li><li>希望用户忽略组合对象与单个对象的不同，统一使用组合结构中的所有对象。</li><li>需要对整棵树做统一操作（统计、渲染、遍历、校验）。</li></ul>
+<h4>优缺点</h4>
+<div class="pros-cons">
+<div class="pros-cons__col"><h5>优点</h5><ul><li>定义了包含基本对象和组合对象的类层次结构，客户代码被简化。</li><li>一致地使用组合对象和单个对象，客户端不需要写类型判断。</li><li>容易增加新类型的组件（新增一个 Leaf 或 Composite 子类即可）。</li></ul></div>
+<div class="pros-cons__col"><h5>代价 / 缺点</h5><ul><li>设计过于泛化：为了让叶子也能被统一对待，Component 接口可能被迫包含无意义的操作。</li><li>「透明性 vs 安全性」两难：add/remove 放 Component 则叶子要抛异常，放 Composite 则失去统一接口。</li><li>树很深时递归可能栈溢出；共享节点（一个子节点有多个父）会让语义变复杂。</li></ul></div>
+</div>
+<h4>与相似模式的区别</h4>
+<div class="table-wrap"><table>
+<thead><tr><th>维度</th><th>组合</th><th>装饰器</th></tr></thead>
+<tbody><tr><td>结构形态</td><td>树（一个节点可有多个子节点）</td><td>链（每层只包一个对象）</td></tr><tr><td>目的</td><td>表示部分-整体层次，统一对待</td><td>动态增加职责</td></tr><tr><td>子节点数量</td><td>0..*</td><td>固定 1 个</td></tr><tr><td>递归方向</td><td>向下遍历所有子节点</td><td>向内委托给被包装者</td></tr><tr><td>典型场景</td><td>文件系统、UI 容器、组织架构</td><td>Java IO 流、加边框/滚动条</td></tr></tbody>
+</table></div>
+<h4>参考实现</h4>
+<figure class="code" data-lang="java" data-file="FileSystemComposite.java">
+<pre><code>import java.util.ArrayList;
+import java.util.List;
+
+// Component：统一接口
+public abstract class Node {
+    protected String name;
+    public Node(String name) { this.name = name; }
+    public abstract long size();
+    public void add(Node n)    { throw new UnsupportedOperationException("叶子节点没有子节点"); }
+    public void remove(Node n) { throw new UnsupportedOperationException("叶子节点没有子节点"); }
+}
+
+// Leaf：文件
+public class FileNode extends Node {
+    private final long bytes;
+    public FileNode(String name, long bytes) { super(name); this.bytes = bytes; }
+    public long size() { return bytes; }
+}
+
+// Composite：目录
+public class DirNode extends Node {
+    private final List&lt;Node&gt; children = new ArrayList&lt;&gt;();
+    public DirNode(String name) { super(name); }
+
+    @Override public void add(Node n)    { children.add(n); }
+    @Override public void remove(Node n) { children.remove(n); }
+
+    /** 递归：容器把请求转发给所有子节点 */
+    @Override public long size() {
+        long total = 0;
+        for (Node child : children) {
+            total += child.size();
+        }
+        return total;
+    }
+}
+
+public class Client {
+    public static void main(String[] args) {
+        DirNode root = new DirNode("root");
+        DirNode sub  = new DirNode("sub");
+        sub.add(new FileNode("a.txt", 100));
+        sub.add(new FileNode("b.txt", 200));
+        root.add(sub);
+        root.add(new FileNode("c.txt", 300));
+
+        System.out.println(root.size());   // 600，客户端无需判断是文件还是目录
+    }
+}</code></pre>
+</figure>
+<div class="callout callout--danger">
+<span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-stop"></use></svg></span>
+<div class="callout__body"><p><span class="callout__title">易错点 · 把 add/remove 只写在 Composite 里，却声称客户端可以完全一致地使用。</span>这正是「透明性 vs 安全性」的取舍：若 add/remove 只声明在 Composite 上，客户端要统一处理就必须先做类型判断（<code>if (node instanceof Composite)</code>），<b>一致性被破坏</b>；若提到 Component 上（透明方案），叶子必须实现它并抛异常。答题时要明确指出选了哪一边、代价是什么，而不是笼统说「组合模式让客户端统一对待」。</p></div>
+</div>
+
+</article><article class="pblock" id="p-decorator">
+<div class="pblock__head">
+<span class="pblock__no">04</span>
+<h3 class="pblock__title">装饰器模式 <span>Decorator Pattern</span></h3>
+<span class="chip chip--accent">结构型</span>
+</div>
+<p class="pblock__intent"><b>意图：</b>动态地给一个对象添加一些额外的职责。就增加功能来说，装饰模式比生成子类更为灵活。</p>
+<h4>动机 / 问题场景</h4>
+<p>课程用「画可以加画框、蒙玻璃」和「穿衣服」举例，最经典的例子是咖啡加调料：有多种咖啡，也可以加牛奶、豆浆、摩卡，而且可以叠加（摩卡 + 双份牛奶）。用继承的话，「咖啡 × 调料组合」会产生爆炸性的子类数量；用装饰器则是：<code>new Mocha(new Milk(new Espresso()))</code>，每个装饰器包住同类型的组件，在转发前后加自己的逻辑，层层嵌套、运行期组合。</p>
+<h4>结构</h4>
+<div class="cd"><div class="cd__row"><span class="cd__box cd__box--abs">Component<small>+ operation()</small></span></div><div class="cd__arrow">实现</div><div class="cd__row"><span class="cd__box cd__box--key">ConcreteComponent<small>+ operation()</small></span><span class="cd__box cd__box--key">Decorator<small>- component: Component<br>+ operation()</small></span></div><div class="cd__arrow">继承</div><div class="cd__row"><span class="cd__box">ConcreteDecoratorA<small>+ operation()<br>+ addedBehavior()</small></span></div><div class="cd__arrow cd__arrow--h">Decorator 既 is-a Component，又 has-a Component</div><p class="cd__note">装饰器的关键结构：它同时「继承」和「持有」Component，所以可以无限套娃且仍是一个 Component。</p></div>
+<ul><li><b>Component</b> —— 定义对象接口，可以给这些对象动态添加职责。</li><li><b>ConcreteComponent</b> —— 定义一个具体的对象，也可以给这个对象添加一些职责。</li><li><b>Decorator</b> —— 维持一个指向 Component 对象的指针，并定义一个与 Component 接口一致的接口。</li><li><b>ConcreteDecorator</b> —— 向组件添加职责（在转发前后执行附加动作）。</li></ul>
+<h4>协作要点</h4>
+<ol><li>Client 创建 ConcreteComponent。</li><li>Client 用 ConcreteDecorator 一层层包住它，每层都保存被包装者的引用。</li><li>Client 对最外层调用 <code>operation()</code>。</li><li>每个装饰器在转发给内层之前/之后执行自己的附加动作。</li><li>请求逐层向内传递到 ConcreteComponent，结果逐层向外返回并可能被修饰。</li></ol>
+<h4>适用场景</h4>
+<ul><li>在不影响其他对象的情况下，以动态、透明的方式给单个对象添加职责。</li><li>处理那些可以撤销的职责（去掉最外层装饰即可）。</li><li>当不能采用生成子类的方法扩充时：独立扩展组合会爆炸，或类定义被隐藏/不能用于继承。</li></ul>
+<h4>优缺点</h4>
+<div class="pros-cons">
+<div class="pros-cons__col"><h5>优点</h5><ul><li>比静态继承更灵活：运行期可任意组合装饰。</li><li>避免在层次结构高层的类有太多特征，「即用即付」——不需要的特征不必付出代价。</li><li>符合开闭原则：新增功能只需新增一个装饰器类。</li></ul></div>
+<div class="pros-cons__col"><h5>代价 / 缺点</h5><ul><li>会产生许多小对象，学习和调试困难（一层层剥开才知道实际类型）。</li><li>装饰链过长时性能与可读性都下降。</li><li>使用装饰时<b>不应依赖对象标识</b>：装饰后的对象与被装饰对象不是同一个对象，<code>equals</code> 语义可能失效。</li></ul></div>
+</div>
+<h4>与相似模式的区别</h4>
+<div class="table-wrap"><table>
+<thead><tr><th>维度</th><th>装饰器</th><th>适配器</th><th>代理</th><th>继承</th></tr></thead>
+<tbody><tr><td>接口</td><td>不改变</td><td>改变（转换）</td><td>不改变</td><td>不改变</td></tr><tr><td>功能</td><td>增强</td><td>不改变</td><td>控制访问（可能增强）</td><td>增强</td></tr><tr><td>绑定时机</td><td>运行期，可叠加</td><td>编译期/运行期，单层</td><td>运行期，单层</td><td>编译期</td></tr><tr><td>对象数量</td><td>多层包装，每层一个对象</td><td>一层</td><td>一层</td><td>1 个</td></tr><tr><td>设计意图</td><td>动态加职责</td><td>接口兼容</td><td>控制访问</td><td>静态复用</td></tr></tbody>
+</table></div>
+<h4>参考实现</h4>
+<figure class="code" data-lang="java" data-file="CoffeeDecorator.java">
+<pre><code>// Component
+public interface Coffee {
+    String desc();
+    double cost();
+}
+
+// ConcreteComponent
+public class Espresso implements Coffee {
+    public String desc() { return "浓缩咖啡"; }
+    public double cost() { return 12.0; }
+}
+
+// Decorator：实现同一接口 + 持有一个 Component
+public abstract class CoffeeDecorator implements Coffee {
+    protected final Coffee inner;          // 被装饰者
+    public CoffeeDecorator(Coffee inner) { this.inner = inner; }
+    public String desc() { return inner.desc(); }
+    public double cost() { return inner.cost(); }
+}
+
+// ConcreteDecorator
+public class Milk extends CoffeeDecorator {
+    public Milk(Coffee inner) { super(inner); }
+    @Override public String desc() { return inner.desc() + " + 牛奶"; }
+    @Override public double cost() { return inner.cost() + 3.0; }
+}
+public class Mocha extends CoffeeDecorator {
+    public Mocha(Coffee inner) { super(inner); }
+    @Override public String desc() { return inner.desc() + " + 摩卡"; }
+    @Override public double cost() { return inner.cost() + 5.0; }
+}
+
+public class Client {
+    public static void main(String[] args) {
+        Coffee c = new Espresso();                       // 12.0
+        c = new Milk(c);                                 // +3.0
+        c = new Mocha(new Milk(c));                      // +3.0 +5.0
+        System.out.println(c.desc() + " = " + c.cost()); // 23.0
+    }
+}</code></pre>
+</figure>
+<div class="callout callout--danger">
+<span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-stop"></use></svg></span>
+<div class="callout__body"><p><span class="callout__title">易错点 · 把装饰器写成「继承 Component 但不持有 Component」，结果变成普通子类。</span>装饰器必须<b>同时 is-a 和 has-a Component</b>：只继承不持有，就无法在运行期包装任意实现，退化成静态继承；只持有不继承，就无法被当成 Component 继续嵌套。另外注意 <code>super.operation()</code> 与 <code>inner.operation()</code> 的区别——装饰器应委托给<b>被包装对象</b>，而不是父类。</p></div>
+</div>
+
+</article><article class="pblock" id="p-facade">
+<div class="pblock__head">
+<span class="pblock__no">05</span>
+<h3 class="pblock__title">外观模式 <span>Facade Pattern</span></h3>
+<span class="chip chip--accent">结构型</span>
+</div>
+<p class="pblock__intent"><b>意图：</b>为子系统中的一组接口提供一个一致的界面，外观模式定义了一个高层接口，让子系统更容易使用。</p>
+<h4>动机 / 问题场景</h4>
+<p>课程用「毕业生办离校手续」举例：学生要跑教务处、后勤处、图书馆、公安处，交学生证、身份证、借书证、饭卡，换回毕业证、学位证、派遣证……如果每个毕业生都自己一个个部门跑，流程复杂且容易漏。学校设一个「毕业手续代办处」，学生只跟代办处打交道，代办处内部去协调各部门。这就是外观模式：客户只认识 Facade，子系统之间、子系统与客户之间的耦合都被切断。</p>
+<h4>结构</h4>
+<div class="cd"><div class="cd__row"><span class="cd__box">Client<small>只认识 Facade</small></span></div><div class="cd__arrow">调用 operationWrapper()</div><div class="cd__row"><span class="cd__box cd__box--key">Facade<small>+ operationWrapper()</small></span></div><div class="cd__arrow">协调</div><div class="cd__row"><span class="cd__box">SubSystem1</span><span class="cd__box">SubSystem2</span><span class="cd__box">SubSystem3</span></div><p class="cd__note">外观模式是「单向」的：Client → Facade → Subsystem。子系统不知道 Facade 存在，也不引用它。</p></div>
+<ul><li><b>Facade</b> —— 知道哪些子系统类负责处理请求；将客户的请求代理给适当的子系统对象。</li><li><b>Subsystem</b> —— 实现子系统的功能；处理由 Facade 指派的任务；<b>没有 Facade 的任何相关信息</b>。</li><li><b>Client</b> —— 通过 Facade 使用子系统，不需要了解内部结构。</li></ul>
+<h4>协作要点</h4>
+<ol><li>Client 调用 Facade 提供的高层方法（如 <code>trip(to, days)</code>）。</li><li>Facade 按业务顺序调用多个子系统的方法。</li><li>各子系统各自完成自己的职责，彼此之间不需要知道对方。</li><li>Facade 汇总结果（或直接返回）给 Client。</li></ol>
+<h4>适用场景</h4>
+<ul><li>要为复杂子系统提供一个简单接口，定义高层接口使子系统更易使用。</li><li>想解除客户程序与抽象类具体实现部分的依赖，提高子系统的独立性与可移植性。</li><li>需要构建层次结构的子系统时，用 Facade 定义每层的入口点。</li></ul>
+<h4>优缺点</h4>
+<div class="pros-cons">
+<div class="pros-cons__col"><h5>优点</h5><ul><li>对客户端屏蔽子系统组件，减少客户端需要处理的对象数目。</li><li>实现子系统与客户之间的松耦合，子系统内部变化不影响客户。</li><li>不限制客户直接使用子系统类——Facade 只是便利入口，不是强制门禁。</li></ul></div>
+<div class="pros-cons__col"><h5>代价 / 缺点</h5><ul><li>增加了附加的方法调用（多一层转发）。</li><li>子系统中类的功能受到外观的限制（若客户只用 Facade，就只用到被包装的能力）。</li><li>子系统接口改变会导致外观跟着改变，Facade 需要同步维护。</li></ul></div>
+</div>
+<h4>与相似模式的区别</h4>
+<div class="table-wrap"><table>
+<thead><tr><th>维度</th><th>外观</th><th>适配器</th><th>中介者</th></tr></thead>
+<tbody><tr><td>面向对象</td><td>一个子系统（多个类）</td><td>一个已有类</td><td>一组相互通信的同事对象</td></tr><tr><td>目的</td><td>简化接口、降低客户与子系统的耦合</td><td>转换接口使其兼容</td><td>把网状交互收敛为星形</td></tr><tr><td>是否改变接口</td><td>提供新的简化接口</td><td>转换为客户期望的接口</td><td>同事间不再直接引用</td></tr><tr><td>子系统是否知道它</td><td>不知道</td><td>Adaptee 通常不知道 Adapter</td><td>同事知道中介者</td></tr></tbody>
+</table></div>
+<h4>参考实现</h4>
+<figure class="code" data-lang="java" data-file="TravelFacade.java">
+<pre><code>// 子系统们：各自独立，互不引用
+public class Airport {
+    public void bookTicket(String from, String to) {
+        System.out.println("订购了从" + from + "到" + to + "的机票");
+    }
+}
+public class Hotel {
+    public void reserve(int days) { System.out.println("订了" + days + "天的房间"); }
+}
+public class Restaurant {
+    public void reserve(int num) { System.out.println("订了一桌" + num + "个人的酒席"); }
+}
+public class Chauffeur {
+    public void drive(String to) { System.out.println("司机开车去" + to); }
+}
+
+// Facade：客户只跟它打交道
+public class Secretary {
+    private final Chauffeur   chauffeur   = new Chauffeur();
+    private final Hotel       hotel       = new Hotel();
+    private final Restaurant  restaurant  = new Restaurant();
+    private final Airport     airport     = new Airport();
+
+    /** 安排出差：把四个子系统的调用编排成一个高层操作 */
+    public void trip(String to, int days) {
+        airport.bookTicket("青岛", to);
+        chauffeur.drive("机场");
+        hotel.reserve(days);
+    }
+    public void repast(int num) {
+        restaurant.reserve(num);
+        chauffeur.drive("酒店");
+    }
+}
+
+public class Boss {
+    public static void main(String[] args) {
+        Secretary s = new Secretary();
+        s.trip("上海", 10);     // 老板只说一句，内部四步自动完成
+        s.repast(8);
+    }
+}</code></pre>
+</figure>
+<div class="callout callout--danger">
+<span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-stop"></use></svg></span>
+<div class="callout__body"><p><span class="callout__title">易错点 · 把外观模式说成「必须禁止客户直接访问子系统」。</span>GoF 明确写了外观模式<b>不限制客户应用子系统类</b>：它只是提供一个便利的统一入口，需要精细控制的客户仍然可以直接调用子系统。另外要区分外观与适配器：外观是<b>多对一</b>（多个子系统 → 一个简化接口），适配器是<b>一对一</b>（一个不兼容接口 → 一个目标接口）。</p></div>
+</div>
+
+</article><article class="pblock" id="p-flyweight">
+<div class="pblock__head">
+<span class="pblock__no">06</span>
+<h3 class="pblock__title">享元模式 <span>Flyweight Pattern</span></h3>
+<span class="chip chip--accent">结构型</span>
+</div>
+<p class="pblock__intent"><b>意图：</b>运用共享技术有效地支持大量细粒度的对象。享元是一个可共享的对象，通过共享相同/相似对象来减少内存占用。</p>
+<h4>动机 / 问题场景</h4>
+<p>课程用「同型号轿车」举例：用 Car 类创建若干同型号轿车，它们的 height、width、length 完全相同，只有 color、power 不同。如果每个对象都存一份尺寸，几千辆车就是几千份重复数据。享元的做法是把尺寸抽成 CarData（内部状态，可共享），Car 只持有 CarData 的引用 + 自己的 color/power（外部状态）。围棋棋子是另一个经典例子：黑白两种棋子只有颜色不同，位置由客户端传入。</p>
+<h4>结构</h4>
+<div class="cd"><div class="cd__row"><span class="cd__box">Client<small>保存外部状态（坐标等）</small></span></div><div class="cd__arrow">getFlyweight(key)</div><div class="cd__row"><span class="cd__box cd__box--key">FlyweightFactory<small>- pool: Map<br>+ getFlyweight(key)</small></span></div><div class="cd__arrow">返回共享实例</div><div class="cd__row"><span class="cd__box cd__box--abs">Flyweight<small>+ operation(extrinsicState)</small></span></div><div class="cd__arrow">实现</div><div class="cd__row"><span class="cd__box cd__box--key">ConcreteFlyweight<small>内部状态</small></span><span class="cd__box">UnsharedConcreteFlyweight<small>不共享</small></span></div><p class="cd__note">工厂维护享元池；客户端每次调用 operation 时把外部状态作为参数传进来。</p></div>
+<ul><li><b>Flyweight</b> —— 描述一个接口，通过这个接口 flyweight 可以接受并作用于外部状态。</li><li><b>ConcreteFlyweight</b> —— 实现 Flyweight 接口，并为内部状态增加存储空间；该对象必须可共享。</li><li><b>UnsharedConcreteFlyweight</b> —— 指那些不需要共享的 Flyweight 子类（Flyweight 接口使共享成为可能，但不强制共享）。</li><li><b>FlyweightFactory</b> —— 负责创建和管理 flyweight 对象，维护一个享元池；保证合理共享。</li></ul>
+<h4>协作要点</h4>
+<ol><li>Client 用「键」向 FlyweightFactory 请求享元对象。</li><li>工厂先查享元池：存在则直接返回，不存在则创建并放入池中。</li><li>Client 拿到共享的享元对象，<b>自己保存外部状态</b>。</li><li>Client 调用 <code>operation(extrinsicState)</code>，把外部状态作为参数传入。</li><li>享元结合内部状态与传入的外部状态完成计算。</li></ol>
+<h4>适用场景</h4>
+<ul><li>系统中有大量相似对象，这些对象耗费大量内存。</li><li>细粒度对象都具备较接近的外部状态，而内部状态与环境无关（对象没有特定身份）。</li><li>需要缓冲池 / 对象池的场景（连接池、线程池、字符串常量池）。</li></ul>
+<h4>优缺点</h4>
+<div class="pros-cons">
+<div class="pros-cons__col"><h5>优点</h5><ul><li>大幅减少对象数量，节省内存（空间性能好）。</li><li>把内部状态集中管理，外部状态外置，职责更清晰。</li><li>享元池天然支持复用，减少创建/销毁开销。</li></ul></div>
+<div class="pros-cons__col"><h5>代价 / 缺点</h5><ul><li>把状态拆成内部/外部，增加了实现复杂度，客户端要负责保存外部状态。</li><li><b>以时间换空间</b>：每次取享元都要查池，查找有额外时间复杂度。</li><li>享元对象不可变（共享前提），因此不能存放随场景变化的数据。</li></ul></div>
+</div>
+<h4>与相似模式的区别</h4>
+<div class="table-wrap"><table>
+<thead><tr><th>维度</th><th>享元</th><th>单例</th><th>对象池</th></tr></thead>
+<tbody><tr><td>实例数量</td><td>多个（按内部状态区分）</td><td>唯一一个</td><td>多个，按需借还</td></tr><tr><td>共享粒度</td><td>按 key 共享同类对象</td><td>全局唯一</td><td>借出期间独占</td></tr><tr><td>关注点</td><td>节省内存</td><td>控制唯一性</td><td>复用昂贵资源</td></tr><tr><td>典型例子</td><td>棋子颜色、字符字形</td><td>配置中心</td><td>数据库连接池</td></tr></tbody>
+</table></div>
+<h4>参考实现</h4>
+<figure class="code" data-lang="java" data-file="ChessFlyweight.java">
+<pre><code>import java.util.HashMap;
+import java.util.Map;
+
+// Flyweight：只保留内部状态（颜色），外部状态（坐标）由参数传入
+public interface Chesspiece {
+    void put(int x, int y);        // 落子：坐标是外部状态
+}
+
+class ChesspieceFlyweight implements Chesspiece {
+    private final String color;    // 内部状态，构造后不可变 → 可安全共享
+
+    public ChesspieceFlyweight(String color) { this.color = color; }
+
+    public void put(int x, int y) {
+        System.out.println("在(" + x + "，" + y + ")位置放了一个" + color + "子");
+    }
+}
+
+// FlyweightFactory：维护享元池
+public class ChesspieceFactory {
+    private static final Map&lt;String, Chesspiece&gt; POOL = new HashMap&lt;&gt;();
+
+    public static Chesspiece getChesspiece(String color) {
+        Chesspiece p = POOL.get(color);
+        if (p == null) {
+            p = new ChesspieceFlyweight(color);
+            POOL.put(color, p);    // 只创建一次
+        }
+        return p;
+    }
+}
+
+public class Game {
+    public static void main(String[] args) {
+        // 无论下多少子，内存里只有「黑」「白」两个对象
+        Chesspiece p1 = ChesspieceFactory.getChesspiece("黑"); p1.put(1, 1);
+        Chesspiece p2 = ChesspieceFactory.getChesspiece("白"); p2.put(2, 2);
+        Chesspiece p3 = ChesspieceFactory.getChesspiece("黑"); p3.put(3, 3);
+        System.out.println(p1 == p3);   // true，同一个共享对象
+    }
+}</code></pre>
+</figure>
+<div class="callout callout--danger">
+<span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-stop"></use></svg></span>
+<div class="callout__body"><p><span class="callout__title">易错点 · 把「随场景变化的状态」也放进享元对象里。</span>享元对象必须<b>可共享</b>，共享的前提是<b>不可变</b>。如果把棋子的坐标（外部状态）也存进 Chesspiece，那么所有黑子会共用同一个坐标，落子立刻出错。判断标准：<b>与场景无关、能共享的 → 内部状态；随场景变化的 → 外部状态，由客户端保存</b>。</p></div>
+</div>
+
+</article><article class="pblock" id="p-proxy">
+<div class="pblock__head">
+<span class="pblock__no">07</span>
+<h3 class="pblock__title">代理模式 <span>Proxy Pattern</span></h3>
+<span class="chip chip--accent">结构型</span>
+</div>
+<p class="pblock__intent"><b>意图：</b>为其他对象提供一种代理以控制对这个对象的访问。</p>
+<h4>动机 / 问题场景</h4>
+<p>课程用「大图片加载慢」和「远程对象访问慢」举例：对象是一个几十 MB 的图片，打开页面时立刻加载会卡死，可以先放一个占位 Proxy，等真正需要显示时再去创建 RealSubject；对象在远端服务器上，直接调用受网络延迟影响，可以让本地 Proxy 代表它，把调用打包成网络请求。课程的游戏代练例子也很直观：<code>GamePlayerProxy</code> 与被代理的 <code>GamePlayer</code> 实现同一接口，代理在转发前后记录打怪时间、计算升级耗时。</p>
+<h4>结构</h4>
+<div class="cd"><div class="cd__row"><span class="cd__box">Client<small>只持有 Subject</small></span></div><div class="cd__arrow">request()</div><div class="cd__row"><span class="cd__box cd__box--abs">Subject<small>+ request()</small></span></div><div class="cd__arrow cd__arrow--h">Proxy 与 RealSubject 实现同一接口</div><div class="cd__row"><span class="cd__box cd__box--key">Proxy<small>- realSubject<br>+ request()</small></span><span class="cd__box cd__box--abs">RealSubject<small>+ request()</small></span></div><div class="cd__arrow">代理在适当时机转发</div><div class="cd__row"><span class="cd__box">真实对象<small>真正的业务实现</small></span></div><p class="cd__note">代理与真实主体接口完全一致，客户端感觉不到差别；差别在于代理可以「在转发前后做手脚」。</p></div>
+<ul><li><b>Subject</b> —— 定义 RealSubject 和 Proxy 的共用接口，这样在任何使用 RealSubject 的地方都可以使用 Proxy。</li><li><b>RealSubject</b> —— 定义 Proxy 所代表的真实实体。</li><li><b>Proxy</b> —— 保存一个引用使得代理可以访问实体，并提供一个与 Subject 相同的接口；控制对实体的存取，可能负责创建和删除它。</li><li><b>Client</b> —— 维持一个对 Subject 的引用。</li></ul>
+<h4>协作要点</h4>
+<ol><li>Client 调用 Subject 接口上的 <code>request()</code>。</li><li>实际进入 Proxy 的 <code>request()</code>。</li><li>Proxy 在转发前后执行控制逻辑：权限检查、延迟创建、缓存命中判断、加锁、计数。</li><li>Proxy 在适当时机把请求转发给 RealSubject。</li><li>RealSubject 完成业务并返回，Proxy 可能对结果做后处理。</li></ol>
+<h4>适用场景</h4>
+<ul><li><b>远程代理</b>：为一个位于不同地址空间的对象提供局部代表。</li><li><b>虚拟代理</b>：需要创建开销很大的对象时，先缓存/延迟创建。</li><li><b>保护代理</b>：控制对原始对象的访问，按权限过滤。</li><li><b>智能引用代理</b>：对象被引用时提供额外操作，如记录访问次数、加锁、写时复制。</li></ul>
+<h4>优缺点</h4>
+<div class="pros-cons">
+<div class="pros-cons__col"><h5>优点</h5><ul><li>引入间接层，可以在不修改目标对象的前提下增加控制逻辑（缓存、权限、日志）。</li><li>保护了真实对象，防止客户端直接访问带来的风险。</li><li>对客户端透明：客户端只看到 Subject 接口。</li></ul></div>
+<div class="pros-cons__col"><h5>代价 / 缺点</h5><ul><li>请求多经过一层，响应时间可能增加。</li><li>某些代理（远程代理）需要处理网络异常、序列化等额外复杂度。</li><li>代理与真实对象必须保持接口同步，接口一改两处都要改。</li></ul></div>
+</div>
+<h4>与相似模式的区别</h4>
+<div class="table-wrap"><table>
+<thead><tr><th>维度</th><th>代理</th><th>装饰器</th><th>适配器</th></tr></thead>
+<tbody><tr><td>接口</td><td>与 Subject 完全相同</td><td>与 Component 完全相同</td><td>转换成 Target</td></tr><tr><td>目的</td><td>控制访问（门卫）</td><td>动态添加职责</td><td>接口兼容</td></tr><tr><td>是否增加功能</td><td>可能（缓存/日志），但核心是控制</td><td>核心就是加功能</td><td>不加功能</td></tr><tr><td>对象创建</td><td>常负责创建/销毁真实对象</td><td>被装饰对象由外部创建</td><td>被适配对象由外部提供</td></tr><tr><td>层数</td><td>通常一层</td><td>可多层嵌套</td><td>一层</td></tr></tbody>
+</table></div>
+<h4>参考实现</h4>
+<figure class="code" data-lang="java" data-file="GamePlayerProxy.java">
+<pre><code>// Subject：共用接口
+public interface IGamePlayer {
+    void killBoss();   // 杀怪
+    void upGrade();    // 升级
+}
+
+// RealSubject：真实业务对象
+public class GamePlayer implements IGamePlayer {
+    private final String name;
+    public GamePlayer(String name) { this.name = name; }
+    public void killBoss() { System.out.println(name + "在打怪！"); }
+    public void upGrade()  { System.out.println(name + "成功升了1级！"); }
+}
+
+// Proxy：同一接口 + 持有真实对象 + 转发前后加控制逻辑
+public class GamePlayerProxy implements IGamePlayer {
+    private final IGamePlayer player;      // 对真实对象的引用
+
+    public GamePlayerProxy(IGamePlayer player) { this.player = player; }
+
+    private void log() { System.out.println("打怪时间 " + new java.util.Date()); }
+    private void count() { System.out.println("升1级耗费50小时"); }
+
+    public void killBoss() {
+        this.log();          // 转发前：记录日志
+        player.killBoss();   // 转发给真实对象
+    }
+    public void upGrade() {
+        player.upGrade();    // 转发
+        this.count();        // 转发后：统计耗时
+    }
+}
+
+public class ClientDemo {
+    public static void main(String[] args) {
+        IGamePlayer real  = new GamePlayer("李逍遥");
+        IGamePlayer proxy = new GamePlayerProxy(real);
+        proxy.killBoss();
+        proxy.upGrade();
+    }
+}</code></pre>
+</figure>
+<div class="callout callout--danger">
+<span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-stop"></use></svg></span>
+<div class="callout__body"><p><span class="callout__title">易错点 · 认为「代理和装饰器都是包装，所以可以互相替代」。</span>两者结构几乎一样（同接口 + 持有引用 + 转发），但<b>意图不同</b>：代理的核心是<b>控制访问</b>（门卫），通常由代理自己创建/管理真实对象，一般只有一层；装饰器的核心是<b>动态增加职责</b>，被装饰对象由客户端传入，可以多层嵌套。课程原话：<b>代理是一个「门卫」，装饰是动态扩展实际对象的功能</b>。</p></div>
+</div>
+
+</article><div class="callout callout--tip">
+<span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-bulb"></use></svg></span>
+<div class="callout__body"><p><span class="callout__title">答题技巧</span>结构型模式最常考「类图 + 一句话区别」。记住这条主线：<b>适配器改接口、装饰器加功能、代理控访问、外观简入口、桥接分维度、组合成树、享元省内存</b>。七个动词记住，选择题基本不会错。</p></div>
+</div>
+</section><section class="section" id="compare" data-title="横向对比">
+<div class="section-head">
+<span class="section-head__num">04</span>
+<h2 class="section-title">横向对比</h2>
+<a class="section-anchor" href="#compare" aria-label="本节链接">#</a>
+</div>
+
+<p class="section-lead">结构型模式的考点高度集中在「看起来很像」的几组模式上。下面三张表覆盖了最主要的辨析。</p><h3>表一：七个结构型模式总览</h3><div class="table-wrap"><table>
+<thead><tr><th>模式</th><th>一句话意图</th><th>关键结构</th><th>改变接口?</th><th>主要代价</th></tr></thead>
+<tbody><tr><td>适配器</td><td>转换接口使不兼容的类能协作</td><td>Adapter 实现 Target，持有/继承 Adaptee</td><td>改变</td><td>类适配器受单继承限制</td></tr><tr><td>桥接</td><td>抽象与实现分离，各自独立变化</td><td>两个继承层次 + 聚合桥</td><td>不改变</td><td>需提前识别变化维度</td></tr><tr><td>组合</td><td>树形结构统一对待部分与整体</td><td>Component 自引用（0..*）</td><td>不改变</td><td>接口泛化、透明性两难</td></tr><tr><td>装饰器</td><td>动态给对象加职责</td><td>Decorator 继承并持有 Component</td><td>不改变</td><td>小对象多、调试难</td></tr><tr><td>外观</td><td>为子系统提供统一简化接口</td><td>Facade 协调多个 Subsystem</td><td>提供新接口</td><td>多一层调用、受门面限制</td></tr><tr><td>享元</td><td>共享技术支撑大量细粒度对象</td><td>FlyweightFactory + 享元池</td><td>不改变</td><td>内外状态拆分复杂、时间换空间</td></tr><tr><td>代理</td><td>控制对对象的访问</td><td>Proxy 与 RealSubject 同接口</td><td>不改变</td><td>多一层转发、接口需同步</td></tr></tbody>
+</table></div><h3>表二：包装三兄弟——适配器 / 装饰器 / 代理</h3><div class="table-wrap"><table>
+<thead><tr><th>对比维度</th><th>适配器 Adapter</th><th>装饰器 Decorator</th><th>代理 Proxy</th></tr></thead>
+<tbody><tr><td>接口</td><td>改变（转成 Target）</td><td>不改变</td><td>不改变</td></tr><tr><td>功能</td><td>不改变功能</td><td>增强功能</td><td>控制访问（可能附带日志/缓存）</td></tr><tr><td>包装对象来源</td><td>外部传入的已有对象</td><td>外部传入的组件</td><td>常由代理自己创建/管理</td></tr><tr><td>可否多层嵌套</td><td>一般一层</td><td>可以任意嵌套</td><td>通常一层</td></tr><tr><td>设计动机</td><td>接口不兼容（事后补救）</td><td>动态扩展职责</td><td>控制访问（远程/虚拟/保护）</td></tr><tr><td>典型例子</td><td>电源转接头、JDBC 驱动</td><td>Java IO、咖啡加料</td><td>图片懒加载、游戏代练</td></tr></tbody>
+</table></div><h3>表三：组合 vs 装饰器 / 桥接 vs 适配器 / 外观 vs 中介者</h3><div class="table-wrap"><table>
+<thead><tr><th>易混组合</th><th>核心区别</th><th>判断口诀</th></tr></thead>
+<tbody><tr><td>组合 vs 装饰器</td><td>组合是<b>树</b>（一个节点多个子节点，向下递归）；装饰器是<b>链</b>（每层只包一个，向内委托）。结构上装饰器是组合的特例。</td><td>「树」→ 组合；「链」→ 装饰器。</td></tr><tr><td>桥接 vs 适配器</td><td>桥接是<b>事前设计</b>，分离两个都会独立演化的维度；适配器是<b>事后补救</b>，让已存在的两个不兼容接口能协作。</td><td>设计之初分维度 → 桥接；已有类接口不符 → 适配器。</td></tr><tr><td>外观 vs 中介者</td><td>外观是<b>单向</b>（客户 → 外观 → 子系统，子系统不知道外观）；中介者是<b>双向</b>（同事之间通过中介者互相通信，同事知道中介者）。</td><td>简化入口 → 外观；协调互交 → 中介者。</td></tr><tr><td>享元 vs 单例</td><td>单例保证<b>全局唯一</b>一个实例；享元按 key 维护<b>一族可共享</b>实例，通常配合工厂 + 池。</td><td>唯一 → 单例；共享池 → 享元。</td></tr></tbody>
+</table></div><div class="callout callout--info">
+<span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-info"></use></svg></span>
+<div class="callout__body"><p><span class="callout__title">记忆线索</span>结构型模式只有两种「手段」：<b>继承</b>（类结构型，只有类适配器）与<b>组合/聚合</b>（对象结构型，其余六个）。所有模式都在做同一件事——<b>用运行期的弱关联替换编译期的强关联</b>，也就是合成复用原则的七种具体实现。</p></div>
+</div>
+</section><section class="section" id="pitfalls" data-title="易错点">
+<div class="section-head">
+<span class="section-head__num">05</span>
+<h2 class="section-title">易错点</h2>
+<a class="section-anchor" href="#pitfalls" aria-label="本节链接">#</a>
+</div>
+
+<p class="section-lead">以下每条都对应一个真实的失分点，尤其在类图题与「区别」简答题中。</p><ul class="pitfalls"><li><strong>把适配器和装饰器都说成「包装器」，不做区分。</strong>两者别名都叫 Wrapper，但适配器<b>改变接口、不改变功能</b>，装饰器<b>不改变接口、增强功能</b>。考试写「都是包装模式」等于没答区别，必须点出「接口是否改变」这个判据。</li><li><strong>认为桥接模式中的 Implementor 接口必须与 Abstraction 接口一致。</strong>GoF 明确指出 Implementor 的接口<b>不一定要与 Abstraction 的接口完全一致，甚至可以完全不同</b>。Abstraction 只是把请求委托过去，两者是「抽象—实现」关系而非「同构」关系。</li><li><strong>组合模式里把 add/remove 只写在 Composite 上，却声称客户端完全一致。</strong>这是「透明性 vs 安全性」的取舍。放在 Composite 上是安全方案，但客户端统一处理前必须做类型判断，一致性被破坏；放在 Component 上是透明方案，代价是叶子节点要抛异常。答题必须说明选了哪一边。</li><li><strong>把享元的「外部状态」也塞进享元对象。</strong>享元对象必须可共享，前提是<b>不可变</b>。随场景变化的外部状态必须由客户端保存、调用时作为参数传入。把坐标存进棋子对象，所有黑子就会共用同一坐标。</li><li><strong>说外观模式「禁止客户直接访问子系统」。</strong>GoF 明确：外观模式<b>不限制客户应用子系统类</b>，它只是提供一个更方便的统一入口。说成「强制门禁」是常见错误。另外外观是「多对一」，适配器是「一对一」。</li><li><strong>认为代理和装饰器可以互换，因为类图一样。</strong>类图相似但意图相反：代理是<b>门卫</b>（控制访问，常自己创建真实对象，通常一层）；装饰器是<b>功能扩展</b>（被装饰对象由客户端传入，可多层嵌套）。简答题只写结构不写意图，最多拿一半分。</li></ul>
+</section><section class="section" id="quiz" data-title="本节自测">
+<div class="section-head">
+<span class="section-head__num">06</span>
+<h2 class="section-title">本节自测</h2>
+<a class="section-anchor" href="#quiz" aria-label="本节链接">#</a>
+</div>
+<p class="section-lead">题目数据来自本页底部 <code>&lt;script id="quiz-data"&gt;</code>，由 site.js 渲染判分。</p>
+<div class="quiz" id="quiz-root"></div>
+</section><section class="section" id="cards" data-title="记忆卡片">
+<div class="section-head">
+<span class="section-head__num">07</span>
+<h2 class="section-title">记忆卡片</h2>
+<a class="section-anchor" href="#cards" aria-label="本节链接">#</a>
+</div>
+<p class="section-lead">点击卡片翻面；标记「已掌握」会记住进度，下次接着看。</p>
+<div class="flash" id="cards-root"></div>
+</section><section class="section" id="slides" data-title="课件原图"><div class="section-head"><span class="section-head__num">08</span><h2 class="section-title">课件原图</h2><a class="section-anchor" href="#slides" aria-label="本节链接">#</a></div><p class="section-lead">结构型模式课件共 118 页，由 <code>tools/extract_slides.py</code> 从 PDF 逐页导出。点击缩略图可放大，支持 ← → 翻页。</p><div class="slides" data-slides-dir="slides/structural" data-count="118" data-prefix="slide" data-ext="jpg" data-pad="3" data-start="1" data-title="结构型模式 · 课件原图（118 页）"></div></section>
+        <section class="section" id="videos" data-title="视频讲解">
+          <div class="section-head">
+            <span class="section-head__num">09</span>
+            <h2 class="section-title">视频讲解</h2>
+            <a class="section-anchor" href="#videos" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">
+            结构型 7 个模式各有一段讲解。凡是要用类图分辨「谁包着谁」的地方，视频里的动画比静态类图更直观。
+          </p>
+          <div class="videos" id="videos-root"></div>
+          <p class="muted tiny" style="margin-top:var(--sp-3)">共 7 段，均为 1080p 讲解视频；点封面播放，<kbd>Esc</kbd> 关闭。</p>
+        </section>
+
+        <nav class="pager" id="pager-root" aria-label="章节导航"></nav>
+      </div>
+    </main>
+  </div>
+</div>
+
+<footer class="footer" id="footer-root"></footer>
+
+<script type="application/json" id="quiz-data">
+[
+  {
+    "type": "single",
+    "stem": "下列哪个结构型模式属于「类结构型模式」（通过继承组合类）？",
+    "options": [
+      "对象适配器",
+      "类适配器",
+      "桥接模式",
+      "外观模式"
+    ],
+    "answer": 1,
+    "explain": "类适配器通过多重继承（Java 中是继承 Adaptee 并实现 Target）组合两个类，属于类结构型模式。其余六个都是对象结构型模式。",
+    "tag": "分类"
+  },
+  {
+    "type": "single",
+    "stem": "适配器模式与装饰器模式最关键的区别是？",
+    "options": [
+      "适配器改变接口不改变功能，装饰器不改变接口但增强功能",
+      "适配器可以多层嵌套，装饰器不能",
+      "适配器用于类，装饰器用于对象",
+      "适配器符合开闭原则，装饰器不符合"
+    ],
+    "answer": 0,
+    "explain": "这是两者最本质的判据。B 说反了（装饰器才能嵌套）；C 错误，两者都有类/对象形态（但装饰器以对象形态为主）；D 错误，两者都可符合开闭原则。",
+    "tag": "辨析"
+  },
+  {
+    "type": "single",
+    "stem": "桥接模式把 m 个抽象与 n 个实现从 m×n 个子类降到多少个类？",
+    "options": [
+      "m + n",
+      "m × n",
+      "m",
+      "n"
+    ],
+    "answer": 0,
+    "explain": "两个独立的继承层次各 m 个和 n 个类，通过聚合桥连接，总共 m+n 个类。这正是桥接提高可扩充性的核心原因。",
+    "tag": "桥接"
+  },
+  {
+    "type": "single",
+    "stem": "组合模式中，若把 add/remove 声明在 Composite 而不是 Component，这种方案称为？",
+    "options": [
+      "透明方案",
+      "安全方案",
+      "适配方案",
+      "共享方案"
+    ],
+    "answer": 1,
+    "explain": "声明在 Composite 上是「安全方案」：叶子不会被迫实现无意义的方法，但客户端必须做类型判断，失去一致性。声明在 Component 上是「透明方案」，代价是叶子抛异常。",
+    "tag": "组合"
+  },
+  {
+    "type": "single",
+    "stem": "享元模式中，「与场景无关、可共享」的状态称为？",
+    "options": [
+      "外部状态",
+      "内部状态",
+      "临时状态",
+      "全局状态"
+    ],
+    "answer": 1,
+    "explain": "内部状态（Intrinsic State）存储在享元对象内部、与场景无关、可共享；外部状态（Extrinsic State）随场景变化、由客户端保存并在调用时传入。",
+    "tag": "享元"
+  },
+  {
+    "type": "single",
+    "stem": "为一个大图片对象提供占位、在真正需要时才创建真实对象，这属于哪种代理？",
+    "options": [
+      "远程代理",
+      "虚拟代理",
+      "保护代理",
+      "智能引用代理"
+    ],
+    "answer": 1,
+    "explain": "虚拟代理（Virtual Proxy）在需要创建开销很大的对象时缓存对象信息、延迟创建。远程代理用于不同地址空间，保护代理控制权限，智能引用代理做计数/加锁。",
+    "tag": "代理"
+  },
+  {
+    "type": "single",
+    "stem": "外观模式中，子系统类与 Facade 的关系是？",
+    "options": [
+      "子系统持有 Facade 的引用",
+      "子系统与 Facade 互相引用",
+      "子系统不知道 Facade 的任何信息",
+      "子系统继承 Facade"
+    ],
+    "answer": 2,
+    "explain": "GoF 明确：子系统「没有 Facade 的任何相关信息」。依赖是单向的 Client → Facade → Subsystem。",
+    "tag": "外观"
+  },
+  {
+    "type": "single",
+    "stem": "桥接模式的别名是？",
+    "options": [
+      "Wrapper（包装器）",
+      "Handle / Body（柄体）",
+      "Kit（套件）",
+      "Surrogate"
+    ],
+    "answer": 1,
+    "explain": "桥接别名 Handle/Body。Wrapper 是适配器与装饰器的别名，Kit 是抽象工厂的别名，Surrogate 是代理的别名。",
+    "tag": "桥接"
+  },
+  {
+    "type": "multiple",
+    "stem": "下列属于结构型模式的有（多选）：",
+    "options": [
+      "适配器",
+      "桥接",
+      "享元",
+      "中介者"
+    ],
+    "answer": [
+      0,
+      1,
+      2
+    ],
+    "explain": "中介者属于行为型模式。结构型共 7 种：适配器、桥接、组合、装饰器、外观、享元、代理。",
+    "tag": "分类"
+  },
+  {
+    "type": "multiple",
+    "stem": "关于装饰器模式，下列说法正确的有（多选）：",
+    "options": [
+      "装饰器必须实现与 Component 相同的接口",
+      "装饰器内部持有一个 Component 引用",
+      "装饰器可以多层嵌套，运行期动态组合",
+      "装饰器会改变被装饰对象的接口"
+    ],
+    "answer": [
+      0,
+      1,
+      2
+    ],
+    "explain": "D 错误：装饰器不改变接口，这正是它「对客户透明」的前提。只改接口的是适配器。",
+    "tag": "装饰器"
+  },
+  {
+    "type": "multiple",
+    "stem": "代理模式的常见类型包括（多选）：",
+    "options": [
+      "远程代理",
+      "虚拟代理",
+      "保护代理",
+      "智能引用代理"
+    ],
+    "answer": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "explain": "四类都是 GoF 列出的代理变体。另有缓存代理、防火墙代理、同步代理等工程变体。",
+    "tag": "代理"
+  },
+  {
+    "type": "multiple",
+    "stem": "享元模式的适用条件包括（多选）：",
+    "options": [
+      "系统中有大量相似对象，耗费大量内存",
+      "对象的外部状态较接近，内部状态与环境无关",
+      "需要缓冲池 / 对象池的场景",
+      "每个对象都有独特且不可共享的状态"
+    ],
+    "answer": [
+      0,
+      1,
+      2
+    ],
+    "explain": "D 与享元的前提矛盾：如果每个对象状态都独特不可共享，就没有共享空间，不适用享元。",
+    "tag": "享元"
+  },
+  {
+    "type": "boolean",
+    "stem": "桥接模式中，Implementor 的接口必须与 Abstraction 的接口完全一致。",
+    "answer": false,
+    "explain": "GoF 明确说明 Implementor 接口不一定要与 Abstraction 一致，甚至可以完全不同。Abstraction 只是把请求委托给它。",
+    "tag": "桥接"
+  },
+  {
+    "type": "boolean",
+    "stem": "外观模式强制要求客户只能通过 Facade 访问子系统，不能直接调用子系统类。",
+    "answer": false,
+    "explain": "外观模式不限制客户应用子系统类，它只是提供一个更方便的统一入口，不是强制门禁。",
+    "tag": "外观"
+  },
+  {
+    "type": "boolean",
+    "stem": "组合模式中 Composite 对象既可以包含 Leaf 对象，也可以包含另一个 Composite 对象。",
+    "answer": true,
+    "explain": "这正是树形结构的来源：Composite 内部存的是 Component 集合，而 Composite 本身也是 Component，因此可以递归嵌套。",
+    "tag": "组合"
+  }
+]
+</script>
+
+<script type="application/json" id="cards-data">
+[
+  {
+    "front": "结构型模式的总体职责？",
+    "back": "处理<b>类或对象的组合<\/b>，把简单结构拼成更大的结构，用组合替代继承以支持扩展。",
+    "tag": "总览"
+  },
+  {
+    "front": "结构型 7 种模式是哪些？",
+    "back": "适配器、桥接、组合、装饰器、外观、享元、代理。",
+    "tag": "总览"
+  },
+  {
+    "front": "类结构型与对象结构型的区别？",
+    "back": "类结构型用<b>继承<\/b>组合类（只有类适配器）；对象结构型用<b>关联/聚合<\/b>，在类中持有另一对象实例（其余六个）。",
+    "tag": "分类"
+  },
+  {
+    "front": "适配器模式的意图？",
+    "back": "将一个类的接口转换成客户希望的另一个接口，使原本接口不兼容的类可以一起工作。别名 <b>Wrapper<\/b>。",
+    "tag": "适配器"
+  },
+  {
+    "front": "类适配器与对象适配器的区别？",
+    "back": "类适配器<b>继承<\/b> Adaptee 并实现 Target（受单继承限制）；对象适配器<b>持有<\/b> Adaptee 引用（可适配其所有子类）。",
+    "tag": "适配器"
+  },
+  {
+    "front": "适配器与装饰器的关键区别？",
+    "back": "适配器<b>改变接口、不改变功能<\/b>；装饰器<b>不改变接口、增强功能<\/b>。",
+    "tag": "辨析"
+  },
+  {
+    "front": "桥接模式的意图与别名？",
+    "back": "将抽象部分与实现部分分离，使它们都可以独立变化。别名 <b>Handle/Body（柄体）<\/b>。",
+    "tag": "桥接"
+  },
+  {
+    "front": "桥接模式为什么能减少子类数量？",
+    "back": "把 m×n 的组合关系拆成两个独立继承层次，用聚合桥连接，类数量降为 <b>m+n<\/b>。",
+    "tag": "桥接"
+  },
+  {
+    "front": "「脱耦」在桥接中具体指什么？",
+    "back": "把抽象与实现之间的<b>继承（强关联，编译期确定）<\/b>改为<b>聚合（弱关联，运行期可替换）<\/b>。",
+    "tag": "桥接"
+  },
+  {
+    "front": "组合模式的意图？",
+    "back": "将对象组合成<b>树形结构<\/b>表示「部分-整体」层次，使客户端对单个对象和组合对象的使用具有<b>一致性<\/b>。",
+    "tag": "组合"
+  },
+  {
+    "front": "组合模式的四个角色？",
+    "back": "<b>Component<\/b>（统一接口 + 管理子节点）、<b>Leaf<\/b>（叶节点）、<b>Composite<\/b>（存储子部件并递归转发）、<b>Client<\/b>。",
+    "tag": "组合"
+  },
+  {
+    "front": "组合模式中「透明性 vs 安全性」指什么？",
+    "back": "add/remove 放 Component 上 = <b>透明<\/b>（客户端一致，但叶子抛异常）；放 Composite 上 = <b>安全<\/b>（但客户端需类型判断）。",
+    "tag": "组合"
+  },
+  {
+    "front": "装饰器模式的意图？",
+    "back": "动态地给一个对象添加额外职责；就增加功能而言，比生成子类更灵活。别名 <b>Wrapper<\/b>。",
+    "tag": "装饰器"
+  },
+  {
+    "front": "装饰器的关键结构特征？",
+    "back": "装饰器<b>既继承（实现）Component，又持有一个 Component 引用<\/b>，因此可以无限嵌套且仍是一个 Component。",
+    "tag": "装饰器"
+  },
+  {
+    "front": "装饰器模式的主要缺点？",
+    "back": "① 产生许多小对象，学习与调试困难；② 不应依赖对象标识（包装后不是同一对象）；③ 链过长影响性能。",
+    "tag": "装饰器"
+  },
+  {
+    "front": "外观模式的意图？",
+    "back": "为子系统中的一组接口提供一个<b>一致的界面<\/b>（高层接口），让子系统更容易使用。别名<b>门面模式<\/b>。",
+    "tag": "外观"
+  },
+  {
+    "front": "外观模式的三个优点？",
+    "back": "① 对客户屏蔽子系统，减少使用对象数；② 实现客户与子系统<b>松耦合<\/b>；③ <b>不限制<\/b>客户直接使用子系统类。",
+    "tag": "外观"
+  },
+  {
+    "front": "享元模式的意图？",
+    "back": "运用<b>共享技术<\/b>有效地支持大量细粒度的对象，减少内存开销。",
+    "tag": "享元"
+  },
+  {
+    "front": "内部状态与外部状态的区别？",
+    "back": "<b>内部状态<\/b>：存在享元内、与场景无关、可共享；<b>外部状态<\/b>：随场景变化、由客户端保存、调用时传入、不可共享。",
+    "tag": "享元"
+  },
+  {
+    "front": "享元模式的核心代价？",
+    "back": "以<b>时间换空间<\/b>：减少对象数量省内存，但每次取享元要查池，增加时间复杂度；且需拆分内/外部状态，实现复杂。",
+    "tag": "享元"
+  },
+  {
+    "front": "代理模式的意图与四类变体？",
+    "back": "为其他对象提供代理以<b>控制访问<\/b>。变体：<b>远程、虚拟、保护、智能引用<\/b>代理。",
+    "tag": "代理"
+  },
+  {
+    "front": "代理与装饰器的本质区别？",
+    "back": "代理是<b>门卫<\/b>——控制访问，常自己创建真实对象，通常一层；装饰器是<b>功能扩展<\/b>——被装饰对象由客户端传入，可多层嵌套。",
+    "tag": "辨析"
+  },
+  {
+    "front": "七个结构型模式的一句话口诀？",
+    "back": "适配器<b>改接口<\/b>、装饰器<b>加功能<\/b>、代理<b>控访问<\/b>、外观<b>简入口<\/b>、桥接<b>分维度<\/b>、组合<b>成树<\/b>、享元<b>省内存<\/b>。",
+    "tag": "总览"
+  }
+]
+</script>
+
+<script src="../../data/videos.js"></script>
+<script src="../../data/chapters.js"></script>
+<script src="../../assets/js/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page="home">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="软件设计与体系架构 期末复习站：面向对象设计原理、软件架构、设计模式与架构模式，含自测与记忆卡片。">
+<meta name="color-scheme" content="light dark">
+<title>软件设计与体系架构 · 期末复习站</title>
+<link rel="stylesheet" href="assets/css/site.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%232b4a6f'/%3E%3Cpath d='M6 8h12M6 12h12M6 16h7' stroke='%23fff' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
+<script>
+  /* 主题初始化必须内联且尽早执行，避免闪白/闪黑 */
+  (function () {
+    try {
+      var t = JSON.parse(localStorage.getItem('sda.theme'));
+      if (t !== 'dark' && t !== 'light') {
+        t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      document.documentElement.setAttribute('data-theme', t);
+    } catch (e) {
+      document.documentElement.setAttribute('data-theme', 'light');
+    }
+  })();
+</script>
+</head>
+<body>
+<a class="skip-link" href="#main">跳到正文</a>
+
+<div class="progress-bar" aria-hidden="true"><div class="progress-bar__fill" id="progress-fill"></div></div>
+
+<!-- 共享顶栏：由 site.js 渲染 -->
+<header class="topbar" id="topbar-root"></header>
+
+<main class="landing" id="main">
+  <div class="wrap">
+
+    <!-- ================= 首屏 ================= -->
+    <section class="landing__hero">
+      <span class="landing__eyebrow">
+        2025 秋季学期 <i></i> 期末复习站
+      </span>
+      <h1>软件设计<em>与</em>体系架构<br>一份看得懂、记得住、能自测的复习笔记</h1>
+      <p class="landing__lead">
+        从面向对象设计原理出发，途经设计模式与架构风格，最后落到架构模式的选型判断。
+        每一章都配有知识地图、对比表、易错点、自测题与记忆卡片 —— 边看边测，比通读 PPT 高效得多。
+      </p>
+      <div class="landing__cta">
+        <a class="btn btn--primary" href="chapters/ch1/index.html">
+          <svg class="icon" aria-hidden="true"><use href="#i-play"></use></svg>
+          从第 1 章开始
+        </a>
+        <a class="btn" id="home-continue" href="chapters/ch1/index.html" style="display:none"></a>
+        <a class="btn" href="#practice">
+          <svg class="icon" aria-hidden="true"><use href="#i-shuffle"></use></svg>
+          全部题目随机练习
+        </a>
+        <button class="btn" id="home-search-btn" type="button">
+          <svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg>
+          搜索知识点
+          <kbd>/</kbd>
+        </button>
+      </div>
+
+      <div class="stats" id="home-stats"><!-- site.js 渲染 --></div>
+    </section>
+
+    <!-- ================= 章节 ================= -->
+    <section class="section" id="chapters" data-nav="off">
+      <div class="section-head section-head--landing">
+        <span class="section-head__num">CHAPTERS</span>
+        <h2 class="section-title">五个章节，一条主线</h2>
+      </div>
+      <p class="section-lead muted">
+        建议按顺序阅读：第 1 章打术语底子，第 2–3 章建立架构与模式的判断标准，
+        第 4 章是模式主体（也是考试重点），第 5 章收束到架构层面。
+      </p>
+      <div class="chapter-grid" id="chapter-grid"><!-- site.js 渲染 --></div>
+    </section>
+
+    <!-- ================= 全部题目随机练习 ================= -->
+    <section class="section" id="practice" data-nav="off">
+      <div class="section-head section-head--landing">
+        <span class="section-head__num">PRACTICE</span>
+        <h2 class="section-title">全部题目随机练习</h2>
+      </div>
+      <p class="section-lead muted">
+        从全站题库里跨章随机抽题（第 4 章的三个专题页一并纳入），练的是「换个问法还认不认得」。
+        每题都标了来源页面，做错可以点过去看对应小节。成绩只记在本机。
+      </p>
+      <div class="quiz" id="mixed-quiz-root"><!-- site.js 渲染 --></div>
+    </section>
+
+    <!-- ================= 学习路径 ================= -->
+    <section class="section" id="track" data-nav="off">
+      <div class="section-head section-head--landing">
+        <span class="section-head__num">STUDY PATH</span>
+        <h2 class="section-title">三天复习路线（可调整）</h2>
+      </div>
+      <div class="grid grid--2">
+        <div class="card">
+          <h3 class="card__title">
+            <svg class="icon" aria-hidden="true"><use href="#i-list"></use></svg>
+            推荐节奏
+          </h3>
+          <div class="track" style="margin-top:var(--sp-4)">
+            <div class="track__step track__step--now">
+              <span class="track__dot">01</span>
+              <div class="track__body">
+                <p class="track__title">通读第 1–3 章，建立术语</p>
+                <p class="track__desc">重点记 SOLID 五原则、架构定义与质量属性、模式的四个要素。每章读完立刻做自测。</p>
+              </div>
+            </div>
+            <div class="track__step">
+              <span class="track__dot">02</span>
+              <div class="track__body">
+                <p class="track__title">主攻第 4 章 23 种模式</p>
+                <p class="track__desc">按「创建型 → 结构型 → 行为型」分组记忆，用对比表区分意图相近的模式（如策略 vs 状态、适配器 vs 装饰器）。</p>
+              </div>
+            </div>
+            <div class="track__step">
+              <span class="track__dot">03</span>
+              <div class="track__body">
+                <p class="track__title">第 5 章 + 全站错题回炉</p>
+                <p class="track__desc">掌握架构模式的优缺点与适用场景，然后过一遍各章「易错点」，重做错题。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 class="card__title">
+            <svg class="icon" aria-hidden="true"><use href="#i-keyboard"></use></svg>
+            使用说明与快捷键
+          </h3>
+          <div class="card__body" style="margin-top:var(--sp-3)">
+            <div class="table-wrap">
+            <table style="min-width:0">
+              <tbody>
+                <tr><td><kbd>/</kbd> 或 <kbd>Ctrl</kbd>+<kbd>K</kbd></td><td>搜索全站知识点</td></tr>
+                <tr><td><kbd>D</kbd></td><td>切换深色 / 浅色模式</td></tr>
+                <tr><td><kbd>[</kbd> <kbd>]</kbd></td><td>上一章 / 下一章</td></tr>
+                <tr><td><kbd>1</kbd>–<kbd>9</kbd></td><td>自测时选择选项</td></tr>
+                <tr><td><kbd>←</kbd> <kbd>→</kbd></td><td>记忆卡片翻页</td></tr>
+                <tr><td><kbd>Esc</kbd></td><td>关闭弹层</td></tr>
+              </tbody>
+            </table>
+            </div>
+            <div class="callout callout--info" style="margin-top:var(--sp-4)">
+              <span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-info"></use></svg></span>
+              <div class="callout__body">
+                <p>阅读进度与自测成绩只保存在<b>本机浏览器</b>（localStorage），不上传任何服务器。
+                换浏览器或清缓存会重置，属正常现象。</p>
+              </div>
+            </div>
+            <div style="display:flex;gap:var(--sp-2);flex-wrap:wrap">
+              <a class="btn btn--sm" href="chapters/_template/index.html">
+                <svg class="icon" aria-hidden="true"><use href="#i-print-doc"></use></svg>
+                页面模板
+              </a>
+              <a class="btn btn--sm" href="docs/CONTENT_CONTRACT.md">
+                <svg class="icon" aria-hidden="true"><use href="#i-book"></use></svg>
+                内容规范
+              </a>
+              <a class="btn btn--sm" href="README.md">
+                <svg class="icon" aria-hidden="true"><use href="#i-terminal"></use></svg>
+                README
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<footer class="footer" id="footer-root"></footer>
+
+<script src="data/quiz-bank.js"></script>
+<script src="data/chapters.js"></script>
+<script src="assets/js/site.js"></script>
+<script>
+  /* 首页专属：把顶栏搜索按钮和首屏按钮接到搜索弹层 */
+  (function () {
+    function bind() {
+      var b = document.getElementById('home-search-btn');
+      if (b && window.SDA) b.addEventListener('click', window.SDA.search);
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+    else bind();
+  })();
+</script>
+</body>
+</html>

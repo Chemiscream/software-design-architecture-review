@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<!--
+  ============================================================================
+  chapters/_template/index.html —— 章节页「黄金模板」
+  ----------------------------------------------------------------------------
+  · 本文件演示了站点提供的【全部】共享组件，是 CONTENT_CONTRACT.md 的示例版本
+  · 新建章节页的正确做法：
+        复制本文件 → chapters/chN/index.html → 只改 3 处：
+          1) <html data-chapter="ch4"> 改成自己的章节 id（ch1…ch5）
+          2) <title> 与 <section> 内的正文
+          3) 底部 quiz-data / cards-data 两段 JSON
+  · 不要修改 class 名、不要调整 <section> 的 id、不要改脚本顺序
+  · 详细规则见 docs/CONTENT_CONTRACT.md
+  ============================================================================
+-->
+<html lang="zh-CN" data-page="chapter" data-chapter="ch4" data-nostore>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="软件设计与体系架构 · 章节复习页模板：演示本站在章节页中可用的全部组件。">
+<meta name="color-scheme" content="light dark">
+<title>页面模板 · 软件设计与体系架构</title>
+<link rel="stylesheet" href="../../assets/css/site.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%232b4a6f'/%3E%3Cpath d='M6 8h12M6 12h12M6 16h7' stroke='%23fff' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
+<script>
+  /* 主题初始化：必须内联在 <head> 中，避免刷新时闪白 */
+  (function () {
+    try {
+      var t = JSON.parse(localStorage.getItem('sda.theme'));
+      if (t !== 'dark' && t !== 'light') {
+        t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      document.documentElement.setAttribute('data-theme', t);
+    } catch (e) {
+      document.documentElement.setAttribute('data-theme', 'light');
+    }
+  })();
+</script>
+</head>
+<body>
+<a class="skip-link" href="#main">跳到正文</a>
+
+<!-- 阅读进度条（固定顶部，site.js 驱动） -->
+<div class="progress-bar" aria-hidden="true"><div class="progress-bar__fill" id="progress-fill"></div></div>
+
+<!-- 共享顶栏：由 site.js 渲染，内部不要写任何东西 -->
+<header class="topbar" id="topbar-root"></header>
+
+<div class="wrap">
+  <div class="layout">
+
+    <!-- 共享侧栏目录：由 site.js 渲染，内部不要写任何东西 -->
+    <aside class="sidebar" id="sidebar-root" aria-label="章节目录"></aside>
+
+    <main class="main" id="main">
+      <div class="main__inner">
+
+        <!-- ↓↓↓ 仅模板：正式章节页请删除下面这一段 ↓↓↓ -->
+        <div class="callout callout--warn" style="margin-top:var(--sp-5)">
+          <span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg></span>
+          <div class="callout__body">
+            <p><span class="callout__title">这是页面模板（<code>chapters/_template/</code>）</span>
+            本页内容为演示用的示例，用于展示每一个共享组件的正确写法。
+            正式章节请<b>复制整个文件</b>到 <code>chapters/chN/index.html</code>，
+            改掉 <code>data-chapter</code> 与正文，并删除本提示框。
+            完整规则见 <a href="../../docs/CONTENT_CONTRACT.md">CONTENT_CONTRACT.md</a>。</p>
+          </div>
+        </div>
+        <!-- ↑↑↑ 仅模板 ↑↑↑ -->
+
+        <!-- ================================================================
+             1. overview —— 章首：hero + 学习目标 + 知识地图
+             ================================================================ -->
+        <section class="section" id="overview" data-title="本章导览">
+          <div class="hero">
+            <span class="hero__eyebrow">第 4 章 · 面向对象设计模式</span>
+            <h1>行为型模式：观察者模式</h1>
+            <p class="hero__lead">
+              当对象之间是「一对多」依赖，且被依赖对象的状态变化需要自动通知所有依赖者时，
+              观察者模式把「谁变了」与「谁关心」解耦。本节以它为例，演示本站在章节页里提供的全部组件。
+            </p>
+            <div class="hero__meta">
+              <span class="chip chip--accent"><svg class="icon" aria-hidden="true"><use href="#i-target"></use></svg>考试重点</span>
+              <span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-clock"></use></svg>约 8 分钟</span>
+              <span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-puzzle"></use></svg>行为型</span>
+              <span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg>高频简答题</span>
+            </div>
+            <div class="hero__actions">
+              <a class="btn btn--primary" href="#concepts">
+                <svg class="icon" aria-hidden="true"><use href="#i-play"></use></svg>开始阅读
+              </a>
+              <a class="btn" href="#quiz">
+                <svg class="icon" aria-hidden="true"><use href="#i-target"></use></svg>直接自测
+              </a>
+              <a class="btn" href="#slides">
+                <svg class="icon" aria-hidden="true"><use href="#i-print-doc"></use></svg>查看课件原图
+              </a>
+            </div>
+          </div>
+
+          <h2 class="section-title" style="margin-top:var(--sp-5)">
+            <svg class="icon" aria-hidden="true"><use href="#i-target"></use></svg>学习目标
+          </h2>
+          <p class="section-lead">读完后应能做到以下几点。</p>
+          <ol class="objectives">
+            <li>能用自己的话说明观察者模式解决的是什么耦合问题，并指出其中的 Subject 与 Observer 两类角色。</li>
+            <li>能画出观察者模式的类图，并说清 <code>attach / detach / notify</code> 的调用顺序。</li>
+            <li>能区分观察者模式与「发布-订阅」的差别，并说明推模型与拉模型的取舍。</li>
+            <li>能在给定场景（如 GUI 事件、价格监控、MVC 视图刷新）中判断是否应当使用观察者模式。</li>
+          </ol>
+
+          <h2 class="section-title" style="margin-top:var(--sp-6)">
+            <svg class="icon" aria-hidden="true"><use href="#i-network"></use></svg>知识地图
+          </h2>
+          <p class="section-lead">把本节内容压缩成一张结构图，便于建立整体印象。</p>
+          <div class="kmap">
+            <div class="kmap__col">
+              <p class="kmap__title">问题</p>
+              <ul class="kmap__list">
+                <li>一对多依赖</li>
+                <li>状态变化需广播</li>
+                <li>避免硬编码调用者</li>
+                <li>不能修改被观察者</li>
+              </ul>
+            </div>
+            <div class="kmap__col">
+              <p class="kmap__title">角色</p>
+              <ul class="kmap__list">
+                <li>Subject 被观察者</li>
+                <li>Observer 观察者接口</li>
+                <li>ConcreteSubject</li>
+                <li>ConcreteObserver</li>
+              </ul>
+            </div>
+            <div class="kmap__col">
+              <p class="kmap__title">协作</p>
+              <ul class="kmap__list">
+                <li>attach 注册</li>
+                <li>状态变更</li>
+                <li>notify 遍历通知</li>
+                <li>update 回调</li>
+              </ul>
+            </div>
+            <div class="kmap__col">
+              <p class="kmap__title">代价</p>
+              <ul class="kmap__list">
+                <li>通知顺序不确定</li>
+                <li>可能引起内存泄漏</li>
+                <li>链式更新难调试</li>
+                <li>需手动 detach</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================================
+             2. concepts —— 核心概念：概念卡 + 模式卡
+             ================================================================ -->
+        <section class="section" id="concepts" data-title="核心概念">
+          <div class="section-head">
+            <span class="section-head__num">02</span>
+            <h2 class="section-title">核心概念</h2>
+            <a class="section-anchor" href="#concepts" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">先建立术语，再看结构与代码。</p>
+
+          <div class="grid">
+            <div class="concept">
+              <p class="concept__term">观察者模式 <span class="concept__en">Observer</span></p>
+              <p class="concept__body">
+                定义对象间的一种<b>一对多</b>的依赖关系，当一个对象（Subject）的状态发生改变时，
+                所有依赖它的对象（Observer）都得到通知并<b>自动更新</b>。
+              </p>
+              <div class="concept__tags">
+                <span class="chip chip--accent">行为型</span>
+                <span class="chip">对象模式</span>
+              </div>
+            </div>
+
+            <div class="concept">
+              <p class="concept__term">主题 / 被观察者 <span class="concept__en">Subject</span></p>
+              <p class="concept__body">
+                持有观察者列表，提供 <code>attach</code>、<code>detach</code> 与 <code>notify</code> 三个操作，
+                自身不关心观察者具体是谁、会做什么。
+              </p>
+              <div class="concept__tags">
+                <span class="chip">角色</span>
+              </div>
+            </div>
+
+            <div class="concept">
+              <p class="concept__term">推模型 vs 拉模型 <span class="concept__en">Push / Pull</span></p>
+              <p class="concept__body">
+                推模型把变更细节随通知一起传给观察者；拉模型只发「我变了」的<b>通知</b>，
+                由观察者自己回查需要的数据。前者简单，后者更灵活、耦合更低。
+              </p>
+              <div class="concept__tags">
+                <span class="chip chip--warn">易混淆</span>
+              </div>
+            </div>
+
+            <div class="concept">
+              <p class="concept__term">发布-订阅 <span class="concept__en">Pub-Sub</span></p>
+              <p class="concept__body">
+                观察者模式的<b>解耦升级版</b>：发布者与订阅者之间插入事件通道 / 消息代理，
+                彼此甚至不知道对方存在。观察者模式中两者通常仍然相识。
+              </p>
+              <div class="concept__tags">
+                <span class="chip chip--warn">易混淆</span>
+                <span class="chip">架构层</span>
+              </div>
+            </div>
+          </div>
+
+          <h3 style="margin-top:var(--sp-6)">模式卡</h3>
+          <p>模式卡用于快速回顾一个 GoF 模式的全部要素，建议每种模式都整理成一张。</p>
+
+          <div class="pattern">
+            <div class="pattern__head">
+              <h4 class="pattern__name">观察者模式</h4>
+              <span class="pattern__en">Observer Pattern</span>
+              <span class="pattern__type">行为型</span>
+            </div>
+            <div class="pattern__body">
+              <dl class="pattern__rows">
+                <div class="pattern__row">
+                  <dt>意图</dt>
+                  <dd>定义对象间一对多的依赖关系，使状态变化时所有依赖者自动得到通知并更新。</dd>
+                </div>
+                <div class="pattern__row">
+                  <dt>别名</dt>
+                  <dd>发布-订阅（Publish-Subscribe）、依赖（Dependents）</dd>
+                </div>
+                <div class="pattern__row">
+                  <dt>适用场景</dt>
+                  <dd>
+                    一个抽象模型有两个方面、其中一个依赖另一个；<br>
+                    对象状态改变需要通知其它对象而<b>不希望</b>硬编码被通知者；<br>
+                    一个对象需要通知其它对象，但不知道对方是谁。
+                  </dd>
+                </div>
+                <div class="pattern__row">
+                  <dt>参与角色</dt>
+                  <dd>Subject、ConcreteSubject、Observer、ConcreteObserver</dd>
+                </div>
+                <div class="pattern__row">
+                  <dt>主要代价</dt>
+                  <dd>通知是<b>隐式</b>的，调用链难追踪；忘记 detach 会导致对象无法回收。</dd>
+                </div>
+                <div class="pattern__row">
+                  <dt>相关模式</dt>
+                  <dd>中介者模式（把网状观察收敛为星形）、命令模式、MVC 中的 Model-View 关系</dd>
+                </div>
+              </dl>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================================
+             3. detail —— 展开讲解：正文 + 代码块 + 提示框
+             ================================================================ -->
+        <section class="section" id="detail" data-title="结构与实现">
+          <div class="section-head">
+            <span class="section-head__num">03</span>
+            <h2 class="section-title">结构与实现</h2>
+            <a class="section-anchor" href="#detail" aria-label="本节链接">#</a>
+          </div>
+
+          <div class="prose">
+            <h3>角色协作流程</h3>
+            <p>
+              观察者模式的结构非常轻：<b>Subject</b> 维护一个观察者容器，<b>Observer</b> 提供一个
+              <code>update</code> 回调。当 <b>ConcreteSubject</b> 的状态变化时，遍历容器逐个调用
+              <code>update</code>，就完成了「广播」。
+            </p>
+            <ol>
+              <li>观察者实例通过 <code>attach(observer)</code> 注册到主题；</li>
+              <li>主题内部状态改变，调用 <code>notify()</code>；</li>
+              <li><code>notify()</code> 遍历观察者列表，调用每个观察者的 <code>update()</code>；</li>
+              <li>观察者收到通知后，拉取或接收新数据并刷新自身；</li>
+              <li>不再需要通知时调用 <code>detach(observer)</code> 注销。</li>
+            </ol>
+
+            <div class="callout callout--tip">
+              <span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-bulb"></use></svg></span>
+              <div class="callout__body">
+                <p><span class="callout__title">答题技巧</span>
+                简答题问「观察者模式的优点」时，抓住<b>「解耦」</b>与<b>「开闭原则」</b>两点展开：
+                主题只依赖抽象的 Observer 接口，新增观察者无需修改主题代码。
+                再补一句「支持广播通信」，基本就能拿满分。</p>
+              </div>
+            </div>
+
+            <h3>参考实现</h3>
+            <p>下面是最小可运行的 Java 实现，只保留结构，省略了并发与异常处理。</p>
+
+            <figure class="code" data-lang="java" data-file="Observer.java">
+<pre><code>import java.util.ArrayList;
+import java.util.List;
+
+/** 观察者接口：只暴露一个更新回调 */
+public interface Observer {
+    void update(String event, Object data);
+}
+
+/** 主题：维护观察者列表并负责通知 */
+public class Subject {
+
+    private final List&lt;Observer&gt; observers = new ArrayList&lt;&gt;();
+    private String state;
+
+    public void attach(Observer o) {
+        if (o != null &amp;&amp; !observers.contains(o)) {
+            observers.add(o);
+        }
+    }
+
+    public void detach(Observer o) {
+        observers.remove(o);
+    }
+
+    /** 状态变更后广播；遍历时复制一份，避免回调中修改列表导致并发异常 */
+    public void setState(String newState) {
+        this.state = newState;
+        notifyObservers();
+    }
+
+    private void notifyObservers() {
+        for (Observer o : new ArrayList&lt;&gt;(observers)) {
+            o.update("state-changed", state);
+        }
+    }
+}
+
+/** 具体观察者：只关心自己需要的部分 */
+public class PriceView implements Observer {
+
+    private final String name;
+
+    public PriceView(String name) {
+        this.name = name;
+    }
+
+    @Override
+    public void update(String event, Object data) {
+        System.out.println(name + " 收到通知：" + event + " -> " + data);
+    }
+}</code></pre>
+            </figure>
+
+            <h4>推模型与拉模型的写法差异</h4>
+            <p>推模型把数据塞进回调参数；拉模型只传「发生了什么」，由观察者回查主题。</p>
+
+            <figure class="code" data-lang="java" data-file="PushPull.java">
+<pre><code>// 推模型：数据随通知一起给
+void update(String event, Object data);
+
+// 拉模型：只给事件，观察者自己回查（耦合更低，但需要持有主题引用）
+interface Observer {
+    void update();
+}
+class PriceView implements Observer {
+    private final Subject subject;   // 持有主题引用以便回查
+    public void update() {
+        render(subject.getState());
+    }
+}</code></pre>
+            </figure>
+
+            <div class="callout callout--info">
+              <span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-info"></use></svg></span>
+              <div class="callout__body">
+                <p><span class="callout__title">注意</span>
+                <code>notifyObservers()</code> 中遍历的是观察者列表的<b>副本</b>。
+                如果直接遍历原列表，而某个观察者在 <code>update()</code> 里调用了
+                <code>detach()</code>，就会抛出 <code>ConcurrentModificationException</code>。</p>
+              </div>
+            </div>
+
+            <h3>典型应用</h3>
+            <div class="grid grid--2">
+              <div class="card">
+                <h4 class="card__title">
+                  <svg class="icon" aria-hidden="true"><use href="#i-eye"></use></svg>
+                  GUI 事件监听
+                </h4>
+                <div class="card__body">
+                  <p class="muted">按钮（Subject）被点击时通知所有注册的监听器（Observer），
+                  界面逻辑与事件源分离。Java 的 <code>ActionListener</code> 就是这一结构。</p>
+                </div>
+              </div>
+              <div class="card">
+                <h4 class="card__title">
+                  <svg class="icon" aria-hidden="true"><use href="#i-network"></use></svg>
+                  MVC 的模型-视图
+                </h4>
+                <div class="card__body">
+                  <p class="muted">Model 状态变化通知多个 View 刷新，同一份数据可以有多套展示，
+                  新增视图无需改动 Model。</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================================
+             4. compare —— 对比表
+             ================================================================ -->
+        <section class="section" id="compare" data-title="横向对比">
+          <div class="section-head">
+            <span class="section-head__num">04</span>
+            <h2 class="section-title">横向对比</h2>
+            <a class="section-anchor" href="#compare" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">考试最爱在这里出选择题：意图相近的模式放在一起辨析。</p>
+
+          <h3>观察者 vs 发布-订阅 vs 中介者</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>维度</th>
+                  <th>观察者模式</th>
+                  <th>发布-订阅</th>
+                  <th>中介者模式</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>耦合方式</td>
+                  <td>主题知道观察者接口</td>
+                  <td>双方互不相识，经事件通道</td>
+                  <td>同事对象只认识中介者</td>
+                </tr>
+                <tr>
+                  <td>拓扑</td>
+                  <td>一对多</td>
+                  <td>多对多</td>
+                  <td>星形（网状收敛为一点）</td>
+                </tr>
+                <tr>
+                  <td>通知方向</td>
+                  <td>单向广播</td>
+                  <td>双向</td>
+                  <td>集中转发</td>
+                </tr>
+                <tr>
+                  <td>典型实现</td>
+                  <td><code>addListener</code></td>
+                  <td>消息队列、EventBus</td>
+                  <td>聊天室、对话框协调器</td>
+                </tr>
+                <tr>
+                  <td>层级</td>
+                  <td>设计模式（对象级）</td>
+                  <td>架构风格 / 集成模式</td>
+                  <td>设计模式（对象级）</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>推模型 vs 拉模型</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>对比项</th><th>推模型</th><th>拉模型</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>通知内容</td><td>携带完整变更数据</td><td>仅事件类型</td></tr>
+                <tr><td>实现复杂度</td><td>低</td><td>中（需回查接口）</td></tr>
+                <tr><td>耦合度</td><td>主题需了解观察者所需数据</td><td>观察者依赖主题接口</td></tr>
+                <tr><td>效率</td><td>一次通知即可用</td><td>可能多次回查</td></tr>
+                <tr><td>适用</td><td>数据结构简单、变化少</td><td>数据结构复杂、观察者需求各异</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ================================================================
+             5. pitfalls —— 易错点
+             ================================================================ -->
+        <section class="section" id="pitfalls" data-title="易错点">
+          <div class="section-head">
+            <span class="section-head__num">05</span>
+            <h2 class="section-title">易错点</h2>
+            <a class="section-anchor" href="#pitfalls" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">这些是本知识点最容易失分的地方。</p>
+
+          <ul class="pitfalls">
+            <li><strong>把观察者模式等同于事件总线。</strong>
+              GoF 的观察者模式中 Subject 直接持有 Observer 引用；一旦引入中间的事件通道，
+              严格说已经演进为发布-订阅，属于架构层面的解耦。</li>
+            <li><strong>忘记注销导致内存泄漏。</strong>
+              长生命周期的 Subject 持有短生命周期 Observer 的强引用，对象无法被回收。
+              必须在销毁时 <code>detach</code>，或使用弱引用。</li>
+            <li><strong>在通知里直接修改观察者列表。</strong>
+              遍历过程中 <code>attach/detach</code> 会触发并发修改异常，应先复制列表再遍历。</li>
+            <li><strong>误认为通知是同步可靠的。</strong>
+              默认实现是同步顺序调用，一个观察者抛异常会影响后续观察者；
+              需要可靠性时应引入异步与重试机制。</li>
+          </ul>
+        </section>
+
+        <!-- ================================================================
+             6. quiz —— 自测（数据在页面底部 #quiz-data）
+             ================================================================ -->
+        <section class="section" id="quiz" data-title="本章自测">
+          <div class="section-head">
+            <span class="section-head__num">06</span>
+            <h2 class="section-title">本章自测</h2>
+            <a class="section-anchor" href="#quiz" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">题目数据来自本页底部 <code>&lt;script id="quiz-data"&gt;</code>，由 site.js 渲染判分。</p>
+
+          <!-- 挂载点：id 必须是 quiz-root，内部留空 -->
+          <div class="quiz" id="quiz-root"></div>
+        </section>
+
+        <!-- ================================================================
+             7. cards —— 记忆卡片（数据在页面底部 #cards-data）
+             ================================================================ -->
+        <section class="section" id="cards" data-title="记忆卡片">
+          <div class="section-head">
+            <span class="section-head__num">07</span>
+            <h2 class="section-title">记忆卡片</h2>
+            <a class="section-anchor" href="#cards" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">点击卡片翻面；标记「已掌握」会记住进度，下次接着看。</p>
+
+          <!-- 挂载点：id 必须是 cards-root，内部留空 -->
+          <div class="flash" id="cards-root"></div>
+        </section>
+
+        <!-- ================================================================
+             8. slides —— 课件原图
+             data-slides-dir 相对于本 HTML 文件；data-count 必须等于实际图片数
+             ================================================================ -->
+        <section class="section" id="slides" data-title="课件原图">
+          <div class="section-head">
+            <span class="section-head__num">08</span>
+            <h2 class="section-title">课件原图</h2>
+            <a class="section-anchor" href="#slides" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">
+            本区块读取同目录 <code>slides/</code> 下的图片。图片由
+            <code>tools/extract_slides.py</code> 从课件 PDF 导出。
+            若尚未导出，把 <code>data-count</code> 保持为 0，页面会显示友好提示而不是裂图。
+          </p>
+
+          <!-- 挂载点：class 必须是 slides，且带 data-slides-dir / data-count -->
+          <div class="slides"
+               data-slides-dir="slides"
+               data-count="0"
+               data-prefix="slide"
+               data-ext="jpg"
+               data-pad="3"
+               data-start="1"
+               data-title="观察者模式 · 课件原图"></div>
+        </section>
+
+        <!-- ================================================================
+             上一章 / 下一章：由 site.js 根据 data-chapter 自动渲染，留空即可
+             ================================================================ -->
+        <nav class="pager" id="pager-root" aria-label="章节导航"></nav>
+
+      </div><!-- /.main__inner -->
+    </main>
+  </div><!-- /.layout -->
+</div><!-- /.wrap -->
+
+<!-- 共享页脚：由 site.js 渲染 -->
+<footer class="footer" id="footer-root"></footer>
+
+<!-- ==========================================================================
+     数据块 1：自测题（JSON 数组；也可写成 {"title":"...","questions":[...]}）
+     字段：type = single | multiple | boolean
+           stem / options / answer / explain
+     ========================================================================== -->
+<script type="application/json" id="quiz-data">
+[
+  {
+    "type": "single",
+    "stem": "观察者模式的核心意图是？",
+    "options": [
+      "让一个类的接口适配成客户端期望的另一个接口",
+      "定义对象间一对多的依赖关系，状态变化时自动通知所有依赖者",
+      "保证一个类只有一个实例并提供全局访问点",
+      "将请求封装为对象，从而支持撤销与排队"
+    ],
+    "answer": 1,
+    "explain": "这是 GoF 对观察者模式的标准定义。A 是适配器模式，C 是单例模式，D 是命令模式。"
+  },
+  {
+    "type": "single",
+    "stem": "下列哪一项不是观察者模式的典型缺点？",
+    "options": [
+      "通知是隐式的，调用链难以追踪",
+      "忘记 detach 会导致对象无法被回收",
+      "观察者数量增加时通知开销随之上升",
+      "主题与观察者必须处于同一进程内"
+    ],
+    "answer": 3,
+    "explain": "观察者模式本身并不限制进程边界；跨进程场景通常改用发布-订阅 / 消息中间件，那是演进方向而非模式缺点。"
+  },
+  {
+    "type": "multiple",
+    "stem": "关于推模型与拉模型，下列说法正确的有（多选）：",
+    "options": [
+      "推模型在通知中携带完整数据，实现更简单",
+      "拉模型只通知「发生了变化」，由观察者回查",
+      "拉模型的耦合度通常低于推模型",
+      "推模型一定比拉模型性能更好"
+    ],
+    "answer": [0, 1, 2],
+    "explain": "D 过于绝对：推模型一次通知即可用，但传输的数据可能是观察者并不需要的，实际性能取决于场景。"
+  },
+  {
+    "type": "boolean",
+    "stem": "观察者模式中，Subject 通常只依赖抽象的 Observer 接口，因此新增观察者无需修改 Subject 代码。",
+    "answer": true,
+    "explain": "这正是它符合开闭原则的体现：主题面向 Observer 抽象编程，扩展点由调用方通过 attach 注入。"
+  },
+  {
+    "type": "boolean",
+    "stem": "观察者模式与发布-订阅模式完全等价，只是名称不同。",
+    "answer": false,
+    "explain": "两者不等价。观察者模式中主题与观察者通常互相知晓；发布-订阅引入事件通道 / 代理，使双方完全解耦，属于架构层面的解耦。"
+  }
+]
+</script>
+
+<!-- ==========================================================================
+     数据块 2：记忆卡片（JSON 数组）
+     字段：front（正面问题）/ back（背面答案，可含 HTML）/ tag（可选分类）
+     ========================================================================== -->
+<script type="application/json" id="cards-data">
+[
+  {
+    "front": "观察者模式的意图是什么？",
+    "back": "定义对象间一种<b>一对多</b>的依赖关系，当一个对象状态改变时，所有依赖它的对象都得到通知并被自动更新。",
+    "tag": "定义"
+  },
+  {
+    "front": "观察者模式的四个参与角色？",
+    "back": "<b>Subject</b>（主题/被观察者）、<b>ConcreteSubject</b>、<b>Observer</b>（观察者接口）、<b>ConcreteObserver</b>。",
+    "tag": "结构"
+  },
+  {
+    "front": "推模型和拉模型的区别？",
+    "back": "推模型在通知中<b>携带完整数据</b>，实现简单；拉模型只发通知，观察者<b>回查</b>主题，耦合更低、更灵活。",
+    "tag": "辨析"
+  },
+  {
+    "front": "观察者模式与发布-订阅的关键差别？",
+    "back": "观察者模式中主题<b>直接持有</b>观察者引用；发布-订阅在两者之间插入<b>事件通道/代理</b>，双方互不相识，属于架构层解耦。",
+    "tag": "辨析"
+  },
+  {
+    "front": "为什么 notify 时要遍历观察者列表的副本？",
+    "back": "避免观察者在 <code>update()</code> 中调用 <code>attach/detach</code> 修改列表，触发 <code>ConcurrentModificationException</code>。",
+    "tag": "易错"
+  },
+  {
+    "front": "观察者模式的主要缺点（三点）？",
+    "back": "① 通知隐式、调用链难追踪；② 忘记 detach 会造成<b>内存泄漏</b>；③ 观察者多时通知开销大，且同步调用下异常会中断后续通知。",
+    "tag": "缺点"
+  }
+]
+</script>
+
+<!-- 脚本顺序不可调整：先清单，后引擎 -->
+<script src="../../data/chapters.js"></script>
+<script src="../../assets/js/site.js"></script>
+</body>
+</html>

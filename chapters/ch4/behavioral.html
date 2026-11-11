@@ -1,0 +1,1761 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page="chapter" data-chapter="ch4" data-subpage="behavioral">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="面向对象设计模式 · 行为型：责任链、命令、解释器、迭代器、中介者、备忘录、观察者、状态、策略、模板方法、访问者的意图、结构、协作、优缺点与代码实现，含对比表、易错点、自测与记忆卡片。">
+<meta name="color-scheme" content="light dark">
+<title>第 4 章 行为型模式 · 软件设计与体系架构</title>
+<link rel="stylesheet" href="../../assets/css/site.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%238a5a2b'/%3E%3Cpath d='M6 8h12M6 12h12M6 16h7' stroke='%23fff' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
+<script>
+  /* 主题初始化：必须内联在 <head> 中，且必须一字不改地保留 */
+  (function () {
+    try {
+      var t = JSON.parse(localStorage.getItem('sda.theme'));
+      if (t !== 'dark' && t !== 'light') {
+        t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      document.documentElement.setAttribute('data-theme', t);
+    } catch (e) {
+      document.documentElement.setAttribute('data-theme', 'light');
+    }
+  })();
+</script>
+<style>
+  /* ===== ch4 章节本地样式：子页导航 / 类图 / 模式详述块 ===== */
+  /* 知识地图 4 列与学习目标文本流已由共享样式 assets/css/site.css 统一修复，此处不再覆盖。 */
+
+  .subnav {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem;
+    margin: var(--sp-5) 0 0; padding: 0.55rem 0.7rem;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--surface);
+  }
+  .subnav__label {
+    font-size: var(--fs-tiny); font-weight: 700; letter-spacing: 0.06em;
+    color: var(--text-3); margin-right: 0.2rem;
+  }
+  .subnav a {
+    font-size: var(--fs-small); padding: 0.3rem 0.75rem; text-decoration: none;
+    border: 1px solid var(--border); border-radius: var(--radius-pill);
+    color: var(--text-2);
+  }
+  .subnav a:hover { border-color: var(--accent-ui); color: var(--accent-strong); }
+  .subnav a[aria-current="page"] {
+    background: var(--accent-fill); border-color: var(--accent-fill); color: var(--on-accent); font-weight: 600;
+  }
+  html[data-theme="dark"] .subnav a[aria-current="page"] { color: #12161d; }
+
+  /* 类图：纯 CSS 角色框图 */
+  .cd {
+    display: flex; flex-direction: column; gap: 0.4rem;
+    padding: var(--sp-4); margin: 0 0 var(--sp-4);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--surface);
+  }
+  .cd__row {
+    display: flex; flex-wrap: wrap; gap: 0.5rem;
+    align-items: center; justify-content: center;
+  }
+  .cd__box {
+    padding: 0.4rem 0.7rem; min-width: 6rem; text-align: center;
+    border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+    background: var(--surface-2); font-size: var(--fs-small);
+    font-weight: 600; line-height: 1.35;
+  }
+  .cd__box small {
+    display: block; font-weight: 400; font-size: var(--fs-tiny);
+    color: var(--text-3); font-family: var(--font-mono);
+  }
+  .cd__box--abs {
+    background: var(--surface); border: 1.5px dashed var(--accent-ui);
+    color: var(--accent-strong);
+  }
+  html[data-theme="dark"] .cd__box--abs { color: var(--accent-ui); }
+  .cd__box--key { background: var(--accent-fill); border-color: var(--accent-fill); color: var(--on-accent); }
+  .cd__box--key small { color: var(--on-accent); opacity: .78; }
+  .cd__arrow {
+    display: flex; flex-direction: column; align-items: center; gap: 0.15rem;
+    font-size: var(--fs-tiny); font-family: var(--font-mono);
+    color: var(--text-3); line-height: 1.1; white-space: nowrap;
+  }
+  .cd__arrow::after {
+    content: ""; border-left: 5px solid transparent; border-right: 5px solid transparent;
+    border-top: 7px solid var(--border-strong);
+  }
+  .cd__arrow--h { flex-direction: row; justify-content: center; width: 100%; }
+  .cd__arrow--h::after {
+    border-left: 7px solid var(--border-strong); border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent; border-right: 0;
+  }
+  .cd__note {
+    margin: 0.15rem 0 0; text-align: center;
+    font-size: var(--fs-tiny); color: var(--text-3);
+  }
+  /* 窄屏修正：类图箭头上的说明可能很长（如「双重分派：element.accept(v) → v.visitXxx(this)」），
+     .cd__arrow 的 white-space:nowrap 会把整页撑出横向滚动条。手机上允许换行。 */
+  @media (max-width: 640px) {
+    .cd { overflow-x: auto; }
+    .cd__arrow { white-space: normal; max-width: 100%; text-align: center; }
+  }
+
+  /* 模式详述块 */
+  .pblock {
+    border: 1px solid var(--border); border-radius: var(--radius-lg);
+    background: var(--surface); padding: var(--sp-5);
+    margin: 0 0 var(--sp-6); box-shadow: var(--shadow-sm);
+    scroll-margin-top: calc(var(--topbar-h) + 1rem);
+  }
+  .pblock__head {
+    display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
+    margin-bottom: 0.7rem;
+  }
+  .pblock__no {
+    font-family: var(--font-mono); font-size: var(--fs-tiny); font-weight: 700;
+    color: var(--accent-ui); background: var(--accent-soft);
+    border-radius: var(--radius-sm); padding: 0.1rem 0.45rem;
+  }
+  .pblock__title { margin: 0; font-size: 1.25rem; }
+  .pblock__title span {
+    font-family: var(--font-mono); font-size: var(--fs-small);
+    font-weight: 500; color: var(--text-3);
+  }
+  .pblock__intent {
+    margin: 0 0 var(--sp-3); padding: 0.6rem 0.9rem;
+    border-left: 3px solid var(--accent-ui); border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    background: var(--accent-softer); font-size: 0.9688rem;
+  }
+  .pblock h4 { margin: var(--sp-4) 0 0.4rem; font-size: 1rem; }
+  .pblock > p { color: var(--text-2); }
+  .pblock ul, .pblock ol { margin: 0 0 var(--sp-3); padding-left: 1.35rem; }
+  .pblock li { margin: 0.2rem 0; color: var(--text-2); }
+  .pros-cons {
+    display: grid; gap: var(--sp-3); margin: 0 0 var(--sp-3);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  }
+  .pros-cons__col {
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: var(--sp-3) var(--sp-4); background: var(--surface-2);
+  }
+  .pros-cons__col h5 { margin: 0 0 0.3rem; font-size: var(--fs-small); }
+  .pros-cons__col ul { margin: 0; padding-left: 1.2rem; font-size: var(--fs-small); }
+
+  /* 决策树 SVG */
+  .dt { display: block; width: 100%; height: auto; margin: 0 0 var(--sp-3); }
+  .dt-box { fill: var(--surface-2); stroke: var(--border-strong); stroke-width: 1.2; }
+  .dt-box--root { fill: var(--accent-soft); stroke: var(--accent-ui); stroke-width: 1.6; }
+  .dt-box--leaf { fill: var(--surface); stroke: var(--accent-ui); stroke-width: 1.2; }
+  .dt-line { fill: none; stroke: var(--border-strong); stroke-width: 1.5; }
+  .dt-t { font-family: var(--font-sans); font-size: 15.5px; fill: var(--text); }
+  .dt-t--b { font-weight: 700; }
+  .dt-t--sm { font-family: var(--font-mono); font-size: 12px; fill: var(--text-3); }
+
+  /* 决策清单三栏 */
+  .decide {
+    display: grid; gap: var(--sp-3); margin: 0 0 var(--sp-4);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  @media (max-width: 720px) {
+    .decide { grid-template-columns: minmax(0, 1fr); }
+  }
+  .decide__col {
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--surface); padding: var(--sp-4);
+  }
+  .decide__col h4 { margin: 0 0 0.5rem; font-size: var(--fs-small); }
+  .decide__row {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.5rem;
+    align-items: baseline; padding: 0.32rem 0; font-size: var(--fs-small);
+    border-bottom: 1px dashed var(--border);
+  }
+  .decide__row:last-child { border-bottom: 0; }
+  .decide__row span { color: var(--text-2); }
+  .decide__row a { font-weight: 700; white-space: nowrap; }
+
+  /* 模式索引条 */
+  .pindex { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0 0 var(--sp-5); }
+  .pindex a {
+    font-size: var(--fs-tiny); padding: 0.22rem 0.6rem; text-decoration: none;
+    border: 1px solid var(--border); border-radius: var(--radius-pill);
+    color: var(--text-2); background: var(--surface);
+  }
+  .pindex a:hover { border-color: var(--accent-ui); color: var(--accent-strong); }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">跳到正文</a>
+
+<div class="progress-bar" aria-hidden="true"><div class="progress-bar__fill" id="progress-fill"></div></div>
+
+<header class="topbar" id="topbar-root"></header>
+
+<div class="wrap">
+  <div class="layout">
+    <aside class="sidebar" id="sidebar-root" aria-label="章节目录"></aside>
+
+    <main class="main" id="main">
+      <div class="main__inner">
+<section class="section" id="overview" data-title="本章导览">
+<div class="hero">
+<span class="hero__eyebrow">第 4 章 · 面向对象设计模式 / 行为型</span>
+<h1>行为型模式：把「谁在什么时候做什么」从代码里抽出来</h1>
+<p class="hero__lead">行为型模式刻画运行时的复杂控制流，重点不在类与对象的结构，而在它们之间如何交互、如何分配职责。十一个模式的共同目标是：把「算法」「状态」「请求」「遍历」这些易变的控制逻辑，从硬编码的分支与调用中解放出来，变成可替换、可组合、可复用的对象。</p>
+<div class="hero__meta"><span class="chip chip--accent"><svg class="icon" aria-hidden="true"><use href="#i-target"></use></svg>考试重点</span><span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-clock"></use></svg>约 50 分钟</span><span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-puzzle"></use></svg>行为型 ×11</span><span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg>分值最高</span></div>
+<div class="hero__actions"><a class="btn btn--primary" href="#concepts"><svg class="icon" aria-hidden="true"><use href="#i-play"></use></svg>开始阅读</a><a class="btn" href="#detail"><svg class="icon" aria-hidden="true"><use href="#i-list"></use></svg>看十一个模式</a><a class="btn" href="#quiz"><svg class="icon" aria-hidden="true"><use href="#i-target"></use></svg>直接自测</a></div>
+</div><nav class="subnav" aria-label="第 4 章子页面导航">
+<span class="subnav__label">第 4 章 · 子页面</span>
+<a href="index.html">模式总览</a>
+<a href="creation.html">创建型 ×5</a>
+<a href="structural.html">结构型 ×7</a>
+<a href="behavioral.html" aria-current="page">行为型 ×11</a>
+</nav><h2 class="section-title" style="margin-top:var(--sp-5)"><svg class="icon" aria-hidden="true"><use href="#i-target"></use></svg>学习目标</h2><p class="section-lead">行为型是本章分值最高、也最容易混的部分，读完应当能：</p><ol class="objectives"><li><span>能说出行为型模式的两条划分轴：<b>类行为型</b>（继承分派，只有模板方法与解释器）与<b>对象行为型</b>（组合分派）。</span></li><li><span>能画出策略、状态、命令、观察者、责任链五个高频模式的类图，并说清请求/状态的流转路径。</span></li><li><span>能区分「策略 vs 状态」「策略 vs 模板方法」「中介者 vs 观察者」「命令 vs 策略」四组必考辨析。</span></li><li><span>能解释访问者模式的「双重分派」，并说明它为什么难以新增元素类。</span></li><li><span>能在给定场景（审批流、撤销重做、状态机、事件通知、算法切换）中选出正确的行为型模式。</span></li></ol><h2 class="section-title" style="margin-top:var(--sp-6)"><svg class="icon" aria-hidden="true"><use href="#i-network"></use></svg>知识地图</h2><p class="section-lead">按课程给的「类间关系」分组记，比按字母顺序记有效得多。</p><div class="kmap"><div class="kmap__col"><p class="kmap__title">按关系分组</p><ul class="kmap__list"><li>父类与子类：策略、模板方法</li><li>两个类之间：备忘录、状态</li><li>类的状态：观察者、迭代器、责任链、命令</li><li>通过中间类：访问者、中介者、解释器</li></ul></div><div class="kmap__col"><p class="kmap__title">核心角色</p><ul class="kmap__list"><li>Context / State / Strategy</li><li>Subject / Observer</li><li>Handler / Command / Receiver</li><li>Visitor / Element / Mediator</li></ul></div><div class="kmap__col"><p class="kmap__title">协作方式</p><ul class="kmap__list"><li>委托：Context 转发给策略/状态</li><li>广播：Subject 遍历通知观察者</li><li>传递：请求沿责任链下传</li><li>回调：父类调用子类原语操作</li></ul></div><div class="kmap__col"><p class="kmap__title">常见代价</p><ul class="kmap__list"><li>类数量增加、小对象变多</li><li>控制流隐式，调试困难</li><li>状态/策略需客户端感知</li><li>访问者难以新增元素类</li></ul></div></div>
+</section><section class="section" id="concepts" data-title="核心概念与模式卡">
+<div class="section-head">
+<span class="section-head__num">02</span>
+<h2 class="section-title">核心概念与模式卡</h2>
+<a class="section-anchor" href="#concepts" aria-label="本节链接">#</a>
+</div>
+
+<p class="section-lead">行为型模式数量最多（11 个），先掌握「划分轴 + 四组辨析」，再逐个记结构，效率最高。</p><div class="grid"><div class="concept">
+<p class="concept__term">行为型模式 <span class="concept__en">Behavioral Patterns</span></p>
+<p class="concept__body">对不同对象之间<b>划分责任和算法</b>的抽象化。不仅描述类与对象的结构，更关注它们之间的<b>交互与通信</b>，刻画运行时的复杂控制流。</p>
+<div class="concept__tags"><span class="chip chip--accent">总览</span><span class="chip">GoF 三大类之一</span></div>
+</div><div class="concept">
+<p class="concept__term">类行为型模式 <span class="concept__en">Class Behavioral</span></p>
+<p class="concept__body">使用<b>继承机制</b>在类间分派行为，通过多态分配父类与子类的职责。十一个里只有<b>模板方法</b>与<b>解释器</b>属于这一类。</p>
+<div class="concept__tags"><span class="chip chip--accent">分类</span><span class="chip">易错</span></div>
+</div><div class="concept">
+<p class="concept__term">对象行为型模式 <span class="concept__en">Object Behavioral</span></p>
+<p class="concept__body">使用<b>对象复合</b>而不是继承来分配行为，通过对象关联分配多个类的职责。大部分行为型模式都属于这一类（合成复用原则）。</p>
+<div class="concept__tags"><span class="chip chip--accent">分类</span><span class="chip">合成复用</span></div>
+</div><div class="concept">
+<p class="concept__term">好莱坞法则 <span class="concept__en">Hollywood Principle</span></p>
+<p class="concept__body">「<b>别来找我，让我来找你</b>」——父类调用子类的操作，而不是子类调用父类。模板方法正是这一反向控制结构的体现，也是依赖倒置的一种形式。</p>
+<div class="concept__tags"><span class="chip chip--accent">模板方法</span><span class="chip">核心概念</span></div>
+</div><div class="concept">
+<p class="concept__term">双重分派 <span class="concept__en">Double Dispatch</span></p>
+<p class="concept__body">访问者模式的精髓：<code>element.accept(visitor)</code> 先按元素的<b>具体类型</b>分派一次，再在 accept 里调用 <code>visitor.visitXxx(this)</code> 按访问者的<b>具体类型</b>分派一次。两次动态绑定共同决定执行哪个方法。</p>
+<div class="concept__tags"><span class="chip chip--accent">访问者</span><span class="chip">高频</span></div>
+</div><div class="concept">
+<p class="concept__term">推模型 vs 拉模型 <span class="concept__en">Push / Pull</span></p>
+<p class="concept__body">观察者模式的通知方式：推模型把变更细节随通知一起传给观察者，简单；拉模型只发「我变了」，由观察者回查主题，更灵活、耦合更低。</p>
+<div class="concept__tags"><span class="chip chip--accent">观察者</span><span class="chip">易混淆</span></div>
+</div><div class="concept">
+<p class="concept__term">宏命令 <span class="concept__en">Macro Command</span></p>
+<p class="concept__body">命令模式与组合模式的结合：CompositeCommand 持有一组命令，<code>execute()</code> 时遍历执行所有子命令，实现「一组操作」的批量执行与撤销。</p>
+<div class="concept__tags"><span class="chip chip--accent">命令</span><span class="chip">组合应用</span></div>
+</div><div class="concept">
+<p class="concept__term">钩子方法 <span class="concept__en">Hook Method</span></p>
+<p class="concept__body">模板方法里的可选步骤：抽象类给出空实现或默认实现，子类可选择性地覆盖，从而在不改变算法骨架的前提下影响流程走向。</p>
+<div class="concept__tags"><span class="chip chip--accent">模板方法</span><span class="chip">实现技巧</span></div>
+</div></div><h3 style="margin-top:var(--sp-6)">十一个模式卡（速览）</h3><p>先记住每个模式的「一句话意图 + 一句话代价」，下一节再逐个展开结构与代码。</p><div class="pattern">
+<div class="pattern__head">
+<h4 class="pattern__name">行为型模式的分组记忆</h4>
+<span class="pattern__en">Behavioral Grouping</span>
+<span class="pattern__type">行为型</span>
+</div>
+<div class="pattern__body"><dl class="pattern__rows"><div class="pattern__row"><dt>意图</dt><dd>按课程给的「类间关系」把 11 个行为型模式分成四组，用于快速回忆与选型。</dd></div><div class="pattern__row"><dt>别名</dt><dd>四组记忆法</dd></div><div class="pattern__row"><dt>适用场景</dt><dd>父类与子类：策略、模板方法；两个类之间：备忘录、状态；类的状态：观察者、迭代器、责任链、命令；通过中间类：访问者、中介者、解释器。</dd></div><div class="pattern__row"><dt>参与角色</dt><dd>—（本卡是组织工具，不对应具体角色）</dd></div><div class="pattern__row"><dt>主要代价</dt><dd>分组只是记忆线索，考试作答仍需按「意图 + 结构 + 代价」展开，不能只写分组。</dd></div></dl></div>
+</div><div class="pattern">
+<div class="pattern__head">
+<h4 class="pattern__name">模板方法模式</h4>
+<span class="pattern__en">Template Method Pattern</span>
+<span class="pattern__type">行为型</span>
+</div>
+<div class="pattern__body"><dl class="pattern__rows"><div class="pattern__row"><dt>意图</dt><dd>定义一个操作中的算法骨架，而将一些步骤延迟到子类中，使子类不改变算法结构即可重定义某些步骤。</dd></div><div class="pattern__row"><dt>别名</dt><dd>—</dd></div><div class="pattern__row"><dt>适用场景</dt><dd>具有统一的操作步骤但细节各异；需要固定算法骨架又允许部分步骤可变。</dd></div><div class="pattern__row"><dt>参与角色</dt><dd>AbstractClass（模板方法 + 原语操作）、ConcreteClass</dd></div><div class="pattern__row"><dt>主要代价</dt><dd>继承耦合，子类受限于父类骨架；步骤一多，类层次变深。</dd></div></dl></div>
+</div><div class="pattern">
+<div class="pattern__head">
+<h4 class="pattern__name">命令模式</h4>
+<span class="pattern__en">Command Pattern</span>
+<span class="pattern__type">行为型</span>
+</div>
+<div class="pattern__body"><dl class="pattern__rows"><div class="pattern__row"><dt>意图</dt><dd>将一个请求封装为一个对象，从而使你可用不同的请求对客户进行参数化，支持请求排队、记录日志与撤销。</dd></div><div class="pattern__row"><dt>别名</dt><dd>动作（Action）、事务（Transaction）</dd></div><div class="pattern__row"><dt>适用场景</dt><dd>需要把请求调用者与接收者解耦；需要排队/日志/撤销重做；需要宏命令。</dd></div><div class="pattern__row"><dt>参与角色</dt><dd>Command、ConcreteCommand、Invoker、Receiver、Client</dd></div><div class="pattern__row"><dt>主要代价</dt><dd>每个命令一个类，类数量膨胀；简单场景下属于过度设计。</dd></div></dl></div>
+</div><div class="pattern">
+<div class="pattern__head">
+<h4 class="pattern__name">解释器模式</h4>
+<span class="pattern__en">Interpreter Pattern</span>
+<span class="pattern__type">行为型</span>
+</div>
+<div class="pattern__body"><dl class="pattern__rows"><div class="pattern__row"><dt>意图</dt><dd>给定一个语言，定义它的文法的一种表示，并定义一个解释器，用该解释器来解释语言中的句子。</dd></div><div class="pattern__row"><dt>别名</dt><dd>—</dd></div><div class="pattern__row"><dt>适用场景</dt><dd>文法简单、效率要求不高的场景（如正则、表达式求值、规则引擎）。</dd></div><div class="pattern__row"><dt>参与角色</dt><dd>AbstractExpression、TerminalExpression、NonterminalExpression、Context、Client</dd></div><div class="pattern__row"><dt>主要代价</dt><dd>文法复杂时类数量爆炸；解释执行效率低，不适合大型语言。</dd></div></dl></div>
+</div><div class="pattern">
+<div class="pattern__head">
+<h4 class="pattern__name">迭代器模式</h4>
+<span class="pattern__en">Iterator Pattern</span>
+<span class="pattern__type">行为型</span>
+</div>
+<div class="pattern__body"><dl class="pattern__rows"><div class="pattern__row"><dt>意图</dt><dd>提供一种方法顺序访问一个聚合对象中的各个元素，而又不暴露该对象的内部表示。</dd></div><div class="pattern__row"><dt>别名</dt><dd>游标（Cursor）</dd></div><div class="pattern__row"><dt>适用场景</dt><dd>需要遍历聚合对象而不暴露内部结构；需要多种遍历方式；需要为不同聚合提供统一遍历接口。</dd></div><div class="pattern__row"><dt>参与角色</dt><dd>Aggregate、ConcreteAggregate、Iterator、ConcreteIterator</dd></div><div class="pattern__row"><dt>主要代价</dt><dd>对简单聚合来说增加了一层间接；迭代器与聚合需保持同步（聚合变更时迭代器可能失效）。</dd></div></dl></div>
+</div><div class="pattern">
+<div class="pattern__head">
+<h4 class="pattern__name">中介者模式</h4>
+<span class="pattern__en">Mediator Pattern</span>
+<span class="pattern__type">行为型</span>
+</div>
+<div class="pattern__body"><dl class="pattern__rows"><div class="pattern__row"><dt>意图</dt><dd>用一个中介对象来封装一系列的对象交互，使各对象不需要显式地相互引用，从而耦合松散且可独立改变交互。</dd></div><div class="pattern__row"><dt>别名</dt><dd>—</dd></div><div class="pattern__row"><dt>适用场景</dt><dd>一组对象以复杂方式通信、依赖关系混乱；对象引用很多对象导致难以复用。</dd></div><div class="pattern__row"><dt>参与角色</dt><dd>Mediator、ConcreteMediator、Colleague（同事类）</dd></div><div class="pattern__row"><dt>主要代价</dt><dd>中介者可能膨胀成难以维护的巨型对象，且难以在系统间复用。</dd></div></dl></div>
+</div><div class="pattern">
+<div class="pattern__head">
+<h4 class="pattern__name">备忘录模式</h4>
+<span class="pattern__en">Memento Pattern</span>
+<span class="pattern__type">行为型</span>
+</div>
+<div class="pattern__body"><dl class="pattern__rows"><div class="pattern__row"><dt>意图</dt><dd>在不破坏封装性的前提下，捕获一个对象的内部状态，并在该对象之外保存这个状态，以便之后恢复。</dd></div><div class="pattern__row"><dt>别名</dt><dd>快照（Snapshot）、令牌（Token）</dd></div><div class="pattern__row"><dt>适用场景</dt><dd>需要撤销/回滚；需要保存对象历史状态；直接暴露内部状态会破坏封装。</dd></div><div class="pattern__row"><dt>参与角色</dt><dd>Originator（发起人）、Memento（备忘录）、Caretaker（管理者）</dd></div><div class="pattern__row"><dt>主要代价</dt><dd>保存大量快照会占用内存；Caretaker 需要管理快照的生命周期。</dd></div></dl></div>
+</div><div class="pattern">
+<div class="pattern__head">
+<h4 class="pattern__name">观察者模式</h4>
+<span class="pattern__en">Observer Pattern</span>
+<span class="pattern__type">行为型</span>
+</div>
+<div class="pattern__body"><dl class="pattern__rows"><div class="pattern__row"><dt>意图</dt><dd>定义对象间一种一对多的依赖关系，当一个对象状态改变时，所有依赖它的对象都得到通知并被自动更新。</dd></div><div class="pattern__row"><dt>别名</dt><dd>发布-订阅（Publish-Subscribe）、依赖（Dependents）</dd></div><div class="pattern__row"><dt>适用场景</dt><dd>一个抽象模型有两个方面、一方依赖另一方；状态变化需通知其他对象但不想硬编码被通知者。</dd></div><div class="pattern__row"><dt>参与角色</dt><dd>Subject、ConcreteSubject、Observer、ConcreteObserver</dd></div><div class="pattern__row"><dt>主要代价</dt><dd>通知隐式、调用链难追踪；忘记 detach 导致内存泄漏。</dd></div></dl></div>
+</div><div class="pattern">
+<div class="pattern__head">
+<h4 class="pattern__name">状态模式</h4>
+<span class="pattern__en">State Pattern</span>
+<span class="pattern__type">行为型</span>
+</div>
+<div class="pattern__body"><dl class="pattern__rows"><div class="pattern__row"><dt>意图</dt><dd>允许一个对象在其内部状态改变时改变它的行为，对象看起来似乎修改了它的类。</dd></div><div class="pattern__row"><dt>别名</dt><dd>状态对象（Objects for States）</dd></div><div class="pattern__row"><dt>适用场景</dt><dd>对象行为取决于其状态且必须在运行时改变；操作中含有庞大的多分支条件语句且分支依赖状态。</dd></div><div class="pattern__row"><dt>参与角色</dt><dd>Context、State、ConcreteState</dd></div><div class="pattern__row"><dt>主要代价</dt><dd>状态类数量增加；状态转移逻辑分散在各状态类中，整体流程不易一眼看清。</dd></div></dl></div>
+</div><div class="pattern">
+<div class="pattern__head">
+<h4 class="pattern__name">策略模式</h4>
+<span class="pattern__en">Strategy Pattern</span>
+<span class="pattern__type">行为型</span>
+</div>
+<div class="pattern__body"><dl class="pattern__rows"><div class="pattern__row"><dt>意图</dt><dd>定义一系列算法，把它们一个个封装起来，并且使它们可相互替换，使算法可独立于使用它的客户而变化。</dd></div><div class="pattern__row"><dt>别名</dt><dd>政策（Policy）</dd></div><div class="pattern__row"><dt>适用场景</dt><dd>许多相关类仅行为有异；需要算法的不同变体；需要替换大量条件语句。</dd></div><div class="pattern__row"><dt>参与角色</dt><dd>Strategy、ConcreteStrategy、Context</dd></div><div class="pattern__row"><dt>主要代价</dt><dd>客户端必须了解各策略的差异才能选择；策略类数量增加。</dd></div></dl></div>
+</div><div class="pattern">
+<div class="pattern__head">
+<h4 class="pattern__name">责任链模式</h4>
+<span class="pattern__en">Chain of Responsibility Pattern</span>
+<span class="pattern__type">行为型</span>
+</div>
+<div class="pattern__body"><dl class="pattern__rows"><div class="pattern__row"><dt>意图</dt><dd>使多个对象都有机会处理请求，从而避免请求发送者与接收者之间的耦合，将对象连成一条链并沿链传递请求直到被处理。</dd></div><div class="pattern__row"><dt>别名</dt><dd>责任链</dd></div><div class="pattern__row"><dt>适用场景</dt><dd>多个对象可处理同一请求，具体由谁处理运行时确定；处理者集合与顺序需动态指定。</dd></div><div class="pattern__row"><dt>参与角色</dt><dd>Handler（抽象处理者，含 successor）、ConcreteHandler、Client</dd></div><div class="pattern__row"><dt>主要代价</dt><dd>不保证请求一定被处理；链过长影响性能；调试时请求路径不直观。</dd></div></dl></div>
+</div><div class="pattern">
+<div class="pattern__head">
+<h4 class="pattern__name">访问者模式</h4>
+<span class="pattern__en">Visitor Pattern</span>
+<span class="pattern__type">行为型</span>
+</div>
+<div class="pattern__body"><dl class="pattern__rows"><div class="pattern__row"><dt>意图</dt><dd>表示一个作用于某对象结构中的各元素的操作，使你在不改变各元素类的前提下定义作用于这些元素的新操作。</dd></div><div class="pattern__row"><dt>别名</dt><dd>—</dd></div><div class="pattern__row"><dt>适用场景</dt><dd>对象结构包含很多不同接口的类，需对其施加依赖具体类的操作；需避免这些操作「污染」元素类。</dd></div><div class="pattern__row"><dt>参与角色</dt><dd>Visitor、ConcreteVisitor、Element、ConcreteElement、ObjectStructure</dd></div><div class="pattern__row"><dt>主要代价</dt><dd>每新增一个元素类，就要改 Visitor 接口及所有具体访问者——开闭原则反向倾斜。</dd></div></dl></div>
+</div>
+</section><section class="section" id="detail" data-title="结构与实现（十一个模式详解）">
+<div class="section-head">
+<span class="section-head__num">03</span>
+<h2 class="section-title">结构与实现（十一个模式详解）</h2>
+<a class="section-anchor" href="#detail" aria-label="本节链接">#</a>
+</div>
+
+<p class="section-lead">十一个模式逐个过九段式。行为型是本章分值最高的部分，建议重点吃透策略、状态、命令、观察者、责任链五个高频模式。</p><div class="pindex"><a href="#p-template-method">模板方法</a><a href="#p-command">命令</a><a href="#p-interpreter">解释器</a><a href="#p-iterator">迭代器</a><a href="#p-mediator">中介者</a><a href="#p-memento">备忘录</a><a href="#p-observer">观察者</a><a href="#p-state">状态</a><a href="#p-strategy">策略</a><a href="#p-chain">责任链</a><a href="#p-visitor">访问者</a></div><article class="pblock" id="p-template-method">
+<div class="pblock__head">
+<span class="pblock__no">01</span>
+<h3 class="pblock__title">模板方法模式 <span>Template Method Pattern</span></h3>
+<span class="chip chip--accent">行为型</span>
+</div>
+<p class="pblock__intent"><b>意图：</b>定义一个操作中的算法骨架，而将一些步骤延迟到子类中。模板方法使得子类可以不改变一个算法的结构即可重定义该算法的某些特定步骤。</p>
+<h4>动机 / 问题场景</h4>
+<p>课程用「本科生培养」举例：教育部制定纲领性流程——军训 → 学文化课 → 做毕业设计 → 毕业，这个<b>骨架是固定的</b>；各学校负责具体环节怎么做，<b>细节是变化的</b>。另一个例子是银行账户计息：活期与定期的计息流程完全一样（取账户类型 → 取利率 → 算金额 → 相乘），只是 <code>getAccountType()</code> 和 <code>getInterestRate()</code> 的返回值不同。</p>
+<h4>结构</h4>
+<div class="cd"><div class="cd__row"><span class="cd__box cd__box--abs">AbstractClass<small>+ TemplateMethod()<br># primitive1() / # primitive2()</small></span></div><div class="cd__arrow">继承</div><div class="cd__row"><span class="cd__box cd__box--key">ConcreteClass<small># primitive1()<br># primitive2()</small></span></div><p class="cd__note">TemplateMethod() 在抽象类里写死调用顺序，primitiveX() 是抽象方法，由子类实现——父类调用子类，这就是「好莱坞法则」。</p><p class="cd__note">模板方法定义骨架（不变），原语操作由子类实现（可变），钩子方法提供可选扩展点。</p></div>
+<ul><li><b>AbstractClass</b> —— 定义抽象的原语操作（primitive operation），子类重定义它们以实现算法步骤；实现模板方法定义算法骨架。</li><li><b>ConcreteClass</b> —— 实现原语操作以完成算法中与特定子类相关的步骤。</li><li><b>钩子方法</b> —— 抽象类中给出默认/空实现的方法，子类可选择覆盖以影响流程。</li></ul>
+<h4>协作要点</h4>
+<ol><li>Client 创建 ConcreteClass 实例，以 AbstractClass 类型引用它。</li><li>Client 调用 <code>templateMethod()</code>（注意：调用的是父类定义的方法，通常 final）。</li><li><code>templateMethod()</code> 按固定顺序调用各原语操作。</li><li>多态绑定到 ConcreteClass 的实现，完成具体步骤。</li><li>若存在钩子方法，子类的覆盖结果会影响流程分支。</li></ol>
+<h4>适用场景</h4>
+<ul><li>具有统一的操作步骤或操作过程，但各步骤的具体细节不同。</li><li>需要固定算法骨架，防止子类破坏执行顺序。</li><li>多个类有公共行为需要提取到父类，同时保留差异点作为扩展点。</li></ul>
+<h4>优缺点</h4>
+<div class="pros-cons">
+<div class="pros-cons__col"><h5>优点</h5><ul><li>代码复用：把子类的公共行为提取到父类，消除重复。</li><li>反向控制结构（好莱坞法则），体现依赖倒置，父类掌握流程主导权。</li><li>通过钩子方法提供灵活扩展点，同时不破坏算法骨架。</li></ul></div>
+<div class="pros-cons__col"><h5>代价 / 缺点</h5><ul><li>继承耦合：子类受限于父类骨架，骨架一变所有子类受影响。</li><li>类的数量随变体增加而增长；Java 单继承限制使子类难以再继承其他类。</li><li>模板方法步骤过多时，父类会变得臃肿、难以理解。</li></ul></div>
+</div>
+<h4>与相似模式的区别</h4>
+<div class="table-wrap"><table>
+<thead><tr><th>维度</th><th>模板方法</th><th>策略</th></tr></thead>
+<tbody><tr><td>实现手段</td><td>继承（父类定义骨架）</td><td>组合（Context 持有 Strategy）</td></tr><tr><td>变化范围</td><td>算法<b>步骤</b>的实现</td><td>整个<b>算法</b>可替换</td></tr><tr><td>绑定时机</td><td>编译期（继承关系固定）</td><td>运行期（可动态切换）</td></tr><tr><td>控制方向</td><td>父类调用子类（反向控制）</td><td>Context 委托 Strategy</td></tr><tr><td>适用</td><td>流程固定、细节可变</td><td>算法多变、需要运行时切换</td></tr></tbody>
+</table></div>
+<h4>参考实现</h4>
+<figure class="code" data-lang="java" data-file="AccountTemplate.java">
+<pre><code>// 抽象模板：定义算法骨架
+public abstract class Account {
+    private String accountNumber;
+
+    /** 原语操作 1：留给子类实现 */
+    protected abstract String getAccountType();
+
+    /** 原语操作 2：留给子类实现 */
+    protected abstract double getInterestRate();
+
+    /** 公共步骤：所有子类一致 */
+    protected double calculateAmount() {
+        // 访问数据库……（此处示意性返回）
+        return 4567.00D;
+    }
+
+    /** 钩子方法：默认不额外计息，子类可覆盖 */
+    protected boolean hasBonus() { return false; }
+
+    /** 模板方法：算法骨架，一般声明为 final 防止子类改写顺序 */
+    public final double calculateInterest() {
+        String type = getAccountType();      // 可变步骤 1
+        double rate = getInterestRate();     // 可变步骤 2
+        double amount = calculateAmount();   // 固定步骤
+        double interest = amount * rate;
+        if (hasBonus()) {                    // 钩子控制的分支
+            interest += 10.0D;
+        }
+        System.out.println(type + " 利率 " + rate);
+        return interest;
+    }
+}
+
+public class DemandAccount extends Account {
+    protected String getAccountType()  { return "活期"; }
+    protected double getInterestRate() { return 0.005D; }
+}
+
+public class FixedAccount extends Account {
+    protected String getAccountType()  { return "一年定期"; }
+    protected double getInterestRate() { return 0.0325D; }
+    @Override protected boolean hasBonus() { return true; }   // 覆盖钩子
+}
+
+public class ClientAccount {
+    public static void main(String[] args) {
+        Account a = new DemandAccount();
+        System.out.println("活期利息：" + a.calculateInterest());
+        a = new FixedAccount();
+        System.out.println("定期利息：" + a.calculateInterest());
+    }
+}</code></pre>
+</figure>
+<div class="callout callout--danger">
+<span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-stop"></use></svg></span>
+<div class="callout__body"><p><span class="callout__title">易错点 · 把模板方法写成 public 且非 final，让子类随意覆盖。</span>模板方法的全部价值在于<b>固定算法骨架</b>。如果子类可以覆盖它，执行顺序就能被随意改写，「骨架不变」的意图立刻失效。工程上应把 <code>templateMethod()</code> 声明为 <code>final</code>，只把 primitive 操作留成 <code>abstract</code>/<code>protected</code>。</p></div>
+</div>
+
+</article><article class="pblock" id="p-command">
+<div class="pblock__head">
+<span class="pblock__no">02</span>
+<h3 class="pblock__title">命令模式 <span>Command Pattern</span></h3>
+<span class="chip chip--accent">行为型</span>
+</div>
+<p class="pblock__intent"><b>意图：</b>将一个请求封装为一个对象，从而使你可用不同的请求对客户进行参数化；对请求排队或记录请求日志，以及支持可撤销的操作。</p>
+<h4>动机 / 问题场景</h4>
+<p>课程用「文本编辑器的撤销/重做」举例：早期实现里，<code>MenuItem</code>（Copy/Paste）被点击时直接调用 <code>Document</code> 的方法，命令发出者与接收者硬编码耦合，而且<b>没有任何数据结构保存「做过什么」</b>，所以无法实现 Undo/Redo。改造后把每个操作封装成 <code>CopyCommand</code>、<code>PasteCommand</code>，MenuItem 只持有一个 Command 引用，命令对象可以入栈、可以记录日志，撤销就是弹出栈顶并调用 undo。</p>
+<h4>结构</h4>
+<div class="cd"><div class="cd__row"><span class="cd__box">Client<small>创建命令并设定接收者</small></span></div><div class="cd__arrow">装配</div><div class="cd__row"><span class="cd__box cd__box--key">Invoker<small>MenuItem / Button<br>持有 Command</small></span></div><div class="cd__arrow">execute()</div><div class="cd__row"><span class="cd__box cd__box--abs">Command<small>+ execute()<br>+ undo()</small></span></div><div class="cd__arrow">实现</div><div class="cd__row"><span class="cd__box cd__box--key">ConcreteCommand<small>- receiver<br>+ execute()</small></span></div><div class="cd__arrow">调用</div><div class="cd__row"><span class="cd__box cd__box--abs">Receiver<small>+ action()</small></span></div><p class="cd__note">Invoker 只认识 Command 抽象，完全不知道 Receiver 是谁——这是请求发送者与接收者解耦的关键。</p></div>
+<ul><li><b>Command</b> —— 声明执行操作的接口（execute，可选 undo/redo）。</li><li><b>ConcreteCommand</b> —— 将一个接收者对象绑定于一个动作；调用接收者相应操作，实现 execute。</li><li><b>Invoker</b> —— 要求该命令执行这个请求（如 MenuItem、按钮）。</li><li><b>Receiver</b> —— 知道如何实施与执行一个请求相关的操作（如 Document）。</li><li><b>Client</b> —— 创建一个具体命令对象并设定它的接收者。</li></ul>
+<h4>协作要点</h4>
+<ol><li>Client 创建 ConcreteCommand，并指定它的 Receiver。</li><li>Client 把该命令交给某个 Invoker 保存。</li><li>Invoker 通过调用 Command 的 <code>execute()</code> 提交请求。</li><li>ConcreteCommand 调用 Receiver 的一个或多个操作以执行请求。</li><li>（可选）Invoker 把命令压入历史栈，撤销时调用 <code>undo()</code>。</li></ol>
+<h4>适用场景</h4>
+<ul><li>系统需要将请求调用者与请求接收者解耦，使两者不直接交互。</li><li>需要在不同时间指定请求、将请求排队和执行。</li><li>需要支持命令的撤销（Undo）与恢复（Redo）。</li><li>需要把一组操作组合起来，即支持宏命令。</li></ul>
+<h4>优缺点</h4>
+<div class="pros-cons">
+<div class="pros-cons__col"><h5>优点</h5><ul><li>请求者不直接与接收者交互，彻底消除了彼此之间的耦合。</li><li>Command 对象可以像其他对象一样被操纵和扩展（入队、序列化、日志）。</li><li>可以装配成复合命令（CompositeCommand），实现批量执行与批量撤销。</li><li>满足开闭原则：新增 Command 无需修改已有类。</li></ul></div>
+<div class="pros-cons__col"><h5>代价 / 缺点</h5><ul><li>每个命令都要一个具体类，命令种类多时类数量膨胀。</li><li>撤销需要 Receiver 配合保存足够的历史信息，实现成本不低。</li><li>简单的一次性调用场景下属于过度设计。</li></ul></div>
+</div>
+<h4>与相似模式的区别</h4>
+<div class="table-wrap"><table>
+<thead><tr><th>维度</th><th>命令</th><th>策略</th></tr></thead>
+<tbody><tr><td>关注点</td><td>封装<b>请求</b>（做什么 + 谁来做）</td><td>封装<b>算法</b>（怎么做）</td></tr><tr><td>是否持有接收者</td><td>通常持有 Receiver 并调用其方法</td><td>不持有接收者，只实现算法</td></tr><tr><td>典型用途</td><td>排队、日志、撤销重做、宏命令</td><td>运行时切换算法、消除条件分支</td></tr><tr><td>接口方法</td><td>execute / undo</td><td>algorithmInterface（同一个业务方法）</td></tr></tbody>
+</table></div>
+<h4>参考实现</h4>
+<figure class="code" data-lang="java" data-file="EditorCommand.java">
+<pre><code>// Receiver：真正干活的类
+public class Document {
+    private final StringBuilder text = new StringBuilder();
+    public void append(String s) { text.append(s); }
+    public void deleteLast(int n) {
+        text.setLength(Math.max(0, text.length() - n));
+    }
+    public String content() { return text.toString(); }
+}
+
+// Command：统一接口
+public interface Command {
+    void execute();
+    void undo();
+}
+
+// ConcreteCommand：把接收者与动作绑定
+public class AppendCommand implements Command {
+    private final Document doc;
+    private final String  text;
+    private boolean executed = false;
+
+    public AppendCommand(Document doc, String text) {
+        this.doc = doc;
+        this.text = text;
+    }
+
+    public void execute() {
+        doc.append(text);
+        executed = true;
+    }
+
+    public void undo() {
+        if (executed) {
+            doc.deleteLast(text.length());
+            executed = false;
+        }
+    }
+}
+
+// Invoker：只认 Command，维护历史栈
+public class MenuItem {
+    private final java.util.Deque&lt;Command&gt; history = new java.util.ArrayDeque&lt;&gt;();
+
+    public void click(Command cmd) {
+        cmd.execute();
+        history.push(cmd);            // 记录，供撤销
+    }
+    public void undo() {
+        if (!history.isEmpty()) history.pop().undo();
+    }
+}
+
+// 宏命令：组合模式的应用
+public class MacroCommand implements Command {
+    private final java.util.List&lt;Command&gt; cmds = new java.util.ArrayList&lt;&gt;();
+    public void add(Command c) { cmds.add(c); }
+    public void execute() { for (Command c : cmds) c.execute(); }
+    public void undo() {
+        for (int i = cmds.size() - 1; i &gt;= 0; i--) cmds.get(i).undo();  // 逆序撤销
+    }
+}
+
+public class Client {
+    public static void main(String[] args) {
+        Document doc = new Document();
+        MenuItem menu = new MenuItem();
+        menu.click(new AppendCommand(doc, "Hello "));
+        menu.click(new AppendCommand(doc, "World"));
+        System.out.println(doc.content());   // Hello World
+        menu.undo();
+        System.out.println(doc.content());   // Hello
+    }
+}</code></pre>
+</figure>
+<div class="callout callout--danger">
+<span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-stop"></use></svg></span>
+<div class="callout__body"><p><span class="callout__title">易错点 · 撤销时按正序调用 undo，或忘记 undo 需要逆序。</span>宏命令的 <code>undo()</code> 必须<b>按与 execute 相反的顺序</b>执行，否则依赖前序状态的命令会算错（例如先插入再删除的复合操作）。另外 undo 必须能判断「是否已执行过」，重复撤销会造成状态错乱。</p></div>
+</div>
+
+</article><article class="pblock" id="p-interpreter">
+<div class="pblock__head">
+<span class="pblock__no">03</span>
+<h3 class="pblock__title">解释器模式 <span>Interpreter Pattern</span></h3>
+<span class="chip chip--accent">行为型</span>
+</div>
+<p class="pblock__intent"><b>意图：</b>给定一个语言，定义它的文法的一种表示，并定义一个解释器，这个解释器使用该表示来解释语言中的句子。</p>
+<h4>动机 / 问题场景</h4>
+<p>当系统需要反复解释执行某种简单语言时（如正则表达式、SQL 的 WHERE 子句、业务规则表达式 <code>age &gt; 18 &amp;&amp; city == "北京"</code>），如果每遇到一种语法就写一段 <code>if/else</code> 解析，代码会迅速失控。解释器模式把文法规则映射成类：终结符（变量、常量）对应 TerminalExpression，非终结符（与、或、大于）对应 NonterminalExpression，整个表达式就变成一棵语法树，求值即递归遍历这棵树。</p>
+<h4>结构</h4>
+<div class="cd"><div class="cd__row"><span class="cd__box cd__box--abs">AbstractExpression<small>+ interpret(Context)</small></span></div><div class="cd__arrow">实现</div><div class="cd__row"><span class="cd__box cd__box--key">TerminalExpression<small>终结符：变量/常量</small></span><span class="cd__box cd__box--key">NonterminalExpression<small>非终结符：And/Or/Not</small></span></div><div class="cd__arrow cd__arrow--h">NonterminalExpression 递归持有子表达式</div><div class="cd__row"><span class="cd__box cd__box--abs">children<small>AbstractExpression × n</small></span></div><div class="cd__arrow">读取</div><div class="cd__row"><span class="cd__box">Context<small>全局信息（变量表）</small></span></div><p class="cd__note">语法树：非终结符节点持有子表达式，interpret 递归下降求值；Context 提供全局变量。</p></div>
+<ul><li><b>AbstractExpression</b> —— 声明一个抽象的解释操作 <code>interpret(Context)</code>，所有节点共用。</li><li><b>TerminalExpression</b> —— 实现与文法中终结符相关的解释操作（如变量、常量）。</li><li><b>NonterminalExpression</b> —— 实现文法中非终结符的解释操作，通常递归调用子表达式的 interpret。</li><li><b>Context</b> —— 包含解释器之外的一些全局信息（如变量到值的映射）。</li><li><b>Client</b> —— 构建语法树（通常由 Parser 完成），调用 interpret。</li></ul>
+<h4>协作要点</h4>
+<ol><li>Client 按文法把句子解析成一棵 AbstractExpression 语法树。</li><li>Client 创建 Context（保存变量等全局信息）。</li><li>Client 调用根节点的 <code>interpret(context)</code>。</li><li>非终结符节点递归调用子节点的 interpret，终结符节点从 Context 取值。</li><li>结果逐层向上返回，得到整个句子的解释结果。</li></ol>
+<h4>适用场景</h4>
+<ul><li>文法简单、句子结构可表示为抽象语法树。</li><li>效率要求不高（解释执行通常比编译执行慢）。</li><li>需要频繁扩展文法、或需要把规则与执行代码分离（如规则引擎、DSL）。</li></ul>
+<h4>优缺点</h4>
+<div class="pros-cons">
+<div class="pros-cons__col"><h5>优点</h5><ul><li>易于改变和扩展文法：新增一种语法只需新增一个表达式类。</li><li>实现文法较为容易（递归下降即可）。</li><li>把语法规则与执行逻辑分离，规则可配置、可持久化。</li></ul></div>
+<div class="pros-cons__col"><h5>代价 / 缺点</h5><ul><li>文法复杂时类的数量急剧膨胀，每个规则一个类，系统难以维护。</li><li>解释执行效率低，不适合复杂或高性能要求的语言。</li><li>对大型语言来说，手写解释器不如用编译器生成工具（ANTLR 等）。</li></ul></div>
+</div>
+<h4>与相似模式的区别</h4>
+<div class="table-wrap"><table>
+<thead><tr><th>维度</th><th>解释器</th><th>组合</th></tr></thead>
+<tbody><tr><td>结构</td><td>抽象语法树（本质上是一种组合结构）</td><td>部分-整体树形结构</td></tr><tr><td>目的</td><td>解释语言中的句子</td><td>统一对待单个与组合对象</td></tr><tr><td>叶子含义</td><td>终结符（变量/常量）</td><td>基本图元对象</td></tr><tr><td>容器含义</td><td>非终结符（运算符/规则）</td><td>组合对象</td></tr></tbody>
+</table></div>
+<h4>参考实现</h4>
+<figure class="code" data-lang="java" data-file="RuleInterpreter.java">
+<pre><code>import java.util.HashMap;
+import java.util.Map;
+
+// Context：保存变量
+class Context {
+    private final Map&lt;String, Integer&gt; vars = new HashMap&lt;&gt;();
+    public void set(String k, int v) { vars.put(k, v); }
+    public int get(String k) { return vars.getOrDefault(k, 0); }
+}
+
+// AbstractExpression
+interface Expression {
+    boolean interpret(Context ctx);
+}
+
+// TerminalExpression：变量 &gt; 阈值
+class GreaterThan implements Expression {
+    private final String var;
+    private final int    threshold;
+    GreaterThan(String var, int threshold) { this.var = var; this.threshold = threshold; }
+    public boolean interpret(Context ctx) { return ctx.get(var) &gt; threshold; }
+}
+
+// NonterminalExpression：与
+class And implements Expression {
+    private final Expression left, right;
+    And(Expression l, Expression r) { left = l; right = r; }
+    public boolean interpret(Context ctx) { return left.interpret(ctx) &amp;&amp; right.interpret(ctx); }
+}
+
+// NonterminalExpression：或
+class Or implements Expression {
+    private final Expression left, right;
+    Or(Expression l, Expression r) { left = l; right = r; }
+    public boolean interpret(Context ctx) { return left.interpret(ctx) || right.interpret(ctx); }
+}
+
+// NonterminalExpression：非
+class Not implements Expression {
+    private final Expression inner;
+    Not(Expression e) { inner = e; }
+    public boolean interpret(Context ctx) { return !inner.interpret(ctx); }
+}
+
+public class Client {
+    public static void main(String[] args) {
+        // 规则：age &gt; 18 &amp;&amp; (city &gt; 0 || vip &gt; 0)
+        Expression rule = new And(
+                new GreaterThan("age", 18),
+                new Or(new GreaterThan("city", 0), new GreaterThan("vip", 0)));
+
+        Context ctx = new Context();
+        ctx.set("age", 20);
+        ctx.set("city", 0);
+        ctx.set("vip", 1);
+        System.out.println(rule.interpret(ctx));   // true
+    }
+}</code></pre>
+</figure>
+<div class="callout callout--danger">
+<span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-stop"></use></svg></span>
+<div class="callout__body"><p><span class="callout__title">易错点 · 以为解释器模式适合实现复杂语言（如完整 SQL）。</span>解释器的适用前提是<b>文法简单</b>。文法一复杂，规则类数量会指数级膨胀，而且解释执行效率很低。真正的语言实现应该用编译器/解析器生成工具，或者干脆用现成的表达式引擎。考试若问「解释器模式的缺点」，第一条就是「文法复杂时类数量爆炸、维护困难」。</p></div>
+</div>
+
+</article><article class="pblock" id="p-iterator">
+<div class="pblock__head">
+<span class="pblock__no">04</span>
+<h3 class="pblock__title">迭代器模式 <span>Iterator Pattern</span></h3>
+<span class="chip chip--accent">行为型</span>
+</div>
+<p class="pblock__intent"><b>意图：</b>提供一种方法顺序访问一个聚合对象中的各个元素，而又不暴露该对象的内部表示。</p>
+<h4>动机 / 问题场景</h4>
+<p>课程指出集合对象天生承担两个职责：<b>存储内部数据</b>（根本属性）与<b>遍历内部数据</b>（既可变化、又可分离）。如果用 List 就暴露下标、用树就要暴露节点，客户端会被迫了解每种聚合的内部结构；而且「顺序遍历 / 逆序遍历 / 前中后序遍历」的实现混在聚合类里，聚合会越来越臃肿。迭代器把遍历职责抽出来，聚合只负责存储，遍历方式可以任意扩展。</p>
+<h4>结构</h4>
+<div class="cd"><div class="cd__row"><span class="cd__box">Client<small>只依赖 Iterator 与 Aggregate</small></span></div><div class="cd__arrow">createIterator()</div><div class="cd__row"><span class="cd__box cd__box--abs">Aggregate<small>+ createIterator()</small></span><span class="cd__box cd__box--abs">Iterator<small>+ first() / next()<br>+ isDone() / currentItem()</small></span></div><div class="cd__arrow">实现</div><div class="cd__row"><span class="cd__box cd__box--key">ConcreteAggregate<small>+ createIterator()</small></span><span class="cd__box cd__box--key">ConcreteIterator<small>- index / aggregate<br>+ next()</small></span></div><div class="cd__arrow cd__arrow--h">ConcreteIterator 持有聚合引用并跟踪当前位置</div><p class="cd__note">聚合负责创建迭代器，迭代器负责跟踪遍历位置——两个职责彻底分开。</p></div>
+<ul><li><b>Aggregate</b> —— 定义创建相应迭代器对象的接口（createIterator）。</li><li><b>ConcreteAggregate</b> —— 实现创建相应迭代器的接口，返回 ConcreteIterator 的实例。</li><li><b>Iterator</b> —— 定义访问和遍历元素的接口（first / next / isDone / currentItem）。</li><li><b>ConcreteIterator</b> —— 实现迭代器接口，遍历集合时跟踪当前位置。</li></ul>
+<h4>协作要点</h4>
+<ol><li>Client 向 ConcreteAggregate 请求一个迭代器（<code>createIterator()</code>）。</li><li>Client 用 <code>first()</code> 定位到第一个元素。</li><li>循环调用 <code>isDone()</code> 判断是否结束、<code>currentItem()</code> 取当前元素、<code>next()</code> 前进。</li><li>迭代器内部维护自己的游标，聚合的内部结构对 Client 完全不可见。</li></ol>
+<h4>适用场景</h4>
+<ul><li>访问一个聚合对象的内容而无需暴露它的内部表示。</li><li>支持对聚合对象的多种遍历（正序、逆序、过滤）。</li><li>为遍历不同的聚合结构提供一个统一的接口（多态迭代）。</li></ul>
+<h4>优缺点</h4>
+<div class="pros-cons">
+<div class="pros-cons__col"><h5>优点</h5><ul><li>支持以不同的方式遍历一个聚合，换一个迭代器实例即可。</li><li>简化了聚合的接口：遍历接口从聚合移到迭代器，聚合职责更单一。</li><li>同一个聚合上可以有多个遍历，每个迭代器保持自己的遍历状态。</li><li>Client 与聚合解耦，聚合内部数据结构变化不影响客户端。</li></ul></div>
+<div class="pros-cons__col"><h5>代价 / 缺点</h5><ul><li>对简单聚合（如数组）来说增加了一层间接，略有多余。</li><li>迭代器与聚合需要保持同步：聚合在遍历过程中被修改，迭代器可能失效。</li><li>多线程环境下迭代器通常不是线程安全的。</li></ul></div>
+</div>
+<h4>与相似模式的区别</h4>
+<div class="table-wrap"><table>
+<thead><tr><th>维度</th><th>迭代器</th><th>访问者</th></tr></thead>
+<tbody><tr><td>目的</td><td>顺序<b>遍历</b>元素</td><td>对元素施加<b>新操作</b></td></tr><tr><td>是否修改元素</td><td>不修改，只读访问</td><td>可读可写，可累积结果</td></tr><tr><td>扩展方向</td><td>新增遍历方式</td><td>新增操作</td></tr><tr><td>典型接口</td><td>hasNext / next</td><td>accept / visit</td></tr></tbody>
+</table></div>
+<h4>参考实现</h4>
+<figure class="code" data-lang="java" data-file="IteratorDemo.java">
+<pre><code>import java.util.ArrayList;
+import java.util.List;
+
+// Iterator：遍历接口
+interface Iterator&lt;T&gt; {
+    void first();
+    void next();
+    boolean isDone();
+    T currentItem();
+}
+
+// Aggregate：聚合接口
+interface Aggregate&lt;T&gt; {
+    Iterator&lt;T&gt; createIterator();
+}
+
+// ConcreteAggregate
+class BookShelf implements Aggregate&lt;String&gt; {
+    private final List&lt;String&gt; books = new ArrayList&lt;&gt;();
+    public void add(String b) { books.add(b); }
+    public int size() { return books.size(); }
+    public String get(int i) { return books.get(i); }
+
+    public Iterator&lt;String&gt; createIterator() { return new BookIterator(this); }
+
+    /** 内部类实现迭代器：可以访问聚合的私有细节，但不对外暴露 */
+    private static class BookIterator implements Iterator&lt;String&gt; {
+        private final BookShelf shelf;
+        private int index = 0;
+        BookIterator(BookShelf shelf) { this.shelf = shelf; }
+
+        public void first()    { index = 0; }
+        public void next()     { index++; }
+        public boolean isDone(){ return index &gt;= shelf.size(); }
+        public String currentItem() { return shelf.get(index); }
+    }
+}
+
+public class Client {
+    public static void main(String[] args) {
+        BookShelf shelf = new BookShelf();
+        shelf.add("设计模式");
+        shelf.add("软件架构");
+
+        for (Iterator&lt;String&gt; it = shelf.createIterator(); !it.isDone(); it.next()) {
+            System.out.println(it.currentItem());
+        }
+    }
+}</code></pre>
+</figure>
+<div class="callout callout--danger">
+<span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-stop"></use></svg></span>
+<div class="callout__body"><p><span class="callout__title">易错点 · 把遍历逻辑写在聚合类里，只加一个 getAt(i) 就说是迭代器模式。</span>迭代器模式的判据是<b>遍历状态被封装进独立的迭代器对象</b>，聚合只提供 <code>createIterator()</code>。如果客户端仍然用 <code>for (int i = 0; i &lt; size; i++) getAt(i)</code> 自己控制下标，那就是暴露了内部表示，不满足「不暴露内部结构」的意图，也无法支持「同一聚合上多个并发遍历」。</p></div>
+</div>
+
+</article><article class="pblock" id="p-mediator">
+<div class="pblock__head">
+<span class="pblock__no">05</span>
+<h3 class="pblock__title">中介者模式 <span>Mediator Pattern</span></h3>
+<span class="chip chip--accent">行为型</span>
+</div>
+<p class="pblock__intent"><b>意图：</b>用一个中介对象来封装一系列的对象交互。中介者使各对象不需要显式地相互引用，从而使其耦合松散，而且可以独立地改变它们之间的交互。</p>
+<h4>动机 / 问题场景</h4>
+<p>课程用「企业管理系统」举例：采购、销售、库存、物流、供应商、资产六个模块互相调用，任意一个模块变动都要跟踪所有关联模块，形成一张网状依赖图。引入中介者后，网状变成星形：每个模块只跟中介者通信，模块之间不再有直接引用。另一个经典例子是网络拓扑：五台计算机两两直连需要 10 条链路，接一台交换机后只需 5 条。对话框（登录/注册切换）也是中介者的典型应用。</p>
+<h4>结构</h4>
+<div class="cd"><div class="cd__row"><span class="cd__box cd__box--abs">Colleague<small>同事基类<br>持有 mediator 引用</small></span></div><div class="cd__arrow">继承</div><div class="cd__row"><span class="cd__box">ConcreteColleagueA<small>采购</small></span><span class="cd__box">ConcreteColleagueB<small>库存</small></span><span class="cd__box">ConcreteColleagueC<small>销售</small></span></div><div class="cd__arrow cd__arrow--h">同事之间不互相引用，全部经中介者转发</div><div class="cd__row"><span class="cd__box cd__box--abs">Mediator<small>+ notify(sender, event)</small></span></div><div class="cd__arrow">实现</div><div class="cd__row"><span class="cd__box cd__box--key">ConcreteMediator<small>协调各同事</small></span></div><p class="cd__note">网状（n×(n-1)/2 条关系）变成星形（n 条关系）：交互复杂性集中到中介者一处。</p></div>
+<ul><li><b>Mediator</b> —— 定义与各同事（Colleague）对象通信的接口。</li><li><b>ConcreteMediator</b> —— 通过协调各同事对象实现协作行为；了解并维护它的各个同事。</li><li><b>Colleague</b> —— 维护一个中介者对象的引用；每个同事在需要与其他同事通信时，与中介者通信。</li></ul>
+<h4>协作要点</h4>
+<ol><li>同事对象状态变化时，调用 <code>mediator.notify(this, event)</code> 上报。</li><li>中介者收到通知后，根据发送者与事件类型决定如何处理。</li><li>中介者调用其他相关同事的方法，完成协调。</li><li>同事之间全程没有直接引用，交互逻辑集中在中介者一处。</li></ol>
+<h4>适用场景</h4>
+<ul><li>一组对象以定义良好但复杂的方式进行通信，产生的相互依赖结构混乱且难以理解。</li><li>一个对象引用很多对象并直接通信，导致难以复用该对象。</li><li>想定制一个分布在多个类中的行为，而又不想生成太多子类。</li></ul>
+<h4>优缺点</h4>
+<div class="pros-cons">
+<div class="pros-cons__col"><h5>优点</h5><ul><li>减少了子类生成：把分散在多个对象间的行为集中到中介者，改变行为只需生成中介者子类。</li><li>各 Colleague 松耦合，可以独立改变和复用。</li><li>简化对象间关联：用一对多交互替代多对多交互，更易理解、维护和扩展。</li><li>封装变化：交互关系的变化只影响中介者代码，同事类无需修改。</li></ul></div>
+<div class="pros-cons__col"><h5>代价 / 缺点</h5><ul><li>控制集中化：交互的复杂性变成中介者的复杂性，中介者可能膨胀成难以维护的巨型对象。</li><li>中介者需要和每个 Colleague 交互，与系统耦合度较大，<b>难以在系统间复用</b>。</li><li>中介者只应处理对象间交互，不应承担本可由同事独立完成的工作。</li></ul></div>
+</div>
+<h4>与相似模式的区别</h4>
+<div class="table-wrap"><table>
+<thead><tr><th>维度</th><th>中介者</th><th>观察者</th><th>外观</th></tr></thead>
+<tbody><tr><td>交互方向</td><td>双向（同事 ↔ 中介者）</td><td>单向广播（Subject → Observer）</td><td>单向（Client → Facade → 子系统）</td></tr><tr><td>拓扑</td><td>星形</td><td>一对多</td><td>多对一</td></tr><tr><td>子系统是否知道中心</td><td>同事知道中介者</td><td>观察者知道 Subject</td><td>子系统<b>不知道</b> Facade</td></tr><tr><td>目的</td><td>收敛复杂互交</td><td>状态变化通知</td><td>简化调用入口</td></tr></tbody>
+</table></div>
+<h4>参考实现</h4>
+<figure class="code" data-lang="java" data-file="ChatRoomMediator.java">
+<pre><code>import java.util.ArrayList;
+import java.util.List;
+
+// Mediator
+interface Mediator {
+    void notify(Colleague sender, String event);
+}
+
+// Colleague：持有中介者引用
+abstract class Colleague {
+    protected final Mediator mediator;
+    protected final String   name;
+    Colleague(Mediator m, String name) { this.mediator = m; this.name = name; }
+    public abstract void receive(String from, String msg);
+    public void send(String msg) { mediator.notify(this, msg); }
+}
+
+// ConcreteColleague
+class User extends Colleague {
+    User(Mediator m, String name) { super(m, name); }
+    public void receive(String from, String msg) {
+        System.out.println("[" + name + "] 收到 " + from + "：" + msg);
+    }
+}
+
+// ConcreteMediator：集中转发
+class ChatRoom implements Mediator {
+    private final List&lt;Colleague&gt; users = new ArrayList&lt;&gt;();
+    public void join(Colleague c) { users.add(c); }
+
+    public void notify(Colleague sender, String event) {
+        for (Colleague c : users) {
+            if (c != sender) {                       // 不再需要用户之间互相持有引用
+                c.receive(((User) sender).name, event);
+            }
+        }
+    }
+}
+
+public class Client {
+    public static void main(String[] args) {
+        ChatRoom room = new ChatRoom();
+        Colleague a = new User(room, "张三");
+        Colleague b = new User(room, "李四");
+        room.join(a);
+        room.join(b);
+        a.send("大家好");
+    }
+}</code></pre>
+</figure>
+<div class="callout callout--danger">
+<span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-stop"></use></svg></span>
+<div class="callout__body"><p><span class="callout__title">易错点 · 把中介者写成「什么都管」的上帝类。</span>中介者的职责边界是<b>只协调对象间的交互</b>，不负责同事能独立完成的工作。教材明确指出「中介者只处理对象间交互，不负责对象能独立处理的部分」，并且点出它的缺点：控制集中化会让中介者变成<b>难于维护的庞大对象</b>，而且因为与每个同事都耦合，<b>难以在系统间复用</b>。</p></div>
+</div>
+
+</article><article class="pblock" id="p-memento">
+<div class="pblock__head">
+<span class="pblock__no">06</span>
+<h3 class="pblock__title">备忘录模式 <span>Memento Pattern</span></h3>
+<span class="chip chip--accent">行为型</span>
+</div>
+<p class="pblock__intent"><b>意图：</b>在不破坏封装性的前提下，捕获一个对象的内部状态，并在该对象之外保存这个状态，以便以后可以将该对象恢复到原先保存的状态。</p>
+<h4>动机 / 问题场景</h4>
+<p>课程在讲命令模式时已经埋了伏笔：命令对象要支持 Undo，就必须有地方保存「执行前的状态」，而直接暴露对象的内部字段会破坏封装。备忘录模式给出三方分工：<b>Originator</b>（发起人，自己负责生成和恢复快照）、<b>Memento</b>（备忘录，只存状态、对外不透明）、<b>Caretaker</b>（管理者，只负责保存/取出快照，绝不修改内容）。编辑器的撤销栈、游戏的存档点、数据库事务回滚都是这个结构。</p>
+<h4>结构</h4>
+<div class="cd"><div class="cd__row"><span class="cd__box cd__box--key">Caretaker<small>只保存 Memento，不读内容</small></span></div><div class="cd__arrow">save / restore</div><div class="cd__row"><span class="cd__box cd__box--abs">Memento<small>- state<br>（对外不透明）</small></span></div><div class="cd__arrow cd__arrow--h">Originator 创建并读取 Memento；Caretaker 只搬运</div><div class="cd__row"><span class="cd__box cd__box--key">Originator<small>+ createMemento()<br>+ restore(m)</small></span></div><p class="cd__note">关键约束：Memento 的状态对 Caretaker 不可见（宽接口给 Originator，窄接口给其他人）。</p></div>
+<ul><li><b>Originator</b> —— 发起人：创建一个备忘录以记录当前内部状态；使用备忘录恢复内部状态。</li><li><b>Memento</b> —— 备忘录：存储 Originator 的内部状态；防止 Originator 以外的对象访问它。</li><li><b>Caretaker</b> —— 管理者：负责保存备忘录；不能对备忘录的内容进行操作或检查。</li></ul>
+<h4>协作要点</h4>
+<ol><li>Client 需要保存状态时，向 Originator 请求一个 Memento。</li><li>Originator 创建 Memento，把自己的内部状态快照进去。</li><li>Client（或 Caretaker）把 Memento 保存起来（压栈、存文件）。</li><li>需要恢复时，把 Memento 交回 Originator，调用 <code>restore(memento)</code>。</li><li>Originator 从 Memento 中取回状态，自身恢复。</li></ol>
+<h4>适用场景</h4>
+<ul><li>必须保存一个对象在某一个时刻的（部分）状态，以便之后恢复。</li><li>如果一个用接口来让其他对象直接得到这些状态，将会暴露实现细节并破坏封装。</li><li>需要撤销/回滚、事务、存档点功能。</li></ul>
+<h4>优缺点</h4>
+<div class="pros-cons">
+<div class="pros-cons__col"><h5>优点</h5><ul><li>保持封装的边界：状态的保存与恢复由 Originator 自己完成。</li><li>简化了 Originator：把状态管理职责交给 Caretaker，Originator 专注业务。</li><li>提供了可靠的恢复机制，是实现 Undo/Redo、事务回滚的基础。</li></ul></div>
+<div class="pros-cons__col"><h5>代价 / 缺点</h5><ul><li>保存大量快照会占用大量内存（需要配合「只存增量」或限制历史长度）。</li><li>Caretaker 需要负责快照的生命周期管理，否则容易内存泄漏。</li><li>若状态包含大对象或外部资源句柄，快照的实现会更复杂。</li></ul></div>
+</div>
+<h4>与相似模式的区别</h4>
+<div class="table-wrap"><table>
+<thead><tr><th>维度</th><th>备忘录</th><th>原型</th></tr></thead>
+<tbody><tr><td>目的</td><td>保存/恢复对象状态</td><td>通过拷贝创建新对象</td></tr><tr><td>是否产生新对象</td><td>产生快照对象（不参与业务）</td><td>产生可用的新业务对象</td></tr><tr><td>关注点</td><td>状态的历史</td><td>创建的成本</td></tr><tr><td>典型场景</td><td>撤销栈、存档、事务回滚</td><td>复制粘贴、缓存对象模板</td></tr></tbody>
+</table></div>
+<h4>参考实现</h4>
+<figure class="code" data-lang="java" data-file="EditorMemento.java">
+<pre><code>import java.util.ArrayDeque;
+import java.util.Deque;
+
+// Memento：对外只暴露只读信息，状态字段私有
+final class Memento {
+    private final String state;
+    Memento(String state) { this.state = state; }
+    private String getState() { return state; }     // 仅 Originator 可用（同包/内部类）
+}
+
+// Originator
+class Editor {
+    private String content = "";
+
+    public void type(String s) { content += s; }
+    public String content()    { return content; }
+
+    /** 创建快照 */
+    public Memento save() { return new Memento(content); }
+
+    /** 从快照恢复 */
+    public void restore(Memento m) { this.content = m.getState(); }
+}
+
+// Caretaker：只管搬运，不碰内容
+class History {
+    private final Deque&lt;Memento&gt; stack = new ArrayDeque&lt;&gt;();
+    public void push(Memento m) { stack.push(m); }
+    public Memento pop()        { return stack.isEmpty() ? null : stack.pop(); }
+}
+
+public class Client {
+    public static void main(String[] args) {
+        Editor  editor  = new Editor();
+        History history = new History();
+
+        editor.type("Hello");
+        history.push(editor.save());      // 存档点 1
+        editor.type(" World");
+        history.push(editor.save());      // 存档点 2
+        editor.type("!!!");
+        System.out.println(editor.content());   // Hello World!!!
+
+        editor.restore(history.pop());          // 撤销到存档点 2
+        System.out.println(editor.content());   // Hello World
+    }
+}</code></pre>
+</figure>
+<div class="callout callout--danger">
+<span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-stop"></use></svg></span>
+<div class="callout__body"><p><span class="callout__title">易错点 · 让 Caretaker 直接读写 Memento 里的状态字段。</span>备忘录模式的核心约束是<b>封装</b>：Memento 对外应是<b>窄接口</b>（Caretaker 只能整体保存/传递，不能读取内容），只有 Originator 能用<b>宽接口</b>读写状态。如果 Caretaker 能随意修改快照内容，封装被破坏，「不破坏封装性地保存状态」这一意图就不成立了。</p></div>
+</div>
+
+</article><article class="pblock" id="p-observer">
+<div class="pblock__head">
+<span class="pblock__no">07</span>
+<h3 class="pblock__title">观察者模式 <span>Observer Pattern</span></h3>
+<span class="chip chip--accent">行为型</span>
+</div>
+<p class="pblock__intent"><b>意图：</b>定义对象间的一种一对多的依赖关系，当一个对象的状态发生改变时，所有依赖于它的对象都得到通知并被自动更新。</p>
+<h4>动机 / 问题场景</h4>
+<p>课程从「用户界面与业务逻辑分离」讲起：GUI 出现后，几乎所有面向对象框架都支持把界面从应用其他部分划分出来。但分割成相互协作的类也带来新问题——需要维护相关对象间的一致性，而为维持一致性又会让各类紧密耦合、降低可重用性。观察者模式解决这个矛盾：Subject 只知道「有一批 Observer 关心我」，不知道它们是谁、会做什么；新增视图无需修改 Model。Java 的 <code>ActionListener</code>、MVC 的 Model-View 刷新都是这个结构。</p>
+<h4>结构</h4>
+<div class="cd"><div class="cd__row"><span class="cd__box cd__box--abs">Subject<small>+ attach(o) / detach(o)<br>+ notify()</small></span></div><div class="cd__arrow">继承</div><div class="cd__row"><span class="cd__box cd__box--key">ConcreteSubject<small>- state<br>+ getState() / setState()</small></span></div><div class="cd__arrow cd__arrow--h">notify() 遍历 observers 逐个 update</div><div class="cd__row"><span class="cd__box cd__box--abs">Observer<small>+ update()</small></span></div><div class="cd__arrow">继承</div><div class="cd__row"><span class="cd__box cd__box--key">ConcreteObserver<small>- observerState<br>+ update()</small></span></div><p class="cd__note">一对多：Subject 持有 Observer 列表；状态变化时遍历调用 update，完成广播。</p></div>
+<ul><li><b>Subject</b> —— 抽象主题：提供注册（attach）和删除（detach）观察者对象的接口。</li><li><b>ConcreteSubject</b> —— 具体主题：状态变化时向各个观察者发出通知。</li><li><b>Observer</b> —— 抽象观察者：为希望在主题变化时获得通知的对象定义一个更新接口。</li><li><b>ConcreteObserver</b> —— 具体观察者：维护指向具体主题的引用，实现 update 使自身状态与主题一致。</li></ul>
+<h4>协作要点</h4>
+<ol><li>观察者调用 <code>subject.attach(this)</code> 注册自己。</li><li>主题内部状态改变（<code>setState</code>）。</li><li>主题调用 <code>notify()</code>，遍历观察者列表。</li><li>对每个观察者调用 <code>update()</code>（推模型带数据，拉模型只发通知）。</li><li>观察者更新自身状态，必要时回查主题获取最新数据；不再需要时 <code>detach</code>。</li></ol>
+<h4>适用场景</h4>
+<ul><li>当一个抽象模型有两个方面，其中一个方面依赖于另一个方面，将二者封装在独立对象中使它们可以独立改变和复用。</li><li>一个对象的改变需要同时改变其他对象，但不知道具体有多少对象有待改变。</li><li>一个对象必须通知其他对象，但又不能假定其他对象是谁（不希望紧密耦合）。</li></ul>
+<h4>优缺点</h4>
+<div class="pros-cons">
+<div class="pros-cons__col"><h5>优点</h5><ul><li>Subject 与 Observer 之间松耦合，可以各自独立改变。</li><li>广播通信时 Subject 无须指定具体 Observer，Observer 可自行决定是否订阅。</li><li>符合开闭原则：新增观察者无需修改主题代码。</li><li>高内聚、低耦合。</li></ul></div>
+<div class="pros-cons__col"><h5>代价 / 缺点</h5><ul><li>松耦合导致代码关系不明显，有时难以理解（通知是隐式的）。</li><li>一个 Subject 被大量订阅时，广播通知可能有效率问题。</li><li>忘记 detach 会造成内存泄漏；通知顺序不确定，链式更新难调试。</li></ul></div>
+</div>
+<h4>与相似模式的区别</h4>
+<div class="table-wrap"><table>
+<thead><tr><th>维度</th><th>观察者</th><th>发布-订阅</th><th>中介者</th></tr></thead>
+<tbody><tr><td>耦合方式</td><td>主题知道观察者接口</td><td>双方互不相识，经事件通道</td><td>同事只认识中介者</td></tr><tr><td>拓扑</td><td>一对多</td><td>多对多</td><td>星形</td></tr><tr><td>通知方向</td><td>单向广播</td><td>双向</td><td>集中转发</td></tr><tr><td>层级</td><td>设计模式（对象级）</td><td>架构风格 / 集成模式</td><td>设计模式（对象级）</td></tr></tbody>
+</table></div>
+<h4>参考实现</h4>
+<figure class="code" data-lang="java" data-file="ClickObserver.java">
+<pre><code>import java.util.ArrayList;
+import java.util.List;
+
+// Observer
+interface ClickableObserver {
+    void clicked(Clickable clickable);
+}
+
+// Subject 接口
+interface Clickable {
+    void click();
+    void addClickableObserver(ClickableObserver o);
+    void removeClickableObserver(ClickableObserver o);
+}
+
+// ConcreteSubject
+class Button implements Clickable {
+    private final List&lt;ClickableObserver&gt; observers = new ArrayList&lt;&gt;();
+    String color = "白色";
+    int x = 0, y = 0;
+
+    public void click() {
+        System.out.println("按钮被点击");
+        // 遍历副本，避免观察者在回调中 attach/detach 触发并发修改异常
+        for (ClickableObserver o : new ArrayList&lt;&gt;(observers)) {
+            o.clicked(this);
+        }
+    }
+    public void addClickableObserver(ClickableObserver o)    { observers.add(o); }
+    public void removeClickableObserver(ClickableObserver o) { observers.remove(o); }
+
+    public String toString() { return "按钮颜色：" + color + "，坐标：" + x + "," + y; }
+}
+
+// ConcreteObserver
+class ChangeColorObserver implements ClickableObserver {
+    public void clicked(Clickable c) { ((Button) c).color = "红色"; }
+}
+class ChangeCoordinateObserver implements ClickableObserver {
+    public void clicked(Clickable c) { Button b = (Button) c; b.x = 100; b.y = 90; }
+}
+class OtherObserver implements ClickableObserver {
+    public void clicked(Clickable c) { System.out.println("执行其它操作......"); }
+}
+
+public class Test {
+    public static void main(String[] args) {
+        Button button = new Button();
+        button.addClickableObserver(new ChangeColorObserver());
+        button.addClickableObserver(new ChangeCoordinateObserver());
+        button.addClickableObserver(new OtherObserver());
+        button.click();
+        System.out.println(button);
+    }
+}</code></pre>
+</figure>
+<div class="callout callout--danger">
+<span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-stop"></use></svg></span>
+<div class="callout__body"><p><span class="callout__title">易错点 · 在 notify 里直接遍历观察者原列表。</span>如果某个观察者在 <code>update()</code> 中调用 <code>attach</code>/<code>detach</code>，遍历原列表会抛 <code>ConcurrentModificationException</code>。必须先复制一份列表再遍历（如 <code>new ArrayList&lt;&gt;(observers)</code>）。另外注意：观察者模式中 Subject <b>直接持有</b> Observer 引用，一旦引入事件通道就演进为发布-订阅，属于架构层解耦，不能再叫观察者模式。</p></div>
+</div>
+
+</article><article class="pblock" id="p-state">
+<div class="pblock__head">
+<span class="pblock__no">08</span>
+<h3 class="pblock__title">状态模式 <span>State Pattern</span></h3>
+<span class="chip chip--accent">行为型</span>
+</div>
+<p class="pblock__intent"><b>意图：</b>允许一个对象在其内部状态改变时改变它的行为。对象看起来似乎修改了它的类。</p>
+<h4>动机 / 问题场景</h4>
+<p>课程用「人有多种状态」举例：开心时唱歌、请客，失恋时撞墙，中奖时疯狂购物——同一个对象在不同状态下对同一事件有完全不同的反应。如果用一个类实现，代码会变成巨大的 <code>switch (state)</code>：每加一个状态就要改所有方法，每加一个方法就要改所有分支。状态模式把每个状态抽成一个类，Context 持有当前状态对象，把请求委托给它，状态类自己决定是否以及如何转移到下一个状态。TCP 连接（建立/监听/关闭）是最经典的例子。</p>
+<h4>结构</h4>
+<div class="cd"><div class="cd__row"><span class="cd__box cd__box--key">Context<small>- state: State<br>+ request()</small></span></div><div class="cd__arrow cd__arrow--h">request() 委托给 state.handle()；state 可回写 context 切换状态</div><div class="cd__row"><span class="cd__box cd__box--abs">State<small>+ handle()</small></span></div><div class="cd__arrow">继承</div><div class="cd__row"><span class="cd__box cd__box--key">ConcreteStateA<small>+ handle()</small></span><span class="cd__box cd__box--key">ConcreteStateB<small>+ handle()</small></span></div><p class="cd__note">与策略模式类图几乎一样，区别在于：状态类<b>知道其他状态</b>并负责转移，策略之间互不相识。</p></div>
+<ul><li><b>Context</b> —— 定义客户感兴趣的接口；维护一个 ConcreteState 子类实例，该实例定义当前状态。</li><li><b>State</b> —— 定义一个接口，封装与 Context 的一个特定状态相关的行为。</li><li><b>ConcreteState</b> —— 每一个子类实现一个与 Context 的一个状态相关的行为，并可触发状态转移。</li></ul>
+<h4>协作要点</h4>
+<ol><li>Client 调用 Context 的 <code>request()</code>。</li><li>Context 把请求委托给当前 state 对象的 <code>handle()</code>。</li><li>ConcreteState 根据自身逻辑处理请求。</li><li>若满足转移条件，ConcreteState 调用 <code>context.setState(newState)</code> 切换状态。</li><li>后续请求由新的状态对象处理——客户无须知道切换逻辑。</li></ol>
+<h4>适用场景</h4>
+<ul><li>一个对象的行为取决于它的状态，并且它必须在运行时根据状态改变行为。</li><li>一个操作中含有庞大的多分支条件语句，且这些分支依赖于对象的状态。</li><li>状态数量有限且状态转移规则明确（状态机场景）。</li></ul>
+<h4>优缺点</h4>
+<div class="pros-cons">
+<div class="pros-cons__col"><h5>优点</h5><ul><li>将与状态相关的行为局部化，把状态的切换逻辑放到 State 派生类中。</li><li>动作完成后可以自动切换到下一个状态，客户无须知道具体切换逻辑。</li><li>消除庞大的条件分支语句，符合开闭原则（新增状态只需新增类）。</li><li>实现逻辑与动作解耦：每个 ConcreteState 只需知道本状态可能过渡到哪些状态及条件。</li></ul></div>
+<div class="pros-cons__col"><h5>代价 / 缺点</h5><ul><li>状态类数量增加，类的层次变复杂。</li><li>状态转移逻辑分散在各状态类中，整体状态机流程不易一眼看清（需要看全所有类）。</li><li>若状态很多且转移规则频繁变化，维护成本会上升。</li></ul></div>
+</div>
+<h4>与相似模式的区别</h4>
+<div class="table-wrap"><table>
+<thead><tr><th>维度</th><th>状态</th><th>策略</th></tr></thead>
+<tbody><tr><td>类图</td><td>几乎一致（Context 持有抽象 + 子类实现）</td><td>几乎一致</td></tr><tr><td>目的</td><td>对象<b>行为随内部状态改变</b>而改变</td><td>让<b>算法</b>可相互替换</td></tr><tr><td>状态/策略是否知道彼此</td><td>ConcreteState <b>知道</b>其他状态并负责转移</td><td>ConcreteStrategy <b>互不相识</b></td></tr><tr><td>谁决定切换</td><td>状态类自己（内部触发）</td><td>客户端（外部注入）</td></tr><tr><td>典型场景</td><td>TCP 连接、订单状态机、电梯</td><td>排序算法、折扣策略、压缩算法</td></tr></tbody>
+</table></div>
+<h4>参考实现</h4>
+<figure class="code" data-lang="java" data-file="TcpStateDemo.java">
+<pre><code>// State
+interface TcpState {
+    void open(TcpConnection c);
+    void close(TcpConnection c);
+    void acknowledge(TcpConnection c);
+}
+
+// Context
+class TcpConnection {
+    private TcpState state;
+
+    public TcpConnection() { this.state = new ClosedState(); }
+
+    /** 状态类通过它完成切换 */
+    public void setState(TcpState s) { this.state = s; }
+
+    public void open()        { state.open(this); }
+    public void close()       { state.close(this); }
+    public void acknowledge() { state.acknowledge(this); }
+}
+
+// ConcreteState
+class ClosedState implements TcpState {
+    public void open(TcpConnection c) {
+        System.out.println("发送 SYN，进入 Listen");
+        c.setState(new ListenState());          // 自己负责转移
+    }
+    public void close(TcpConnection c)    { System.out.println("已经关闭"); }
+    public void acknowledge(TcpConnection c) { System.out.println("非法操作"); }
+}
+
+class ListenState implements TcpState {
+    public void open(TcpConnection c)  { System.out.println("已经建立连接"); }
+    public void close(TcpConnection c) {
+        System.out.println("断开连接，回到 Closed");
+        c.setState(new ClosedState());
+    }
+    public void acknowledge(TcpConnection c) {
+        System.out.println("收到 ACK，进入 Established");
+        c.setState(new EstablishedState());
+    }
+}
+
+class EstablishedState implements TcpState {
+    public void open(TcpConnection c)  { System.out.println("已连接"); }
+    public void close(TcpConnection c) {
+        System.out.println("关闭连接");
+        c.setState(new ClosedState());
+    }
+    public void acknowledge(TcpConnection c) { System.out.println("数据传输中"); }
+}
+
+public class Client {
+    public static void main(String[] args) {
+        TcpConnection conn = new TcpConnection();
+        conn.open();         // Closed → Listen
+        conn.acknowledge();  // Listen → Established
+        conn.close();        // Established → Closed
+    }
+}</code></pre>
+</figure>
+<div class="callout callout--danger">
+<span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-stop"></use></svg></span>
+<div class="callout__body"><p><span class="callout__title">易错点 · 认为状态模式和策略模式可以互换，因为类图一样。</span>类图确实几乎相同，但<b>意图与切换机制不同</b>：状态模式中 ConcreteState <b>知道其他状态</b>、由<b>状态类自己</b>触发转移，行为随内部状态改变而改变；策略模式中 ConcreteStrategy <b>互不相识</b>，由<b>客户端</b>选择注入，算法之间是平等可替换关系。答题时必须点出「谁负责切换」这一条。</p></div>
+</div>
+
+</article><article class="pblock" id="p-strategy">
+<div class="pblock__head">
+<span class="pblock__no">09</span>
+<h3 class="pblock__title">策略模式 <span>Strategy Pattern</span></h3>
+<span class="chip chip--accent">行为型</span>
+</div>
+<p class="pblock__intent"><b>意图：</b>定义一系列算法，把它们一个个封装起来，并且使它们可相互替换。本模式使得算法可独立于使用它的客户而变化。</p>
+<h4>动机 / 问题场景</h4>
+<p>课程用「点坐标数组排序」举例：可以按 X 坐标排、按 Y 坐标排、按到原点距离排。最初的做法是在 <code>PointArray</code> 里写 <code>SortA/SortB/SortC</code> 三个方法，再用条件语句选择——算法被硬编码进使用它的类，类变得复杂难维护。策略模式把每个算法抽成独立的 ConcreteStrategy 类，Context 只持有一个 Strategy 引用，运行时想换就换。图书折扣的例子同理：不打折、固定减 1 元、打 85 折，三种策略可自由切换。</p>
+<h4>结构</h4>
+<div class="cd"><div class="cd__row"><span class="cd__box cd__box--key">Context<small>- strategy: Strategy<br>+ contextInterface()</small></span></div><div class="cd__arrow cd__arrow--h">contextInterface() 委托给 strategy.algorithmInterface()</div><div class="cd__row"><span class="cd__box cd__box--abs">Strategy<small>+ algorithmInterface()</small></span></div><div class="cd__arrow">实现</div><div class="cd__row"><span class="cd__box">ConcreteStrategyA</span><span class="cd__box">ConcreteStrategyB</span><span class="cd__box">ConcreteStrategyC</span></div><p class="cd__note">Context 依赖 Strategy 抽象（依赖倒置），具体算法在运行期注入，可自由替换。</p></div>
+<ul><li><b>Strategy</b> —— 定义所有支持的算法的公共接口；Context 使用这个接口调用某个 ConcreteStrategy 定义的算法。</li><li><b>ConcreteStrategy</b> —— 以 Strategy 接口实现某具体算法。</li><li><b>Context</b> —— 用一个 ConcreteStrategy 对象来配置；维护一个对 Strategy 对象的引用；可定义接口让 Strategy 访问它的数据。</li></ul>
+<h4>协作要点</h4>
+<ol><li>Client 创建某个 ConcreteStrategy 对象。</li><li>Client 把它注入 Context（构造参数或 setter）。</li><li>Client 调用 Context 的业务方法。</li><li>Context 把算法相关的部分委托给 <code>strategy.algorithmInterface()</code>。</li><li>需要换算法时，Client 注入另一个 ConcreteStrategy 即可，Context 代码不变。</li></ol>
+<h4>适用场景</h4>
+<ul><li>许多相关的类仅仅是行为有异：「策略」提供了一种用多个行为中的一个来配置一个类的方法。</li><li>需要使用一个算法的不同变体。</li><li>算法使用了客户端不应知道的数据，用以避免暴露复杂的、与算法相关的数据结构。</li><li>一个类定义了多种行为，且这些行为在操作中以多个条件语句的形式出现——用策略代替条件语句。</li></ul>
+<h4>优缺点</h4>
+<div class="pros-cons">
+<div class="pros-cons__col"><h5>优点</h5><ul><li>相关算法系列：Strategy 类层次为 Context 定义了一系列可供重用的算法。</li><li>替代继承：算法与使用算法的对象分离，客户可在运行时动态选择算法。</li><li>消除条件语句：把行为封装在独立类中，消除 <code>if/else</code> 或 <code>switch</code>。</li><li>易于切换、易于理解、易于扩展。</li></ul></div>
+<div class="pros-cons__col"><h5>代价 / 缺点</h5><ul><li>Client 必须知道多个不同策略，才能选择合适的那个（选择逻辑没有消失，只是转移了）。</li><li>策略类数量增加，小程序里可能显得啰嗦。</li><li>与常规环境类实现相比，Context 与 Strategy 之间的信息流费用偏高（多一层调用）。</li></ul></div>
+</div>
+<h4>与相似模式的区别</h4>
+<div class="table-wrap"><table>
+<thead><tr><th>维度</th><th>策略</th><th>状态</th><th>模板方法</th><th>命令</th></tr></thead>
+<tbody><tr><td>实现手段</td><td>组合</td><td>组合</td><td>继承</td><td>组合</td></tr><tr><td>变化对象</td><td>整个算法</td><td>行为随状态变</td><td>算法的某些步骤</td><td>整个请求</td></tr><tr><td>切换者</td><td>客户端</td><td>状态类自身</td><td>编译期确定（子类）</td><td>Invoker / 客户端</td></tr><tr><td>是否持有接收者</td><td>否</td><td>否（持有 Context 引用）</td><td>—</td><td>通常持有 Receiver</td></tr><tr><td>典型场景</td><td>折扣、排序、压缩</td><td>状态机、TCP</td><td>框架流程骨架</td><td>撤销、队列、日志</td></tr></tbody>
+</table></div>
+<h4>参考实现</h4>
+<figure class="code" data-lang="java" data-file="DiscountStrategy.java">
+<pre><code>// Strategy：抽象折扣算法
+public abstract class DiscountStrategy {
+    private final double price;
+    private final int    number;
+
+    public DiscountStrategy(double price, int number) {
+        this.price = price;
+        this.number = number;
+    }
+    public double getPrice()  { return price; }
+    public int    getNumber() { return number; }
+
+    /** 策略方法：计算折扣额 */
+    public abstract double calculateDiscount();
+}
+
+// ConcreteStrategy 1：没有折扣
+public class NoDiscountStrategy extends DiscountStrategy {
+    public NoDiscountStrategy(double price, int number) { super(price, number); }
+    public double calculateDiscount() { return 0; }
+}
+
+// ConcreteStrategy 2：固定每本减 1 元
+public class FixDiscountStrategy extends DiscountStrategy {
+    public FixDiscountStrategy(double price, int number) { super(price, number); }
+    public double calculateDiscount() { return getNumber() * 1.0; }
+}
+
+// ConcreteStrategy 3：按 15% 折扣
+public class PercentageDiscountStrategy extends DiscountStrategy {
+    public PercentageDiscountStrategy(double price, int number) { super(price, number); }
+    public double calculateDiscount() { return getNumber() * getPrice() * 0.15; }
+}
+
+// Context
+public class ContextClient {
+    private final DiscountStrategy ds;
+    public ContextClient(DiscountStrategy ds) { this.ds = ds; }
+
+    public double contextCalDisc() { return ds.calculateDiscount(); }
+
+    public static void main(String[] args) {
+        System.out.println("0折扣："      + new ContextClient(new NoDiscountStrategy(48.5, 20)).contextCalDisc());
+        System.out.println("固定折扣："   + new ContextClient(new FixDiscountStrategy(46, 60)).contextCalDisc());
+        System.out.println("15%的折扣：" + new ContextClient(new PercentageDiscountStrategy(38, 40)).contextCalDisc());
+    }
+}</code></pre>
+</figure>
+<div class="callout callout--danger">
+<span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-stop"></use></svg></span>
+<div class="callout__body"><p><span class="callout__title">易错点 · 认为用了策略模式，客户端就完全不需要知道具体算法。</span>策略模式消除的是 <b>Context 内部的条件语句</b>，但<b>选择哪个策略的责任转移到了客户端</b>。教材明确指出这是它的缺点之一：「Client 必须知道多个不同策略，以便配置」。要真正做到客户端无感，需要再配一个简单工厂或配置表来隐藏选择逻辑。</p></div>
+</div>
+
+</article><article class="pblock" id="p-chain">
+<div class="pblock__head">
+<span class="pblock__no">10</span>
+<h3 class="pblock__title">责任链模式 <span>Chain of Responsibility Pattern</span></h3>
+<span class="chip chip--accent">行为型</span>
+</div>
+<p class="pblock__intent"><b>意图：</b>使多个对象都有机会处理请求，从而避免请求的发送者与接收者之间的耦合关系。将这些对象连成一条链，并沿着这条链传递该请求，直到有一个对象处理它为止。</p>
+<h4>动机 / 问题场景</h4>
+<p>课程用「员工请假」举例：经理能批 2 天以内，超过就上报总监；总监能批 5 天以内，再超过就上报总经理；加薪只有总经理有权处理。如果写成一个大 <code>if/else if</code> 判断 <code>ManagerLevel</code>，每调整一次权限就要改这段代码。责任链把每个处理者抽成一个类，每个处理者持有后继者引用，能处理就处理，不能处理就 <code>next()</code> 传下去。课程还给了「击鼓传花」的例子：PlayerA/B/C/D 连成链，鼓声停下时持有花的人执行动作。</p>
+<h4>结构</h4>
+<div class="cd"><div class="cd__row"><span class="cd__box">Client<small>把请求交给链首</small></span></div><div class="cd__arrow">handleRequest()</div><div class="cd__row"><span class="cd__box cd__box--abs">Handler<small># successor: Handler<br>+ handleRequest()<br>+ setSuccessor(h)</small></span></div><div class="cd__arrow">继承</div><div class="cd__row"><span class="cd__box cd__box--key">ConcreteHandler1<small>能处理→处理<br>否则→successor</small></span><span class="cd__box cd__box--key">ConcreteHandler2<small>…</small></span><span class="cd__box cd__box--key">ConcreteHandler3<small>…</small></span></div><p class="cd__note">责任链可以是直线、环或树形；最常见的是直线型。链的组装在客户端完成，因此顺序可在运行时改变。</p><p class="cd__note">每个处理者只知道自己的后继者，不知道整条链的结构——这是解耦的关键。</p></div>
+<ul><li><b>Handler</b> —— 声明一个处理请求的接口，并实现后继链（持有 successor 引用、提供 setSuccessor）。</li><li><b>ConcreteHandler</b> —— 实现抽象处理者声明的接口：能处理就处理，否则把请求转发给它的后继者。</li><li><b>Client</b> —— 向链上的具体处理者对象提交请求（通常是链首）。</li></ul>
+<h4>协作要点</h4>
+<ol><li>Client 创建各个 ConcreteHandler，并调用 <code>setSuccessor</code> 把它们连成链。</li><li>Client 向链首提交请求。</li><li>链首判断自己能否处理：能则处理并结束；不能则调用 <code>successor.handleRequest()</code>。</li><li>请求沿链向下传递，直到有处理者接手，或到达链尾（无人处理）。</li></ol>
+<h4>适用场景</h4>
+<ul><li>有多个对象可以处理一个请求，具体哪个对象处理在运行时自动确定。</li><li>处理请求的对象集合与顺序由客户端根据当前应用状态在运行时动态决定。</li><li>一个处理者可以根据应用状态和请求类型，把请求传递给不同的处理者。</li><li>客户与处理链中的对象都不需要知道到底用哪个对象处理请求。</li></ul>
+<h4>优缺点</h4>
+<div class="pros-cons">
+<div class="pros-cons__col"><h5>优点</h5><ul><li>降低耦合度：请求发送者无需知道请求会被哪个对象处理，链中对象也无需知道链的结构。</li><li>增强给对象分配职责的灵活性：可在运行时动态增加或修改责任链。</li><li>符合开闭原则：新增处理者只需新增类并重新组装链。</li></ul></div>
+<div class="pros-cons__col"><h5>代价 / 缺点</h5><ul><li><b>不保证被接受</b>：请求可能到达链尾仍无人处理（需要兜底处理者）。</li><li>链过长时性能下降；消息传递不当可能出现循环重复执行。</li><li>调试时请求路径不直观，难以追踪到底是谁处理的。</li></ul></div>
+</div>
+<h4>与相似模式的区别</h4>
+<div class="table-wrap"><table>
+<thead><tr><th>维度</th><th>责任链</th><th>装饰器</th><th>命令</th></tr></thead>
+<tbody><tr><td>链的结构</td><td>处理者<b>可选择</b>是否继续传递</td><td>装饰器<b>必定</b>转发给内层</td><td>不涉及链</td></tr><tr><td>目的</td><td>找到能处理请求的对象</td><td>动态增加职责</td><td>封装请求</td></tr><tr><td>是否都执行</td><td>通常只有一个处理者执行</td><td>每一层都执行（前后加动作）</td><td>由 Invoker 决定</td></tr><tr><td>后继者</td><td>可动态设置、可为空</td><td>固定为被包装对象</td><td>—</td></tr></tbody>
+</table></div>
+<h4>参考实现</h4>
+<figure class="code" data-lang="java" data-file="LeaveChain.java">
+<pre><code>// 请求
+class LeaveRequest {
+    final String type;    // 请假 / 加薪
+    final int    days;
+    LeaveRequest(String type, int days) { this.type = type; this.days = days; }
+}
+
+// Handler：抽象处理者，含后继链
+abstract class Handler {
+    protected Handler successor;                 // 后继者
+
+    public void setSuccessor(Handler successor) { this.successor = successor; }
+
+    /** 处理请求：能处理则处理，否则转发 */
+    public abstract void handleRequest(LeaveRequest req);
+}
+
+class Manager extends Handler {
+    public void handleRequest(LeaveRequest req) {
+        if ("请假".equals(req.type) &amp;&amp; req.days &lt;= 2) {
+            System.out.println("经理批准：" + req.type + " " + req.days + " 天");
+        } else if (successor != null) {
+            successor.handleRequest(req);        // 无权处理，上报
+        } else {
+            System.out.println("无人能处理该请求");
+        }
+    }
+}
+
+class Director extends Handler {
+    public void handleRequest(LeaveRequest req) {
+        if ("请假".equals(req.type) &amp;&amp; req.days &lt;= 5) {
+            System.out.println("总监批准：" + req.type + " " + req.days + " 天");
+        } else if (successor != null) {
+            successor.handleRequest(req);
+        } else {
+            System.out.println("无人能处理该请求");
+        }
+    }
+}
+
+class GeneralManager extends Handler {
+    public void handleRequest(LeaveRequest req) {
+        if ("请假".equals(req.type)) {
+            System.out.println("总经理批准：" + req.type + " " + req.days + " 天");
+        } else if ("加薪".equals(req.type) &amp;&amp; req.days &lt;= 500) {
+            System.out.println("总经理批准加薪 " + req.days);
+        } else {
+            System.out.println("总经理：再说吧");
+        }
+    }
+}
+
+public class Client {
+    public static void main(String[] args) {
+        Handler manager   = new Manager();
+        Handler director  = new Director();
+        Handler gm        = new GeneralManager();
+        manager.setSuccessor(director);          // 组装链：经理 → 总监 → 总经理
+        director.setSuccessor(gm);
+
+        manager.handleRequest(new LeaveRequest("请假", 1));
+        manager.handleRequest(new LeaveRequest("请假", 4));
+        manager.handleRequest(new LeaveRequest("请假", 10));
+        manager.handleRequest(new LeaveRequest("加薪", 300));
+    }
+}</code></pre>
+</figure>
+<div class="callout callout--danger">
+<span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-stop"></use></svg></span>
+<div class="callout__body"><p><span class="callout__title">易错点 · 认为请求一定会被处理。</span>GoF 明确指出责任链的一个效果是「<b>不保证被接受</b>」：请求可能一直传到链尾都没有处理者接手。工程上必须提供<b>兜底处理者</b>（DefaultHandler）或在链尾打印告警。另外注意链可以组成环，若不慎形成环，请求会无限循环——这也是教材提到的「消息的循环重复执行」风险。</p></div>
+</div>
+
+</article><article class="pblock" id="p-visitor">
+<div class="pblock__head">
+<span class="pblock__no">11</span>
+<h3 class="pblock__title">访问者模式 <span>Visitor Pattern</span></h3>
+<span class="chip chip--accent">行为型</span>
+</div>
+<p class="pblock__intent"><b>意图：</b>表示一个作用于某对象结构中的各元素的操作。它使你可以在不改变各元素的类的前提下定义作用于这些元素的新操作。</p>
+<h4>动机 / 问题场景</h4>
+<p>课程用「计算机硬件」举例：<code>Hardware</code> 有 <code>CPU</code> 和 <code>Harddisk</code> 两个子类。现在要加一个「显示型号」的功能，明天要加「显示运行状态」，后天要加「统计功耗」——每加一个功能就要改所有元素类，元素类会被各种不相关的操作「污染」。访问者模式把操作抽成 Visitor 层次：元素类只需实现一个 <code>accept(visitor)</code>，新功能就是新增一个 ConcreteVisitor。课程还给了 <code>ITest1/ITest2</code> 的例子，说明没有访问者时客户端只能写 <code>if (x is ITest1) ... else if (x is ITest2)</code>。</p>
+<h4>结构</h4>
+<div class="cd"><div class="cd__row"><span class="cd__box cd__box--abs">Visitor<small>+ visitElementA(e)<br>+ visitElementB(e)</small></span></div><div class="cd__arrow">实现</div><div class="cd__row"><span class="cd__box cd__box--key">ConcreteVisitor<small>TypeVisitor / RunVisitor</small></span></div><div class="cd__arrow cd__arrow--h">双重分派：element.accept(v) → v.visitXxx(this)</div><div class="cd__row"><span class="cd__box cd__box--abs">Element<small>+ accept(v)</small></span></div><div class="cd__arrow">继承</div><div class="cd__row"><span class="cd__box cd__box--key">ConcreteElementA<small>+ accept(v)<br>→ v.visitA(this)</small></span><span class="cd__box cd__box--key">ConcreteElementB<small>+ accept(v)<br>→ v.visitB(this)</small></span></div><div class="cd__arrow">包含于</div><div class="cd__row"><span class="cd__box">ObjectStructure<small>能枚举元素（常为 Composite 或集合）</small></span></div><p class="cd__note">accept 里回调 visitor 的对应方法，形成「双重分派」——元素类型与访问者类型共同决定执行哪个操作。</p></div>
+<ul><li><b>Visitor</b> —— 为对象结构中的每一个 ConcreteElement 类声明一个 visit 操作。</li><li><b>ConcreteVisitor</b> —— 实现 Visitor 接口的操作，每个操作实现算法的一部分。</li><li><b>Element</b> —— 定义一个 accept 操作，它以一个访问者为参数。</li><li><b>ConcreteElement</b> —— 实现 Element 的 accept 操作（通常是 <code>visitor.visitXxx(this)</code>）。</li><li><b>ObjectStructure</b> —— 能枚举元素；可提供高层接口允许访问者访问其元素；可以是 Composite 或集合。</li></ul>
+<h4>协作要点</h4>
+<ol><li>Client 创建一个 ConcreteVisitor 对象。</li><li>Client 遍历 ObjectStructure，对每个元素调用 <code>accept(visitor)</code>。</li><li>ConcreteElement 的 accept 调用 <code>visitor.visitXxx(this)</code>（第一次分派：元素类型）。</li><li>进入 ConcreteVisitor 的对应方法（第二次分派：访问者类型），执行具体操作。</li><li>访问者可沿途累积结果，最后返回给 Client。</li></ol>
+<h4>适用场景</h4>
+<ul><li>一个对象结构包含很多类对象，它们有不同的接口，而你想对这些对象实施一些依赖于其具体类的操作。</li><li>需要对一个对象结构中的对象进行很多不同的并且不相关的操作，而你想避免让这些操作「污染」这些对象的类。</li><li>当该对象结构被很多应用共享时，用 Visitor 模式让每个应用仅包含需要用到的操作。</li><li>定义对象结构的类很少改变，但经常需要在此结构上定义新的操作。</li></ul>
+<h4>优缺点</h4>
+<div class="pros-cons">
+<div class="pros-cons__col"><h5>优点</h5><ul><li>不修改具体元素类就可以增加新操作（通过元素的 accept 接受一个 visitor 对象实现）。</li><li>把相关的操作集中到一个 ConcreteVisitor 中，元素类保持纯粹。</li><li>可以跨元素累积状态（如统计总和），这在逐个元素的普通方法里很难做到。</li></ul></div>
+<div class="pros-cons__col"><h5>代价 / 缺点</h5><ul><li><b>不易频繁增加元素类</b>：每增加一个元素类，就要在 Visitor 接口中增加一个方法，并修改所有 Visitor 子类——开闭原则反向倾斜。</li><li>破坏封装：访问者为了操作元素，往往需要元素暴露足够的内部信息。</li><li>元素类层次必须相对稳定，否则维护成本极高。</li></ul></div>
+</div>
+<h4>与相似模式的区别</h4>
+<div class="table-wrap"><table>
+<thead><tr><th>维度</th><th>访问者</th><th>迭代器</th><th>组合</th></tr></thead>
+<tbody><tr><td>目的</td><td>对元素施加<b>新操作</b></td><td>顺序<b>遍历</b>元素</td><td>统一对待整体与部分</td></tr><tr><td>扩展方向</td><td>容易加操作，难加元素</td><td>容易加遍历方式</td><td>容易加新组件类型</td></tr><tr><td>核心机制</td><td>双重分派（accept + visit）</td><td>游标跟踪位置</td><td>递归组合</td></tr><tr><td>典型场景</td><td>编译器 AST、报表导出、静态分析</td><td>集合遍历</td><td>文件系统、UI 容器</td></tr></tbody>
+</table></div>
+<h4>参考实现</h4>
+<figure class="code" data-lang="java" data-file="ComputerVisitor.java">
+<pre><code>// Visitor：为每个具体元素声明一个 visit 方法
+interface ComputerVisitor {
+    void visitCPU(CPU cpu);
+    void visitHarddisk(Harddisk disk);
+}
+
+// Element：声明 accept
+abstract class Hardware {
+    protected String type;
+    public Hardware(String type) { this.type = type; }
+    public String getType() { return type; }
+    public abstract void run();
+    public abstract void accept(ComputerVisitor visitor);   // 关键：接受访问者
+}
+
+class CPU extends Hardware {
+    public CPU(String type) { super(type); }
+    public void run() { System.out.println("型号为" + type + "的CPU正在运转"); }
+    public void accept(ComputerVisitor v) { v.visitCPU(this); }   // 双重分派
+}
+
+class Harddisk extends Hardware {
+    public Harddisk(String type) { super(type); }
+    public void run() { System.out.println("型号为" + type + "的硬盘正在运转"); }
+    public void accept(ComputerVisitor v) { v.visitHarddisk(this); }
+}
+
+// ConcreteVisitor 1：显示型号
+class TypeVisitor implements ComputerVisitor {
+    public void visitCPU(CPU cpu)           { System.out.println("CPU型号：" + cpu.getType()); }
+    public void visitHarddisk(Harddisk d)   { System.out.println("硬盘型号：" + d.getType()); }
+}
+
+// ConcreteVisitor 2：运行
+class RunVisitor implements ComputerVisitor {
+    public void visitCPU(CPU cpu)         { cpu.run(); }
+    public void visitHarddisk(Harddisk d) { d.run(); }
+}
+
+// ObjectStructure
+class Computer {
+    private final Hardware cpu      = new CPU("Intel Core i7-620");
+    private final Hardware harddisk = new Harddisk("Seagate 500G 7200转");
+
+    public void accept(ComputerVisitor visitor) {
+        cpu.accept(visitor);
+        harddisk.accept(visitor);
+    }
+}
+
+public class ClientDemo {
+    public static void main(String[] args) {
+        Computer computer = new Computer();
+        computer.accept(new TypeVisitor());   // 新功能 = 新访问者，元素类不动
+        System.out.println("-----------------");
+        computer.accept(new RunVisitor());
+    }
+}</code></pre>
+</figure>
+<div class="callout callout--danger">
+<span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-stop"></use></svg></span>
+<div class="callout__body"><p><span class="callout__title">易错点 · 认为访问者模式符合开闭原则，可以随意扩展。</span>它的开闭原则是<b>单向</b>的：<b>增加新操作容易</b>（新增一个 ConcreteVisitor），但<b>增加新元素类很难</b>（要在 Visitor 接口加方法，并修改所有 Visitor 子类）。课程原话：「每当被访问对象接口变化时，我们不得不修改这个访问接口，这违反了面向对象的开-闭原则」。所以适用前提是「元素类结构稳定、操作经常变化」，答反了等于没答。</p></div>
+</div>
+
+</article><div class="callout callout--tip">
+<span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-bulb"></use></svg></span>
+<div class="callout__body"><p><span class="callout__title">答题技巧</span>行为型模式的简答题有固定套路：先写<b>意图</b>（GoF 原话），再写<b>解决什么耦合</b>，然后写<b>结构角色</b>，最后写<b>代价</b>。如果题干问「区别」，务必答到<b>「谁负责切换 / 谁持有谁 / 是否知道彼此」</b>这一层，只答「类图一样」是拿不到分的。</p></div>
+</div>
+</section><section class="section" id="compare" data-title="横向对比">
+<div class="section-head">
+<span class="section-head__num">04</span>
+<h2 class="section-title">横向对比</h2>
+<a class="section-anchor" href="#compare" aria-label="本节链接">#</a>
+</div>
+
+<p class="section-lead">行为型共 11 个模式，是四类里最容易混的。下面三张表覆盖了考场上最高频的辨析。</p><h3>表一：十一个行为型模式总览</h3><div class="table-wrap"><table>
+<thead><tr><th>模式</th><th>一句话意图</th><th>关键角色</th><th>扩展方向</th><th>主要代价</th></tr></thead>
+<tbody><tr><td>模板方法</td><td>固定算法骨架，步骤延迟到子类</td><td>AbstractClass / ConcreteClass</td><td>加子类</td><td>继承耦合、骨架受限</td></tr><tr><td>命令</td><td>把请求封装成对象</td><td>Command / Invoker / Receiver</td><td>加命令类</td><td>类数量膨胀</td></tr><tr><td>解释器</td><td>定义文法并解释句子</td><td>Expression / Context</td><td>加表达式类</td><td>文法复杂则类爆炸</td></tr><tr><td>迭代器</td><td>顺序访问聚合而不暴露内部</td><td>Aggregate / Iterator</td><td>加遍历方式</td><td>多一层间接</td></tr><tr><td>中介者</td><td>用中介对象封装对象间交互</td><td>Mediator / Colleague</td><td>加中介者子类</td><td>中介者易膨胀</td></tr><tr><td>备忘录</td><td>不破坏封装地保存/恢复状态</td><td>Originator / Memento / Caretaker</td><td>—</td><td>快照占内存</td></tr><tr><td>观察者</td><td>一对多依赖，状态变化自动通知</td><td>Subject / Observer</td><td>加观察者</td><td>隐式通知、内存泄漏</td></tr><tr><td>状态</td><td>行为随内部状态改变而改变</td><td>Context / State</td><td>加状态类</td><td>状态类增多、流程分散</td></tr><tr><td>策略</td><td>封装可互换的算法</td><td>Context / Strategy</td><td>加策略类</td><td>客户端需知道策略</td></tr><tr><td>责任链</td><td>沿链传递请求直到被处理</td><td>Handler / ConcreteHandler</td><td>加处理者</td><td>不保证被处理</td></tr><tr><td>访问者</td><td>不改变元素类而增加新操作</td><td>Visitor / Element</td><td>加访问者</td><td>难加元素类</td></tr></tbody>
+</table></div><h3>表二：四组必考辨析</h3><div class="table-wrap"><table>
+<thead><tr><th>易混组合</th><th>核心区别</th><th>判断口诀</th></tr></thead>
+<tbody><tr><td>策略 vs 状态</td><td>类图几乎一样。策略由<b>客户端</b>选择注入，策略之间<b>互不相识</b>；状态由<b>状态类自己</b>触发转移，状态之间<b>知道彼此</b>。</td><td>「谁切换」→ 客户端=策略，自身=状态。</td></tr><tr><td>策略 vs 模板方法</td><td>模板方法用<b>继承</b>固定骨架、变化步骤；策略用<b>组合</b>整体替换算法，且运行期可切换。</td><td>「改步骤」→ 模板方法；「换算法」→ 策略。</td></tr><tr><td>中介者 vs 观察者</td><td>中介者是<b>星形双向</b>（同事 ↔ 中介者，同事知道中介者）；观察者是<b>一对多单向广播</b>（Subject → Observer）。</td><td>「协调互交」→ 中介者；「状态通知」→ 观察者。</td></tr><tr><td>命令 vs 策略</td><td>命令封装<b>请求</b>（做什么 + 谁来做，通常持有 Receiver，支持 undo/排队）；策略封装<b>算法</b>（怎么做，不持有接收者）。</td><td>「可撤销/可排队」→ 命令；「可替换算法」→ 策略。</td></tr></tbody>
+</table></div><h3>表三：按课程「类间关系」的行为型分组</h3><div class="table-wrap"><table>
+<thead><tr><th>分组</th><th>包含模式</th><th>分组依据</th></tr></thead>
+<tbody><tr><td>父类与子类</td><td>策略、模板方法</td><td>通过父类与子类的关系分配职责（模板方法用继承，策略用组合但常被并列讨论）</td></tr><tr><td>两个类之间</td><td>备忘录、状态</td><td>两个类紧密协作，一方保存另一方状态 / 一方代表另一方状态</td></tr><tr><td>类的状态</td><td>观察者、迭代器、责任链、命令</td><td>围绕对象的状态与请求传递展开</td></tr><tr><td>通过中间类</td><td>访问者、中介者、解释器</td><td>引入第三方对象来解耦或集中控制</td></tr></tbody>
+</table></div><div class="callout callout--info">
+<span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-info"></use></svg></span>
+<div class="callout__body"><p><span class="callout__title">记忆线索</span>行为型模式的两条划分轴：<b>类行为型</b>（继承分派）只有<b>模板方法</b>与<b>解释器</b>；其余九个都是<b>对象行为型</b>（组合分派）。所有行为型模式都在做同一件事：<b>把易变的控制逻辑（算法、状态、请求、遍历、交互）从硬编码中抽出来，变成可替换的对象</b>。</p></div>
+</div>
+</section><section class="section" id="pitfalls" data-title="易错点">
+<div class="section-head">
+<span class="section-head__num">05</span>
+<h2 class="section-title">易错点</h2>
+<a class="section-anchor" href="#pitfalls" aria-label="本节链接">#</a>
+</div>
+
+<p class="section-lead">行为型是最容易「看起来都懂、一考就错」的部分。以下六条都是真实失分点。</p><ul class="pitfalls"><li><strong>把策略模式和状态模式当成同一个模式。</strong>类图确实几乎一致，但意图与切换机制完全不同：策略由<b>客户端</b>注入、策略之间<b>互不相识</b>、目的是算法可替换；状态由<b>状态类自己</b>触发转移、状态之间<b>知道彼此</b>、目的是行为随状态改变。答「类图一样所以一样」是最典型的失分。</li><li><strong>说访问者模式完全符合开闭原则。</strong>它的开闭是<b>单向</b>的：加新操作容易（新增 ConcreteVisitor），加新元素类很难（要改 Visitor 接口及所有子类）。课程明确说「每当被访问对象接口变化时，不得不修改访问接口，这违反了开-闭原则」。适用前提必须写成「元素结构稳定、操作经常变化」。</li><li><strong>把模板方法写成可被子类覆盖的 public 方法。</strong>模板方法的全部价值在于固定算法骨架。若子类能覆盖它，执行顺序就能被改写，「骨架不变」的意图失效。应声明为 <code>final</code>，只把原语操作留成抽象方法。</li><li><strong>责任链默认请求一定有人处理。</strong>GoF 明确「不保证被接受」。请求可能一路传到链尾无人处理，必须提供兜底处理者。另外链若成环会导致无限循环，这也是教材点出的风险。</li><li><strong>观察者 notify 时直接遍历原列表。</strong>观察者可能在 <code>update()</code> 中调用 attach/detach，直接遍历原列表会抛 <code>ConcurrentModificationException</code>。必须先复制列表再遍历。另外忘记 detach 会造成内存泄漏。</li><li><strong>认为迭代器模式就是「给聚合加一个 getAt(i)」。</strong>迭代器的判据是<b>遍历状态被封装进独立的迭代器对象</b>，聚合只提供 createIterator()。如果客户端仍自己控制下标访问 getAt(i)，既暴露了内部表示，也无法支持同一聚合上的多个并发遍历。</li></ul>
+</section><section class="section" id="quiz" data-title="本节自测">
+<div class="section-head">
+<span class="section-head__num">06</span>
+<h2 class="section-title">本节自测</h2>
+<a class="section-anchor" href="#quiz" aria-label="本节链接">#</a>
+</div>
+<p class="section-lead">题目数据来自本页底部 <code>&lt;script id="quiz-data"&gt;</code>，由 site.js 渲染判分。</p>
+<div class="quiz" id="quiz-root"></div>
+</section><section class="section" id="cards" data-title="记忆卡片">
+<div class="section-head">
+<span class="section-head__num">07</span>
+<h2 class="section-title">记忆卡片</h2>
+<a class="section-anchor" href="#cards" aria-label="本节链接">#</a>
+</div>
+<p class="section-lead">点击卡片翻面；标记「已掌握」会记住进度，下次接着看。</p>
+<div class="flash" id="cards-root"></div>
+</section><section class="section" id="slides" data-title="课件原图"><div class="section-head"><span class="section-head__num">08</span><h2 class="section-title">课件原图</h2><a class="section-anchor" href="#slides" aria-label="本节链接">#</a></div><p class="section-lead">行为型模式课件共 124 页，由 <code>tools/extract_slides.py</code> 从 PDF 逐页导出。点击缩略图可放大，支持 ← → 翻页。</p><div class="slides" data-slides-dir="slides/behavioral" data-count="124" data-prefix="slide" data-ext="jpg" data-pad="3" data-start="1" data-title="行为型模式 · 课件原图（124 页）"></div></section>
+        <section class="section" id="videos" data-title="视频讲解">
+          <div class="section-head">
+            <span class="section-head__num">09</span>
+            <h2 class="section-title">视频讲解</h2>
+            <a class="section-anchor" href="#videos" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">
+            行为型 9 个模式各有一段讲解，重点是请求与状态在对象之间的流转过程——这部分用动画看一遍，比读三段文字快。
+          </p>
+          <div class="videos" id="videos-root"></div>
+          <p class="muted tiny" style="margin-top:var(--sp-3)">共 9 段，均为 1080p 讲解视频；点封面播放，<kbd>Esc</kbd> 关闭。</p>
+        </section>
+
+        <nav class="pager" id="pager-root" aria-label="章节导航"></nav>
+      </div>
+    </main>
+  </div>
+</div>
+
+<footer class="footer" id="footer-root"></footer>
+
+<script type="application/json" id="quiz-data">
+[
+  {
+    "type": "single",
+    "stem": "行为型模式中，属于「类行为型模式」（使用继承在类间分派行为）的是？",
+    "options": [
+      "策略模式与状态模式",
+      "模板方法模式与解释器模式",
+      "命令模式与责任链模式",
+      "观察者模式与迭代器模式"
+    ],
+    "answer": 1,
+    "explain": "GoF 分类中，行为型的类模式只有模板方法与解释器，其余九个（责任链、命令、迭代器、中介者、备忘录、观察者、状态、策略、访问者）都是对象行为型模式。",
+    "tag": "分类"
+  },
+  {
+    "type": "single",
+    "stem": "策略模式与状态模式最本质的区别是？",
+    "options": [
+      "策略模式用继承，状态模式用组合",
+      "策略由客户端选择且策略间互不相识，状态由状态类自身触发转移且状态间知道彼此",
+      "策略模式只能有一个具体策略",
+      "状态模式不能消除条件语句"
+    ],
+    "answer": 1,
+    "explain": "两者类图几乎一致，但切换机制与意图不同。A 错（都用组合）；C 错；D 错，状态模式正是用来消除庞大状态分支的。",
+    "tag": "辨析"
+  },
+  {
+    "type": "single",
+    "stem": "模板方法模式中，父类调用子类操作的反向控制结构被称为？",
+    "options": [
+      "里氏替换原则",
+      "好莱坞法则（别来找我，让我来找你）",
+      "迪米特法则",
+      "合成复用原则"
+    ],
+    "answer": 1,
+    "explain": "教材原话：模板方法导致一种反向的控制结构（依赖倒置原则），即「你别来找我，让我去找你」，也称好莱坞法则。",
+    "tag": "模板方法"
+  },
+  {
+    "type": "single",
+    "stem": "命令模式中，负责「知道如何实施与执行一个请求相关的操作」的角色是？",
+    "options": [
+      "Command",
+      "Invoker",
+      "Receiver",
+      "Client"
+    ],
+    "answer": 2,
+    "explain": "Receiver（如 Document）知道如何实施请求；Command 声明接口；Invoker（如 MenuItem）要求命令执行；Client 创建命令并设定接收者。",
+    "tag": "命令"
+  },
+  {
+    "type": "single",
+    "stem": "访问者模式的核心机制是？",
+    "options": [
+      "单分派",
+      "双重分派",
+      "递归下降",
+      "观察者通知"
+    ],
+    "answer": 1,
+    "explain": "element.accept(visitor) 先按元素具体类型分派一次，再在 accept 中调用 visitor.visitXxx(this) 按访问者具体类型分派一次，两次动态绑定共同决定执行的操作。",
+    "tag": "访问者"
+  },
+  {
+    "type": "single",
+    "stem": "备忘录模式中，负责保存备忘录但不能修改其内容的角色是？",
+    "options": [
+      "Originator",
+      "Memento",
+      "Caretaker",
+      "Client"
+    ],
+    "answer": 2,
+    "explain": "Caretaker（管理者）只负责保存和取出备忘录，不能对内容进行操作或检查；Originator 负责创建与恢复；Memento 存储状态。",
+    "tag": "备忘录"
+  },
+  {
+    "type": "single",
+    "stem": "责任链模式的一个已知缺点是？",
+    "options": [
+      "请求发送者必须知道接收者是谁",
+      "不保证请求一定被处理",
+      "无法在运行时改变链的顺序",
+      "只能有一个处理者"
+    ],
+    "answer": 1,
+    "explain": "GoF 明确指出责任链「不保证被接受」：请求可能到达链尾仍无人处理。A 与模式的解耦目的相反；C 错，链可动态重组；D 错，可有多个处理者。",
+    "tag": "责任链"
+  },
+  {
+    "type": "single",
+    "stem": "迭代器模式中，负责跟踪遍历当前位置的角色是？",
+    "options": [
+      "Aggregate",
+      "ConcreteAggregate",
+      "ConcreteIterator",
+      "Client"
+    ],
+    "answer": 2,
+    "explain": "ConcreteIterator 实现迭代器接口，遍历集合时跟踪当前位置；ConcreteAggregate 只负责创建迭代器。",
+    "tag": "迭代器"
+  },
+  {
+    "type": "multiple",
+    "stem": "下列属于行为型模式的有（多选）：",
+    "options": [
+      "中介者",
+      "备忘录",
+      "享元",
+      "解释器"
+    ],
+    "answer": [
+      0,
+      1,
+      3
+    ],
+    "explain": "享元属于结构型模式。行为型共 11 种：责任链、命令、解释器、迭代器、中介者、备忘录、观察者、状态、策略、模板方法、访问者。",
+    "tag": "分类"
+  },
+  {
+    "type": "multiple",
+    "stem": "命令模式的适用场景包括（多选）：",
+    "options": [
+      "需要将请求调用者与接收者解耦",
+      "需要支持命令的撤销与恢复",
+      "需要将请求排队或记录日志",
+      "需要动态替换算法实现"
+    ],
+    "answer": [
+      0,
+      1,
+      2
+    ],
+    "explain": "D 是策略模式的适用场景。命令模式关注「请求」，策略关注「算法」。",
+    "tag": "命令"
+  },
+  {
+    "type": "multiple",
+    "stem": "关于访问者模式，下列说法正确的有（多选）：",
+    "options": [
+      "增加新的操作容易，只需新增一个 ConcreteVisitor",
+      "增加新的元素类困难，需修改 Visitor 接口及所有子类",
+      "元素类通过 accept 方法接受访问者",
+      "它完全符合开闭原则，两个方向都容易扩展"
+    ],
+    "answer": [
+      0,
+      1,
+      2
+    ],
+    "explain": "D 错误：访问者的开闭原则是单向的，新增元素类会破坏开闭原则，这正是课程强调的局限。",
+    "tag": "访问者"
+  },
+  {
+    "type": "multiple",
+    "stem": "观察者模式的主要缺点包括（多选）：",
+    "options": [
+      "通知是隐式的，代码关系不明显、难以理解",
+      "Subject 被大量订阅时广播通知有效率问题",
+      "忘记 detach 会导致对象无法被回收",
+      "Subject 必须知道每个 Observer 的具体类型"
+    ],
+    "answer": [
+      0,
+      1,
+      2
+    ],
+    "explain": "D 错误：Subject 只依赖抽象 Observer 接口，不知道具体类型——这正是它松耦合的体现。",
+    "tag": "观察者"
+  },
+  {
+    "type": "boolean",
+    "stem": "中介者模式用一对多的交互代替同事对象之间多对多的交互，因此更易于理解、维护和扩展。",
+    "answer": true,
+    "explain": "这是教材对中介者模式的评价之一：把网状的多对多关系收敛为星形的一对多关系。",
+    "tag": "中介者"
+  },
+  {
+    "type": "boolean",
+    "stem": "模板方法模式中，模板方法应当声明为可被子类覆盖的普通 public 方法，以提供最大灵活性。",
+    "answer": false,
+    "explain": "恰恰相反：模板方法必须固定算法骨架，工程上应声明为 final，只让原语操作可被子类实现。否则子类改写顺序会让模式失效。",
+    "tag": "模板方法"
+  },
+  {
+    "type": "boolean",
+    "stem": "解释器模式适合文法复杂、性能要求高的大型语言实现。",
+    "answer": false,
+    "explain": "解释器模式适用于文法简单、效率要求不高的场景。文法一复杂，规则类数量会爆炸，解释执行效率也低；大型语言应使用编译器/解析器生成工具。",
+    "tag": "解释器"
+  }
+]
+</script>
+
+<script type="application/json" id="cards-data">
+[
+  {
+    "front": "行为型模式的两条划分轴？",
+    "back": "<b>类行为型<\/b>（继承分派，只有模板方法与解释器）与<b>对象行为型<\/b>（组合分派，其余九个）。",
+    "tag": "分类"
+  },
+  {
+    "front": "行为型 11 种模式是哪些？",
+    "back": "责任链、命令、解释器、迭代器、中介者、备忘录、观察者、状态、策略、模板方法、访问者。",
+    "tag": "总览"
+  },
+  {
+    "front": "行为型模式关注的核心是什么？",
+    "back": "对象之间<b>如何交互、如何分配职责<\/b>，刻画运行时的复杂控制流。",
+    "tag": "总览"
+  },
+  {
+    "front": "模板方法模式的意图？",
+    "back": "定义一个操作中的算法<b>骨架<\/b>，把某些步骤延迟到子类，使子类不改变算法结构即可重定义某些步骤。",
+    "tag": "模板方法"
+  },
+  {
+    "front": "什么是好莱坞法则？",
+    "back": "「<b>别来找我，让我来找你<\/b>」——父类调用子类操作而非相反，是模板方法导致的反向控制结构（依赖倒置）。",
+    "tag": "模板方法"
+  },
+  {
+    "front": "模板方法中的钩子方法是什么？",
+    "back": "抽象类中给出默认/空实现的方法，子类可<b>选择性覆盖<\/b>，从而在不改骨架的前提下影响流程走向。",
+    "tag": "模板方法"
+  },
+  {
+    "front": "命令模式的意图？",
+    "back": "将<b>请求封装为对象<\/b>，从而可用不同请求对客户参数化，支持请求排队、记录日志与撤销。",
+    "tag": "命令"
+  },
+  {
+    "front": "命令模式的五个角色？",
+    "back": "<b>Command<\/b>（接口）、<b>ConcreteCommand<\/b>（绑定 Receiver）、<b>Invoker<\/b>（提交请求）、<b>Receiver<\/b>（真正执行）、<b>Client<\/b>。",
+    "tag": "命令"
+  },
+  {
+    "front": "什么是宏命令？",
+    "back": "命令模式与组合模式的结合：CompositeCommand 持有一组命令，execute 时遍历执行，undo 时<b>逆序<\/b>撤销。",
+    "tag": "命令"
+  },
+  {
+    "front": "解释器模式的意图？",
+    "back": "给定一个语言，定义它的文法表示，并定义一个解释器，用该解释器来解释语言中的句子。",
+    "tag": "解释器"
+  },
+  {
+    "front": "解释器模式的主要缺点？",
+    "back": "文法复杂时<b>类数量急剧膨胀<\/b>、系统难维护；解释执行<b>效率低<\/b>，不适合复杂或高性能语言。",
+    "tag": "解释器"
+  },
+  {
+    "front": "迭代器模式的意图？",
+    "back": "提供一种方法<b>顺序访问<\/b>聚合对象中的各个元素，而又<b>不暴露<\/b>该对象的内部表示。",
+    "tag": "迭代器"
+  },
+  {
+    "front": "迭代器模式把哪两个职责分离了？",
+    "back": "集合的<b>存储内部数据<\/b>（聚合负责）与<b>遍历内部数据<\/b>（迭代器负责）。",
+    "tag": "迭代器"
+  },
+  {
+    "front": "中介者模式的意图？",
+    "back": "用一个中介对象封装一系列对象交互，使各对象不需显式相互引用，从而耦合松散且可独立改变交互。",
+    "tag": "中介者"
+  },
+  {
+    "front": "中介者模式的主要缺点？",
+    "back": "① 控制集中化，中介者可能膨胀成<b>难维护的庞大对象<\/b>；② 与每个同事都耦合，<b>难以在系统间复用<\/b>。",
+    "tag": "中介者"
+  },
+  {
+    "front": "备忘录模式的三个角色？",
+    "back": "<b>Originator<\/b>（创建/恢复快照）、<b>Memento<\/b>（存储状态，对外不透明）、<b>Caretaker<\/b>（只保存，不修改内容）。",
+    "tag": "备忘录"
+  },
+  {
+    "front": "备忘录模式为什么要强调「不破坏封装」？",
+    "back": "Memento 对外是<b>窄接口<\/b>（Caretaker 只能整体保存/传递），只有 Originator 能用宽接口读写状态，从而避免内部状态外泄。",
+    "tag": "备忘录"
+  },
+  {
+    "front": "观察者模式的意图？",
+    "back": "定义对象间<b>一对多<\/b>的依赖关系，当一个对象状态改变时，所有依赖它的对象都得到通知并被自动更新。",
+    "tag": "观察者"
+  },
+  {
+    "front": "观察者模式的四个角色？",
+    "back": "<b>Subject<\/b>（attach/detach/notify）、<b>ConcreteSubject<\/b>、<b>Observer<\/b>（update 接口）、<b>ConcreteObserver<\/b>。",
+    "tag": "观察者"
+  },
+  {
+    "front": "观察者模式为什么要在 notify 时遍历列表副本？",
+    "back": "观察者可能在 update 中 attach/detach，直接遍历原列表会抛 <code>ConcurrentModificationException<\/code>。",
+    "tag": "观察者"
+  },
+  {
+    "front": "状态模式的意图？",
+    "back": "允许一个对象在其内部状态改变时改变它的行为，对象看起来似乎修改了它的类。",
+    "tag": "状态"
+  },
+  {
+    "front": "状态模式与策略模式的区别？",
+    "back": "状态：状态类<b>知道彼此<\/b>并<b>自己触发转移<\/b>，行为随状态变；策略：策略间<b>互不相识<\/b>，由<b>客户端<\/b>注入选择。",
+    "tag": "辨析"
+  },
+  {
+    "front": "策略模式的意图？",
+    "back": "定义一系列算法并分别封装，使它们可相互替换，让算法独立于使用它的客户而变化。",
+    "tag": "策略"
+  },
+  {
+    "front": "策略模式的主要缺点？",
+    "back": "① Client 必须知道多个不同策略才能配置（选择逻辑没消失，只是转移）；② 策略类数量增加；③ 信息流费用偏高。",
+    "tag": "策略"
+  },
+  {
+    "front": "责任链模式的意图？",
+    "back": "使多个对象都有机会处理请求，避免发送者与接收者耦合；把对象连成链，沿链传递请求直到被处理。",
+    "tag": "责任链"
+  },
+  {
+    "front": "责任链模式的「不保证被接受」是什么意思？",
+    "back": "请求可能一路传到链尾都无人处理。工程上必须提供<b>兜底处理者<\/b>；链若成环还会无限循环。",
+    "tag": "责任链"
+  },
+  {
+    "front": "访问者模式的意图？",
+    "back": "表示一个作用于某对象结构中各元素的操作，使你在<b>不改变元素类<\/b>的前提下定义作用于这些元素的新操作。",
+    "tag": "访问者"
+  },
+  {
+    "front": "什么是双重分派？",
+    "back": "<code>element.accept(visitor)<\/code> 先按<b>元素具体类型<\/b>分派，再在 accept 内调用 <code>visitor.visitXxx(this)<\/code> 按<b>访问者具体类型<\/b>分派——两次动态绑定决定操作。",
+    "tag": "访问者"
+  },
+  {
+    "front": "访问者模式的开闭原则为何是单向的？",
+    "back": "<b>加新操作容易<\/b>（新增 ConcreteVisitor）；<b>加新元素类难<\/b>（要改 Visitor 接口及所有子类）。适用前提是元素结构稳定。",
+    "tag": "访问者"
+  },
+  {
+    "front": "四组必考辨析是哪四组？",
+    "back": "策略 vs 状态；策略 vs 模板方法；中介者 vs 观察者；命令 vs 策略。",
+    "tag": "辨析"
+  }
+]
+</script>
+
+<script src="../../data/videos.js"></script>
+<script src="../../data/chapters.js"></script>
+<script src="../../assets/js/site.js"></script>
+</body>
+</html>

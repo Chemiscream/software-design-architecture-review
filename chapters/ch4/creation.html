@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page="chapter" data-chapter="ch4" data-subpage="creation">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="面向对象设计模式 · 创建型：简单工厂、工厂方法、抽象工厂、建造者、原型、单例的意图、结构、协作、适用场景、优缺点与代码实现，含对比表、易错点、自测与记忆卡片。">
+<meta name="color-scheme" content="light dark">
+<title>第 4 章 创建型模式 · 软件设计与体系架构</title>
+<link rel="stylesheet" href="../../assets/css/site.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%238a5a2b'/%3E%3Cpath d='M6 8h12M6 12h12M6 16h7' stroke='%23fff' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
+<script>
+  /* 主题初始化：必须内联在 <head> 中，且必须一字不改地保留 */
+  (function () {
+    try {
+      var t = JSON.parse(localStorage.getItem('sda.theme'));
+      if (t !== 'dark' && t !== 'light') {
+        t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      document.documentElement.setAttribute('data-theme', t);
+    } catch (e) {
+      document.documentElement.setAttribute('data-theme', 'light');
+    }
+  })();
+</script>
+<style>
+  /* ===== ch4 章节本地样式：子页导航 / 类图 / 模式详述块 ===== */
+  /* 知识地图 4 列与学习目标文本流已由共享样式 assets/css/site.css 统一修复，此处不再覆盖。 */
+
+  .subnav {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem;
+    margin: var(--sp-5) 0 0; padding: 0.55rem 0.7rem;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--surface);
+  }
+  .subnav__label {
+    font-size: var(--fs-tiny); font-weight: 700; letter-spacing: 0.06em;
+    color: var(--text-3); margin-right: 0.2rem;
+  }
+  .subnav a {
+    font-size: var(--fs-small); padding: 0.3rem 0.75rem; text-decoration: none;
+    border: 1px solid var(--border); border-radius: var(--radius-pill);
+    color: var(--text-2);
+  }
+  .subnav a:hover { border-color: var(--accent-ui); color: var(--accent-strong); }
+  .subnav a[aria-current="page"] {
+    background: var(--accent-fill); border-color: var(--accent-fill); color: var(--on-accent); font-weight: 600;
+  }
+  html[data-theme="dark"] .subnav a[aria-current="page"] { color: #12161d; }
+
+  /* 类图：纯 CSS 角色框图 */
+  .cd {
+    display: flex; flex-direction: column; gap: 0.4rem;
+    padding: var(--sp-4); margin: 0 0 var(--sp-4);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--surface);
+  }
+  .cd__row {
+    display: flex; flex-wrap: wrap; gap: 0.5rem;
+    align-items: center; justify-content: center;
+  }
+  .cd__box {
+    padding: 0.4rem 0.7rem; min-width: 6rem; text-align: center;
+    border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+    background: var(--surface-2); font-size: var(--fs-small);
+    font-weight: 600; line-height: 1.35;
+  }
+  .cd__box small {
+    display: block; font-weight: 400; font-size: var(--fs-tiny);
+    color: var(--text-3); font-family: var(--font-mono);
+  }
+  .cd__box--abs {
+    background: var(--surface); border: 1.5px dashed var(--accent-ui);
+    color: var(--accent-strong);
+  }
+  html[data-theme="dark"] .cd__box--abs { color: var(--accent-ui); }
+  .cd__box--key { background: var(--accent-fill); border-color: var(--accent-fill); color: var(--on-accent); }
+  .cd__box--key small { color: var(--on-accent); opacity: .78; }
+  .cd__arrow {
+    display: flex; flex-direction: column; align-items: center; gap: 0.15rem;
+    font-size: var(--fs-tiny); font-family: var(--font-mono);
+    color: var(--text-3); line-height: 1.1; white-space: nowrap;
+  }
+  .cd__arrow::after {
+    content: ""; border-left: 5px solid transparent; border-right: 5px solid transparent;
+    border-top: 7px solid var(--border-strong);
+  }
+  .cd__arrow--h { flex-direction: row; justify-content: center; width: 100%; }
+  .cd__arrow--h::after {
+    border-left: 7px solid var(--border-strong); border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent; border-right: 0;
+  }
+  .cd__note {
+    margin: 0.15rem 0 0; text-align: center;
+    font-size: var(--fs-tiny); color: var(--text-3);
+  }
+  /* 窄屏修正：类图箭头上的说明可能很长（如「双重分派：element.accept(v) → v.visitXxx(this)」），
+     .cd__arrow 的 white-space:nowrap 会把整页撑出横向滚动条。手机上允许换行。 */
+  @media (max-width: 640px) {
+    .cd { overflow-x: auto; }
+    .cd__arrow { white-space: normal; max-width: 100%; text-align: center; }
+  }
+
+  /* 模式详述块 */
+  .pblock {
+    border: 1px solid var(--border); border-radius: var(--radius-lg);
+    background: var(--surface); padding: var(--sp-5);
+    margin: 0 0 var(--sp-6); box-shadow: var(--shadow-sm);
+    scroll-margin-top: calc(var(--topbar-h) + 1rem);
+  }
+  .pblock__head {
+    display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
+    margin-bottom: 0.7rem;
+  }
+  .pblock__no {
+    font-family: var(--font-mono); font-size: var(--fs-tiny); font-weight: 700;
+    color: var(--accent-ui); background: var(--accent-soft);
+    border-radius: var(--radius-sm); padding: 0.1rem 0.45rem;
+  }
+  .pblock__title { margin: 0; font-size: 1.25rem; }
+  .pblock__title span {
+    font-family: var(--font-mono); font-size: var(--fs-small);
+    font-weight: 500; color: var(--text-3);
+  }
+  .pblock__intent {
+    margin: 0 0 var(--sp-3); padding: 0.6rem 0.9rem;
+    border-left: 3px solid var(--accent-ui); border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    background: var(--accent-softer); font-size: 0.9688rem;
+  }
+  .pblock h4 { margin: var(--sp-4) 0 0.4rem; font-size: 1rem; }
+  .pblock > p { color: var(--text-2); }
+  .pblock ul, .pblock ol { margin: 0 0 var(--sp-3); padding-left: 1.35rem; }
+  .pblock li { margin: 0.2rem 0; color: var(--text-2); }
+  .pros-cons {
+    display: grid; gap: var(--sp-3); margin: 0 0 var(--sp-3);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  }
+  .pros-cons__col {
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: var(--sp-3) var(--sp-4); background: var(--surface-2);
+  }
+  .pros-cons__col h5 { margin: 0 0 0.3rem; font-size: var(--fs-small); }
+  .pros-cons__col ul { margin: 0; padding-left: 1.2rem; font-size: var(--fs-small); }
+
+  /* 决策树 SVG */
+  .dt { display: block; width: 100%; height: auto; margin: 0 0 var(--sp-3); }
+  .dt-box { fill: var(--surface-2); stroke: var(--border-strong); stroke-width: 1.2; }
+  .dt-box--root { fill: var(--accent-soft); stroke: var(--accent-ui); stroke-width: 1.6; }
+  .dt-box--leaf { fill: var(--surface); stroke: var(--accent-ui); stroke-width: 1.2; }
+  .dt-line { fill: none; stroke: var(--border-strong); stroke-width: 1.5; }
+  .dt-t { font-family: var(--font-sans); font-size: 15.5px; fill: var(--text); }
+  .dt-t--b { font-weight: 700; }
+  .dt-t--sm { font-family: var(--font-mono); font-size: 12px; fill: var(--text-3); }
+
+  /* 决策清单三栏 */
+  .decide {
+    display: grid; gap: var(--sp-3); margin: 0 0 var(--sp-4);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  @media (max-width: 720px) {
+    .decide { grid-template-columns: minmax(0, 1fr); }
+  }
+  .decide__col {
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--surface); padding: var(--sp-4);
+  }
+  .decide__col h4 { margin: 0 0 0.5rem; font-size: var(--fs-small); }
+  .decide__row {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.5rem;
+    align-items: baseline; padding: 0.32rem 0; font-size: var(--fs-small);
+    border-bottom: 1px dashed var(--border);
+  }
+  .decide__row:last-child { border-bottom: 0; }
+  .decide__row span { color: var(--text-2); }
+  .decide__row a { font-weight: 700; white-space: nowrap; }
+
+  /* 模式索引条 */
+  .pindex { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0 0 var(--sp-5); }
+  .pindex a {
+    font-size: var(--fs-tiny); padding: 0.22rem 0.6rem; text-decoration: none;
+    border: 1px solid var(--border); border-radius: var(--radius-pill);
+    color: var(--text-2); background: var(--surface);
+  }
+  .pindex a:hover { border-color: var(--accent-ui); color: var(--accent-strong); }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">跳到正文</a>
+
+<div class="progress-bar" aria-hidden="true"><div class="progress-bar__fill" id="progress-fill"></div></div>
+
+<header class="topbar" id="topbar-root"></header>
+
+<div class="wrap">
+  <div class="layout">
+    <aside class="sidebar" id="sidebar-root" aria-label="章节目录"></aside>
+
+    <main class="main" id="main">
+      <div class="main__inner">
+<section class="section" id="overview" data-title="本章导览">
+<div class="hero">
+<span class="hero__eyebrow">第 4 章 · 面向对象设计模式 / 创建型</span>
+<h1>创建型模式：把「new」这件事从客户端手里拿走</h1>
+<p class="hero__lead">创建型模式抽象了实例化过程，让系统独立于对象「如何被创建、组合和表示」。五个 GoF 创建型模式加一个课程补充的简单工厂，本质上都在回答同一个问题：当具体类必须变化时，如何让调用方不必跟着改。</p>
+<div class="hero__meta"><span class="chip chip--accent"><svg class="icon" aria-hidden="true"><use href="#i-target"></use></svg>考试重点</span><span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-clock"></use></svg>约 35 分钟</span><span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-puzzle"></use></svg>创建型 ×5</span><span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg>高频设计题</span></div>
+<div class="hero__actions"><a class="btn btn--primary" href="#concepts"><svg class="icon" aria-hidden="true"><use href="#i-play"></use></svg>开始阅读</a><a class="btn" href="#detail"><svg class="icon" aria-hidden="true"><use href="#i-list"></use></svg>看五个模式</a><a class="btn" href="#quiz"><svg class="icon" aria-hidden="true"><use href="#i-target"></use></svg>直接自测</a></div>
+</div><nav class="subnav" aria-label="第 4 章子页面导航">
+<span class="subnav__label">第 4 章 · 子页面</span>
+<a href="index.html">模式总览</a>
+<a href="creation.html" aria-current="page">创建型 ×5</a>
+<a href="structural.html">结构型 ×7</a>
+<a href="behavioral.html">行为型 ×11</a>
+</nav><h2 class="section-title" style="margin-top:var(--sp-5)"><svg class="icon" aria-hidden="true"><use href="#i-target"></use></svg>学习目标</h2><p class="section-lead">读完这一页，应当能独立完成下列动作。</p><ol class="objectives"><li><span>能说出创建型模式共同的两条主旋律：<b>封装「用哪些具体类」</b>与<b>隐藏「实例如何被创建和组装」</b>。</span></li><li><span>能画出工厂方法、抽象工厂、建造者、单例四种模式的类图，并指出各自的抽象角色与具体角色。</span></li><li><span>能在给定需求（换主题、换数据库、换日志后端、造复杂对象）时，判断该用哪一种创建型模式。</span></li><li><span>能解释单例的五种写法（饿汉/懒汉/双重检查/静态内部类/枚举）各自的问题，尤其是并发与反射破坏。</span></li><li><span>能区分「工厂方法 vs 抽象工厂」「建造者 vs 工厂」「原型 vs 克隆构造函数」三组高频混淆点。</span></li></ol><h2 class="section-title" style="margin-top:var(--sp-6)"><svg class="icon" aria-hidden="true"><use href="#i-network"></use></svg>知识地图</h2><p class="section-lead">创建型模式的共同骨架：客户端只认抽象，具体类被关进工厂/建造者/原型里。</p><div class="kmap"><div class="kmap__col"><p class="kmap__title">问题</p><ul class="kmap__list"><li>客户端直接 new 具体类 → 硬编码依赖</li><li>产品类型要变，客户端跟着改</li><li>构造步骤多、顺序不能错</li><li>对象创建代价高，想复用已有实例</li></ul></div><div class="kmap__col"><p class="kmap__title">角色</p><ul class="kmap__list"><li>Product 抽象产品</li><li>ConcreteProduct 具体产品</li><li>Creator / Factory 工厂</li><li>Director / Builder / Prototype / Singleton</li></ul></div><div class="kmap__col"><p class="kmap__title">协作</p><ul class="kmap__list"><li>客户端只持有抽象类型</li><li>工厂决定实例化哪个子类</li><li>建造者按稳定步骤装配</li><li>原型靠 clone 复制自身</li></ul></div><div class="kmap__col"><p class="kmap__title">代价</p><ul class="kmap__list"><li>类数量成对增加</li><li>抽象工厂难以新增产品等级</li><li>单例引入全局状态与并发问题</li><li>原型要处理深/浅拷贝</li></ul></div></div>
+</section><section class="section" id="concepts" data-title="核心概念与模式卡">
+<div class="section-head">
+<span class="section-head__num">02</span>
+<h2 class="section-title">核心概念与模式卡</h2>
+<a class="section-anchor" href="#concepts" aria-label="本节链接">#</a>
+</div>
+
+<p class="section-lead">先把「产品族 / 产品等级结构 / 延迟实例化」这些词说清，否则五个模式会糊成一团。</p><div class="grid"><div class="concept">
+<p class="concept__term">创建型模式 <span class="concept__en">Creational Patterns</span></p>
+<p class="concept__body">把<b>对象的创建与使用分离</b>。系统不需要知道要创建哪个具体类、实例怎么被组装，只面向抽象编程。符合单一职责原则：创建是创建，使用是使用。</p>
+<div class="concept__tags"><span class="chip chip--accent">总览</span><span class="chip">GoF 三大类之一</span></div>
+</div><div class="concept">
+<p class="concept__term">产品等级结构 <span class="concept__en">Product Hierarchy</span></p>
+<p class="concept__body">同一抽象产品下的所有具体产品构成的继承层次。例如 <code>Button</code> → <code>WindowsButton</code> / <code>MacButton</code>。<b>一个等级结构 = 一条继承链</b>。</p>
+<div class="concept__tags"><span class="chip chip--accent">术语</span><span class="chip">抽象工厂</span></div>
+</div><div class="concept">
+<p class="concept__term">产品族 <span class="concept__en">Product Family</span></p>
+<p class="concept__body">位于<b>不同产品等级结构</b>中、但属于同一「品牌/系列」的一组产品。例如 Windows 主题下的 WindowsButton + WindowsText。抽象工厂保证你拿到的永远是同一族的产品。</p>
+<div class="concept__tags"><span class="chip chip--accent">术语</span><span class="chip">易混淆</span></div>
+</div><div class="concept">
+<p class="concept__term">简单工厂 <span class="concept__en">Simple Factory</span></p>
+<p class="concept__body">一个静态方法 + 一串 <code>if/else</code>，按参数返回不同子类。<b>不属于 GoF 23 种</b>，但课程把它当作工厂家族的入门形态。新增产品要改工厂判断逻辑，<b>违反开闭原则</b>。</p>
+<div class="concept__tags"><span class="chip chip--accent">非 GoF</span><span class="chip">课程补充</span></div>
+</div><div class="concept">
+<p class="concept__term">工厂方法 <span class="concept__en">Factory Method</span></p>
+<p class="concept__body">把「实例化哪一个具体产品」推迟到<b>子类</b>。Creator 只声明抽象工厂方法，ConcreteCreator 决定返回哪个 ConcreteProduct。工厂与产品形成<b>平行的类层次</b>。</p>
+<div class="concept__tags"><span class="chip chip--accent">GoF</span><span class="chip">类创建型</span></div>
+</div><div class="concept">
+<p class="concept__term">抽象工厂 <span class="concept__en">Abstract Factory</span></p>
+<p class="concept__body">面向<b>多个产品等级结构</b>的工厂：一个工厂一次创建一整个产品族。增加新<b>产品族</b>容易，增加新<b>产品等级结构</b>要改所有工厂，这是它的开闭原则「倾斜」。</p>
+<div class="concept__tags"><span class="chip chip--accent">GoF</span><span class="chip">对象创建型</span></div>
+</div><div class="concept">
+<p class="concept__term">建造者 <span class="concept__en">Builder</span></p>
+<p class="concept__body">把「复杂对象的<b>构造步骤</b>」与「最终表示」分离。Director 固定装配顺序，Builder 子类决定每个零件长什么样。适合<b>步骤稳定、零件易变</b>的对象。</p>
+<div class="concept__tags"><span class="chip chip--accent">GoF</span><span class="chip">对象创建型</span></div>
+</div><div class="concept">
+<p class="concept__term">原型 <span class="concept__en">Prototype</span></p>
+<p class="concept__body">通过<b>复制已有实例</b>来创建新对象，而不是 new + 重新初始化。关键在于 <code>clone()</code> 的浅拷贝 / 深拷贝语义，以及「类名对客户端不可见」时也能造对象。</p>
+<div class="concept__tags"><span class="chip chip--accent">GoF</span><span class="chip">对象创建型</span></div>
+</div><div class="concept">
+<p class="concept__term">单例 <span class="concept__en">Singleton</span></p>
+<p class="concept__body">保证一个类<b>只有一个实例</b>并提供全局访问点。它同时是创建型模式里唯一「限制数量」的模式，代价是引入全局状态、难以测试、并发与反射都可能破坏它。</p>
+<div class="concept__tags"><span class="chip chip--accent">GoF</span><span class="chip">对象创建型</span></div>
+</div></div><h3 style="margin-top:var(--sp-6)">六个模式卡（速览）</h3><p>先扫一遍，记住每个模式的<b>意图一句话</b>与<b>代价一句话</b>；详细结构在下一节展开。</p><div class="pattern">
+<div class="pattern__head">
+<h4 class="pattern__name">简单工厂模式</h4>
+<span class="pattern__en">Simple Factory Pattern</span>
+<span class="pattern__type">创建型</span>
+</div>
+<div class="pattern__body"><dl class="pattern__rows"><div class="pattern__row"><dt>意图</dt><dd>定义一个工厂类，根据参数返回不同子类的实例，客户端不直接 new。</dd></div><div class="pattern__row"><dt>别名</dt><dd>静态工厂方法（Static Factory Method）</dd></div><div class="pattern__row"><dt>适用场景</dt><dd>工厂负责创建的对象比较少；客户端只知道参数、不关心创建细节。</dd></div><div class="pattern__row"><dt>参与角色</dt><dd>Factory、Product（抽象产品）、ConcreteProduct（具体产品）</dd></div><div class="pattern__row"><dt>主要代价</dt><dd>工厂类职责过重，<b>新增产品必须改工厂判断逻辑</b>，违反开闭原则。</dd></div></dl></div>
+</div><div class="pattern">
+<div class="pattern__head">
+<h4 class="pattern__name">工厂方法模式</h4>
+<span class="pattern__en">Factory Method Pattern</span>
+<span class="pattern__type">创建型</span>
+</div>
+<div class="pattern__body"><dl class="pattern__rows"><div class="pattern__row"><dt>意图</dt><dd>定义一个创建对象的接口，让子类决定实例化哪一个类；使一个类的实例化延迟到其子类。</dd></div><div class="pattern__row"><dt>别名</dt><dd>虚拟构造器（Virtual Constructor）、多态工厂</dd></div><div class="pattern__row"><dt>适用场景</dt><dd>一个类不知道它所需对象的类；一个类希望由子类指定创建哪个对象；需要把创建任务委托给多个工厂子类之一。</dd></div><div class="pattern__row"><dt>参与角色</dt><dd>Product、ConcreteProduct、Creator、ConcreteCreator</dd></div><div class="pattern__row"><dt>主要代价</dt><dd>每增加一个产品就要增加一个工厂，<b>类个数成对增长</b>。</dd></div></dl></div>
+</div><div class="pattern">
+<div class="pattern__head">
+<h4 class="pattern__name">抽象工厂模式</h4>
+<span class="pattern__en">Abstract Factory Pattern</span>
+<span class="pattern__type">创建型</span>
+</div>
+<div class="pattern__body"><dl class="pattern__rows"><div class="pattern__row"><dt>意图</dt><dd>提供一个创建<b>一系列相关或相互依赖对象</b>的接口，而无须指定它们具体的类。</dd></div><div class="pattern__row"><dt>别名</dt><dd>Kit（套件）</dd></div><div class="pattern__row"><dt>适用场景</dt><dd>系统由多个产品族中的一个来配置；同一产品族的产品必须一起使用；想对外只暴露接口不暴露实现。</dd></div><div class="pattern__row"><dt>参与角色</dt><dd>AbstractFactory、ConcreteFactory、AbstractProduct、Product、Client</dd></div><div class="pattern__row"><dt>主要代价</dt><dd>增加新的<b>产品等级结构</b>（新种类产品）要改抽象工厂及所有子类，开闭原则只倾斜一半。</dd></div></dl></div>
+</div><div class="pattern">
+<div class="pattern__head">
+<h4 class="pattern__name">建造者模式</h4>
+<span class="pattern__en">Builder Pattern</span>
+<span class="pattern__type">创建型</span>
+</div>
+<div class="pattern__body"><dl class="pattern__rows"><div class="pattern__row"><dt>意图</dt><dd>将一个复杂对象的构建与其表示分离，使同样的构建过程可以创建不同的表示。</dd></div><div class="pattern__row"><dt>别名</dt><dd>生成器模式</dd></div><div class="pattern__row"><dt>适用场景</dt><dd>产品内部结构复杂；构建算法稳定但零件易变；需要按固定顺序装配、或需要分步构造。</dd></div><div class="pattern__row"><dt>参与角色</dt><dd>Builder、ConcreteBuilder、Director、Product</dd></div><div class="pattern__row"><dt>主要代价</dt><dd>难以应付<b>构建算法本身</b>的变化；类的数量增加，对简单对象是过度设计。</dd></div></dl></div>
+</div><div class="pattern">
+<div class="pattern__head">
+<h4 class="pattern__name">原型模式</h4>
+<span class="pattern__en">Prototype Pattern</span>
+<span class="pattern__type">创建型</span>
+</div>
+<div class="pattern__body"><dl class="pattern__rows"><div class="pattern__row"><dt>意图</dt><dd>用原型实例指定创建对象的种类，并通过<b>拷贝这些原型</b>来创建新的对象。</dd></div><div class="pattern__row"><dt>别名</dt><dd>克隆（Clone）</dd></div><div class="pattern__row"><dt>适用场景</dt><dd>创建新对象成本过大（数据库、网络、大量计算）；系统要保存对象状态、或类名不应对客户端暴露。</dd></div><div class="pattern__row"><dt>参与角色</dt><dd>Prototype（声明 clone）、ConcretePrototype、Client</dd></div><div class="pattern__row"><dt>主要代价</dt><dd>必须正确实现深拷贝，否则原型与副本共享可变子对象；带循环引用的对象图深拷贝实现困难。</dd></div></dl></div>
+</div><div class="pattern">
+<div class="pattern__head">
+<h4 class="pattern__name">简单工厂的简化形态</h4>
+<span class="pattern__en">Static Factory on Abstract Product</span>
+<span class="pattern__type">创建型</span>
+</div>
+<div class="pattern__body"><dl class="pattern__rows"><div class="pattern__row"><dt>意图</dt><dd>把静态工厂方法直接写在抽象产品类里，让抽象产品同时兼任子类的工厂。</dd></div><div class="pattern__row"><dt>别名</dt><dd>抽象产品兼任工厂（课程「简单工厂模式的简化」）</dd></div><div class="pattern__row"><dt>适用场景</dt><dd>产品族很小、不值得单独建一个工厂类；希望调用方少记一个类名。</dd></div><div class="pattern__row"><dt>参与角色</dt><dd>AbstractProduct（同时充当 Factory）、ConcreteProduct</dd></div><div class="pattern__row"><dt>主要代价</dt><dd>抽象产品类职责变重（既定义接口又负责创建），违反单一职责；扩展仍要改产品类。</dd></div></dl></div>
+</div><div class="pattern">
+<div class="pattern__head">
+<h4 class="pattern__name">原型管理器</h4>
+<span class="pattern__en">Prototype Manager</span>
+<span class="pattern__type">创建型</span>
+</div>
+<div class="pattern__body"><dl class="pattern__rows"><div class="pattern__row"><dt>意图</dt><dd>用一个注册表（Map）保存若干原型对象，客户端按键取原型并 clone，从而在运行时动态增删产品种类。</dd></div><div class="pattern__row"><dt>别名</dt><dd>原型注册表（Prototype Registry）</dd></div><div class="pattern__row"><dt>适用场景</dt><dd>需要动态注册/注销可复制的对象；产品种类由配置决定，客户端不应硬编码类名。</dd></div><div class="pattern__row"><dt>参与角色</dt><dd>Prototype、ConcretePrototype、PrototypeManager（注册表）、Client</dd></div><div class="pattern__row"><dt>主要代价</dt><dd>注册表需要管理生命周期；每个原型都必须正确实现深拷贝。</dd></div></dl></div>
+</div><div class="pattern">
+<div class="pattern__head">
+<h4 class="pattern__name">单例模式</h4>
+<span class="pattern__en">Singleton Pattern</span>
+<span class="pattern__type">创建型</span>
+</div>
+<div class="pattern__body"><dl class="pattern__rows"><div class="pattern__row"><dt>意图</dt><dd>保证一个类仅有一个实例，并提供一个<b>全局访问点</b>来获取它。</dd></div><div class="pattern__row"><dt>别名</dt><dd>单件模式</dd></div><div class="pattern__row"><dt>适用场景</dt><dd>系统只需要一个窗口管理器/文件系统/配置中心/连接池；需要严格控制唯一实例且允许子类化扩展。</dd></div><div class="pattern__row"><dt>参与角色</dt><dd>Singleton（静态 instance + 静态 Instance() 方法）</dd></div><div class="pattern__row"><dt>主要代价</dt><dd>引入全局状态，单元测试难隔离；<b>反射、序列化、多类加载器</b>都能破坏唯一性。</dd></div></dl></div>
+</div>
+</section><section class="section" id="detail" data-title="结构与实现（六个模式详解）">
+<div class="section-head">
+<span class="section-head__num">03</span>
+<h2 class="section-title">结构与实现（六个模式详解）</h2>
+<a class="section-anchor" href="#detail" aria-label="本节链接">#</a>
+</div>
+
+<p class="section-lead">按「意图 → 动机 → 结构 → 协作 → 适用 → 优缺点 → 区别 → 代码 → 易错点」九段式逐个过一遍。考试简答题按「定义 + 作用 + 代价」三段写，这里给了完整素材。</p><div class="pindex"><a href="#p-simple-factory">简单工厂</a><a href="#p-factory-method">工厂方法</a><a href="#p-abstract-factory">抽象工厂</a><a href="#p-builder">建造者</a><a href="#p-prototype">原型</a><a href="#p-singleton">单例</a></div><article class="pblock" id="p-simple-factory">
+<div class="pblock__head">
+<span class="pblock__no">01</span>
+<h3 class="pblock__title">简单工厂模式 <span>Simple Factory Pattern</span></h3>
+<span class="chip chip--accent">创建型</span>
+</div>
+<p class="pblock__intent"><b>意图：</b>定义一个工厂类，它可以根据参数的不同返回不同类的实例，被创建的实例通常都具有共同的父类。客户端只需「消费」产品，不必知道创建细节。</p>
+<h4>动机 / 问题场景</h4>
+<p>课程用一个点餐场景引入：<code>PizzaConsumer.orderPizza(String type)</code> 里写着一长串 <code>if (type.equals("cheese")) pizza = new CheesePizza();</code>。每增加一种 Pizza，这段客户端代码就要改一次，直接违反「业务需求变化时客户端代码尽量不变」的原则。把创建逻辑搬到服务端的一个 <code>SimplePizzaFactory.createPizza(type)</code> 里之后，新增 Pizza 只需改服务端，客户端一行不动。</p>
+<h4>结构</h4>
+<div class="cd"><div class="cd__row"><span class="cd__box">Client<small>PizzaConsumer</small></span></div><div class="cd__arrow">调用</div><div class="cd__row"><span class="cd__box cd__box--key">Factory<small>SimplePizzaFactory</small></span></div><div class="cd__arrow">创建</div><div class="cd__row"><span class="cd__box cd__box--abs">Product<small>Pizza</small></span></div><div class="cd__arrow">继承</div><div class="cd__row"><span class="cd__box">CheesePizza</span><span class="cd__box">GreekPizza</span><span class="cd__box">PepperoniPizza</span><span class="cd__box">ClamPizza</span></div><p class="cd__note">工厂集中了全部创建逻辑；产品是一棵继承树。客户端只依赖 Product 与 Factory 两个抽象。</p></div>
+<ul><li><b>Factory</b> —— 工厂角色，含必要的判断逻辑，决定何时创建哪一个具体产品类的实例。</li><li><b>Product</b> —— 抽象产品角色，定义所有具体产品的公共接口。</li><li><b>ConcreteProduct</b> —— 具体产品角色，实现 Product 接口，被工厂创建。</li></ul>
+<h4>协作要点</h4>
+<ol><li>客户端把「要什么」的参数（如 <code>"cheese"</code>）传给工厂的静态方法。</li><li>工厂内部用 <code>if/else</code> 或 <code>switch</code> 匹配参数，<code>new</code> 出对应子类。</li><li>工厂把对象<b>向上转型</b>为 Product 返回，客户端只看到抽象类型。</li><li>客户端调用 Product 上声明的方法完成业务，完全不感知具体类名。</li></ol>
+<h4>适用场景</h4>
+<ul><li>工厂类负责创建的对象比较少，判断逻辑不会膨胀成几百行。</li><li>客户端只知道参数，不关心创建细节，甚至不需要记住具体类名。</li><li>需要把「创建哪一族实现」的决策集中到一处配置（如读取 XML 参数）时。</li></ul>
+<h4>优缺点</h4>
+<div class="pros-cons">
+<div class="pros-cons__col"><h5>优点</h5><ul><li>把创建与使用分离，降低耦合，两者可以独立修改。</li><li>客户端代码对新增产品无感（前提是工厂在服务端）。</li><li>配合配置文件可以在不改 Java 源码的情况下更换产品。</li></ul></div>
+<div class="pros-cons__col"><h5>代价 / 缺点</h5><ul><li>工厂类职责过重，一旦它出问题整个系统受影响，是典型的<b>上帝类</b>。</li><li>新增产品必须修改工厂的判断分支，<b>违反开闭原则</b>——这是它最致命的问题。</li><li>产品类型很多时工厂方法内部的业务逻辑会非常复杂，难维护。</li></ul></div>
+</div>
+<h4>与相似模式的区别</h4>
+<div class="table-wrap"><table>
+<thead><tr><th>维度</th><th>简单工厂</th><th>工厂方法</th></tr></thead>
+<tbody><tr><td>是否 GoF 23 种</td><td>不是</td><td>是</td></tr><tr><td>新增产品要改谁</td><td>改工厂的判断逻辑</td><td>新增一个工厂子类</td></tr><tr><td>开闭原则</td><td>违反</td><td>满足</td></tr><tr><td>类个数</td><td>1 个工厂 + N 个产品</td><td>N 个工厂 + N 个产品</td></tr></tbody>
+</table></div>
+<h4>参考实现</h4>
+<figure class="code" data-lang="java" data-file="PayMethodFactory.java">
+<pre><code>// 抽象产品
+public abstract class AbstractPay {
+    public abstract void pay();
+}
+
+// 具体产品
+public class CashPay extends AbstractPay {
+    public void pay() { System.out.println("现金支付"); }
+}
+public class CreditcardPay extends AbstractPay {
+    public void pay() { System.out.println("信用卡支付"); }
+}
+
+// 简单工厂：集中全部创建逻辑
+public class PayMethodFactory {
+    public static AbstractPay getPayMethod(String type) {
+        if ("cash".equalsIgnoreCase(type)) {
+            return new CashPay();
+        } else if ("creditcard".equalsIgnoreCase(type)) {
+            return new CreditcardPay();
+        }
+        throw new IllegalArgumentException("未知支付方式：" + type);
+    }
+}
+
+// 客户端：只认参数，不认类名
+public class Client {
+    public static void main(String[] args) {
+        AbstractPay pay = PayMethodFactory.getPayMethod("cash");
+        pay.pay();
+    }
+}</code></pre>
+</figure>
+<div class="callout callout--danger">
+<span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-stop"></use></svg></span>
+<div class="callout__body"><p><span class="callout__title">易错点 · 把简单工厂当成 GoF 模式来答。</span>GoF 23 种里<b>没有</b>简单工厂，它属于「工厂家族的入门形态」。简答题问「工厂模式有哪几种形态」时，可以答简单工厂 / 工厂方法 / 抽象工厂三种，但要说明只有后两种是 GoF 模式，简单工厂违反开闭原则。</p></div>
+</div>
+
+</article><article class="pblock" id="p-factory-method">
+<div class="pblock__head">
+<span class="pblock__no">02</span>
+<h3 class="pblock__title">工厂方法模式 <span>Factory Method Pattern</span></h3>
+<span class="chip chip--accent">创建型</span>
+</div>
+<p class="pblock__intent"><b>意图：</b>定义一个用于创建对象的接口，让子类决定实例化哪一个类。Factory Method 使一个类的实例化延迟到其子类。</p>
+<h4>动机 / 问题场景</h4>
+<p>课程用日志组件举例：有 <code>FileLog</code> 和 <code>DBLog</code> 两个实现，抽象父类是 <code>Log</code>。如果客户自己 <code>new FileLog()</code>，客户代码就绑死在具体子类上；新增 <code>EventLog</code>（写 Windows 事件日志）时，所有 new 过日志的地方都要改。解决办法是把「new 哪个」交给工厂子类，客户端只持有 <code>Log</code> 与 <code>LogFactory</code> 两个抽象。</p>
+<h4>结构</h4>
+<div class="cd"><div class="cd__row"><span class="cd__box cd__box--abs">Creator<small>+ factoryMethod()<br>+ anOperation()</small></span></div><div class="cd__arrow">继承</div><div class="cd__row"><span class="cd__box cd__box--key">ConcreteFactory<small>+ factoryMethod()</small></span></div><div class="cd__arrow">创建</div><div class="cd__row"><span class="cd__box cd__box--abs">Product<small>抽象产品</small></span></div><div class="cd__arrow">继承</div><div class="cd__row"><span class="cd__box">ConcreteProduct</span></div><p class="cd__note">工厂层次与产品层次<b>一一对应、平行生长</b>：ConcreteFactory 的 factoryMethod 返回对应的 ConcreteProduct。anOperation() 里调用抽象的 factoryMethod()，实际执行的是子类版本——这就是「延迟到子类」。</p></div>
+<ul><li><b>Product</b> —— 定义工厂方法所创建的对象的接口（抽象产品）。</li><li><b>ConcreteProduct</b> —— 实现 Product 接口的具体产品。</li><li><b>Creator</b> —— 声明返回 Product 类型的工厂方法；可给出默认实现（返回默认 ConcreteProduct）；通常在某个业务方法里调用工厂方法。</li><li><b>ConcreteCreator</b> —— 重定义工厂方法，返回一个 ConcreteProduct 实例。</li></ul>
+<h4>协作要点</h4>
+<ol><li>客户端创建某个 ConcreteCreator（或从配置里拿到它）。</li><li>客户端调用 Creator 上的业务方法 <code>anOperation()</code>。</li><li><code>anOperation()</code> 内部调用抽象的 <code>factoryMethod()</code>。</li><li>动态绑定到 ConcreteCreator 的实现，<code>new</code> 出对应的 ConcreteProduct。</li><li>产品以 Product 抽象类型返回并使用，客户端全程不知道具体类。</li></ol>
+<h4>适用场景</h4>
+<ul><li>一个类不知道它所需要的对象的类：只知道接口，不知道实现。</li><li>一个类希望通过子类来指定创建哪个对象。</li><li>需要把创建任务委托给多个工厂子类之一，客户端无需关心是哪一个。</li><li>产品结构较复杂、需要一条与产品平行的工厂继承链时。</li></ul>
+<h4>优缺点</h4>
+<div class="pros-cons">
+<div class="pros-cons__col"><h5>优点</h5><ul><li>新增产品只需新增一个工厂子类，<b>不修改已有代码</b>，满足开闭原则。</li><li>为子类提供「挂钩」：用工厂方法在类内部创建对象比直接 new 更灵活。</li><li>连接平行的类层次，具体工厂与具体产品一一对应，结构清晰。</li></ul></div>
+<div class="pros-cons__col"><h5>代价 / 缺点</h5><ul><li>每增加一个产品就要增加一个工厂类，<b>类个数成对增长</b>，系统复杂度上升。</li><li>引入了额外的抽象层，简单场景下属于过度设计。</li><li>客户端仍需决定实例化哪个具体工厂，选择逻辑只是被挪走而非消失。</li></ul></div>
+</div>
+<h4>与相似模式的区别</h4>
+<div class="table-wrap"><table>
+<thead><tr><th>维度</th><th>简单工厂</th><th>工厂方法</th><th>抽象工厂</th></tr></thead>
+<tbody><tr><td>产品等级结构数</td><td>1</td><td>1</td><td>多个（≥2）</td></tr><tr><td>创建延迟到</td><td>工厂的一个静态方法</td><td>工厂子类</td><td>具体工厂对象</td></tr><tr><td>新增产品</td><td>改工厂判断</td><td>加工厂子类</td><td>改抽象工厂接口（痛）</td></tr><tr><td>新增产品族</td><td>—</td><td>—</td><td>加具体工厂（易）</td></tr><tr><td>开闭原则</td><td>违反</td><td>满足</td><td>部分满足（倾斜）</td></tr></tbody>
+</table></div>
+<h4>参考实现</h4>
+<figure class="code" data-lang="java" data-file="LogFactory.java">
+<pre><code>// 抽象产品
+public interface Log {
+    void write(String msg);
+}
+
+// 具体产品
+public class FileLog implements Log {
+    public void write(String msg) { System.out.println("[file] " + msg); }
+}
+public class DBLog implements Log {
+    public void write(String msg) { System.out.println("[db] " + msg); }
+}
+
+// 抽象工厂（Creator）：声明工厂方法，并可提供模板化的业务方法
+public abstract class LogFactory {
+    /** 工厂方法：把「new 哪一个」交给子类 */
+    public abstract Log createLog();
+
+    /** 业务方法：只依赖抽象产品，绝不出现具体类名 */
+    public void log(String msg) {
+        Log log = createLog();
+        log.write(msg);
+    }
+}
+
+// 具体工厂：一个产品对应一个工厂，两条层次平行
+public class FileLogFactory extends LogFactory {
+    public Log createLog() { return new FileLog(); }
+}
+public class DBLogFactory extends LogFactory {
+    public Log createLog() { return new DBLog(); }
+}
+
+// 客户端
+public class Client {
+    public static void main(String[] args) {
+        LogFactory factory = new FileLogFactory(); // 只在这一行出现具体工厂
+        factory.log("系统启动");
+    }
+}</code></pre>
+</figure>
+<div class="callout callout--danger">
+<span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-stop"></use></svg></span>
+<div class="callout__body"><p><span class="callout__title">易错点 · 把工厂方法写成了「一个工厂类里的 switch」。</span>如果 <code>createLog()</code> 内部还是 <code>if (type == ...)</code>，那只是把简单工厂套了个抽象类的壳，新增产品仍要改工厂，开闭原则并没有被满足。<b>工厂方法的判定标准是：新增产品时只新增类、不修改已有类。</b></p></div>
+</div>
+
+</article><article class="pblock" id="p-abstract-factory">
+<div class="pblock__head">
+<span class="pblock__no">03</span>
+<h3 class="pblock__title">抽象工厂模式 <span>Abstract Factory Pattern</span></h3>
+<span class="chip chip--accent">创建型</span>
+</div>
+<p class="pblock__intent"><b>意图：</b>提供一个创建一系列相关或相互依赖对象的接口，而无需指定它们具体的类。它面向的是<b>多个产品等级结构</b>，一次创建一整个产品族。</p>
+<h4>动机 / 问题场景</h4>
+<p>换桌面主题是最经典的例子：开始按钮、任务栏、菜单栏、工具栏会<b>一起</b>变，而且色调必须一致。如果每个控件都用各自的工厂方法创建，谁来保证它们来自同一套主题？抽象工厂的做法是：一个 <code>ThemeFactory</code> 同时负责造按钮和文本框，<code>WindowsFactory</code> 造出来的必然是 Windows 家族。课程里的迷宫例子同理：<code>MazeFactory</code> 一次造出 Maze / Room / Wall / Door，换成 <code>BombedMazeFactory</code> 后整座迷宫的部件风格统一改变。</p>
+<h4>结构</h4>
+<div class="cd"><div class="cd__row"><span class="cd__box cd__box--abs">AbstractFactory<small>createProductA() / createProductB()</small></span></div><div class="cd__arrow">继承</div><div class="cd__row"><span class="cd__box cd__box--key">WindowsFactory<small>创建一整个族</small></span><span class="cd__box cd__box--key">UnixFactory<small>创建一整个族</small></span><span class="cd__box cd__box--key">LinuxFactory<small>创建一整个族</small></span></div><div class="cd__arrow">创建</div><div class="cd__row"><span class="cd__box cd__box--abs">Button<small>产品等级结构 A</small></span><span class="cd__box cd__box--abs">Text<small>产品等级结构 B</small></span></div><div class="cd__arrow">继承</div><div class="cd__row"><span class="cd__box">WindowsButton</span><span class="cd__box">UnixButton</span><span class="cd__box">WindowsText</span><span class="cd__box">UnixText</span></div><p class="cd__note">横向看是产品族（同一工厂造出的一套），纵向看是产品等级结构（同一类控件的继承链）。</p></div>
+<ul><li><b>AbstractFactory</b> —— 声明创建抽象产品对象的操作接口（一组 createProductX）。</li><li><b>ConcreteFactory</b> —— 实现创建具体产品的操作，一个具体工厂对应一个产品族。</li><li><b>AbstractProduct</b> —— 为一类产品对象声明接口。</li><li><b>Product</b> —— 定义一个被具体工厂创建的产品对象。</li><li><b>Client</b> —— 只使用 AbstractFactory 与 AbstractProduct 声明的接口。</li></ul>
+<h4>协作要点</h4>
+<ol><li>客户端持有 AbstractFactory 引用（通常在启动时按配置注入一个具体工厂）。</li><li>客户端调用 <code>createProductA()</code> 与 <code>createProductB()</code>。</li><li>具体工厂分别 <code>new</code> 出同族的 ConcreteProductA1 / B1。</li><li>客户端拿到的一组对象必然属于同一产品族，风格/协议自洽。</li><li>想换整套实现时，只换具体工厂的实例，客户端代码不动。</li></ol>
+<h4>适用场景</h4>
+<ul><li>系统不应当依赖产品类实例如何被创建、组合和表达的细节。</li><li>系统中有多于一个产品族，而每次只使用其中某一族。</li><li>属于同一产品族的产品将一起使用，这个约束必须在设计中体现出来。</li><li>提供一个产品类库，只想暴露接口而非实现。</li></ul>
+<h4>优缺点</h4>
+<div class="pros-cons">
+<div class="pros-cons__col"><h5>优点</h5><ul><li>隔离具体类的生成，客户端不需要知道什么被创建，更换整族实现很容易。</li><li>保证客户端始终只使用同一产品族的对象，不会出现「Windows 按钮配 Linux 文本框」。</li><li>增加新的<b>产品族</b>（新具体工厂）无需修改已有系统。</li></ul></div>
+<div class="pros-cons__col"><h5>代价 / 缺点</h5><ul><li>增加新的<b>产品等级结构</b>（新种类产品）要改 AbstractFactory 接口及所有子类，开闭原则出现「倾斜」。</li><li>抽象工厂把所有可能被创建的产品集合都规定死了，接口很重。</li><li>类层次比工厂方法更深，理解成本更高。</li></ul></div>
+</div>
+<h4>与相似模式的区别</h4>
+<div class="table-wrap"><table>
+<thead><tr><th>维度</th><th>工厂方法</th><th>抽象工厂</th></tr></thead>
+<tbody><tr><td>面对的产品等级结构</td><td>1 个</td><td>多个（≥2）</td></tr><tr><td>抽象工厂的职责</td><td>只声明 1 个工厂方法</td><td>声明一组 create 方法</td></tr><tr><td>扩展新产品的代价</td><td>加一个工厂子类（易）</td><td>改接口 + 所有子类（难）</td></tr><tr><td>扩展新产品族</td><td>不适用</td><td>加一个具体工厂（易）</td></tr><tr><td>典型场景</td><td>日志、解析器</td><td>换皮肤、跨平台 UI、多数据库方言</td></tr></tbody>
+</table></div>
+<h4>参考实现</h4>
+<figure class="code" data-lang="java" data-file="ThemeFactory.java">
+<pre><code>// 两个产品等级结构
+public interface Button { void paint(); }
+public interface TextBox { void paint(); }
+
+// 产品族 A：Windows
+public class WindowsButton implements Button {
+    public void paint() { System.out.println("Windows 风格按钮"); }
+}
+public class WindowsTextBox implements TextBox {
+    public void paint() { System.out.println("Windows 风格文本框"); }
+}
+
+// 产品族 B：Mac
+public class MacButton implements Button {
+    public void paint() { System.out.println("Mac 风格按钮"); }
+}
+public class MacTextBox implements TextBox {
+    public void paint() { System.out.println("Mac 风格文本框"); }
+}
+
+// 抽象工厂：一组创建方法，保证同族
+public interface ThemeFactory {
+    Button createButton();
+    TextBox createTextBox();
+}
+
+public class WindowsFactory implements ThemeFactory {
+    public Button createButton() { return new WindowsButton(); }
+    public TextBox createTextBox() { return new WindowsTextBox(); }
+}
+public class MacFactory implements ThemeFactory {
+    public Button createButton() { return new MacButton(); }
+    public TextBox createTextBox() { return new MacTextBox(); }
+}
+
+// 客户端：只认抽象工厂与抽象产品
+public class Application {
+    private final Button button;
+    private final TextBox textBox;
+
+    public Application(ThemeFactory factory) {
+        this.button = factory.createButton();
+        this.textBox = factory.createTextBox();
+    }
+    public void render() { button.paint(); textBox.paint(); }
+
+    public static void main(String[] args) {
+        new Application(new WindowsFactory()).render();
+        new Application(new MacFactory()).render();   // 换主题只换工厂
+    }
+}</code></pre>
+</figure>
+<div class="callout callout--danger">
+<span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-stop"></use></svg></span>
+<div class="callout__body"><p><span class="callout__title">易错点 · 把「新增产品族」和「新增产品等级结构」混为一谈。</span>抽象工厂的扩展性是有方向的：<b>加一族（如新增 DarkFactory）很容易</b>，只需新增一个具体工厂；<b>加一个新品种（如新增 CheckBox 等级结构）很难</b>，要改 AbstractFactory 接口和每一个具体工厂。这就是教材反复强调的「开闭原则的倾斜性」，答题时必须点出来。</p></div>
+</div>
+
+</article><article class="pblock" id="p-builder">
+<div class="pblock__head">
+<span class="pblock__no">04</span>
+<h3 class="pblock__title">建造者模式 <span>Builder Pattern</span></h3>
+<span class="chip chip--accent">创建型</span>
+</div>
+<p class="pblock__intent"><b>意图：</b>将一个复杂对象的构建与它的表示分离，使得同样的构建过程可以创建不同的表示。</p>
+<h4>动机 / 问题场景</h4>
+<p>课程用「游戏场景中造房子」举例：房子由地板、墙壁、窗户、门、天花板五部分组成，<b>构建步骤是固定的</b>（先地板再墙再门窗），但<b>具体组件极易变化</b>（罗马式房子、中式房子、雪屋）。如果每换一种房子就写一个构造函数，参数会爆炸；如果让客户端自己按顺序装配，顺序一错就造出畸形对象。建造者把「步骤」固化在 Director 里，把「零件长什么样」交给 ConcreteBuilder。</p>
+<h4>结构</h4>
+<div class="cd"><div class="cd__row"><span class="cd__box cd__box--key">Director<small>+ construct()</small></span></div><div class="cd__arrow cd__arrow--h">持有 builder 引用</div><div class="cd__row"><span class="cd__box cd__box--abs">Builder<small>+ buildPartA() / buildPartB() / buildPartC()<br>+ getResult()</small></span></div><div class="cd__arrow">继承</div><div class="cd__row"><span class="cd__box">ConcreteBuilder<small>+ buildPartX()<br>+ getResult()</small></span></div><div class="cd__arrow">装配</div><div class="cd__row"><span class="cd__box cd__box--abs">Product<small>复杂对象</small></span></div><p class="cd__note">Director 只认识 Builder 接口：buildPartA → buildPartB → buildPartC → getResult，顺序固定。</p></div>
+<ul><li><b>Builder</b> —— 为创建一个 Product 对象的各个部件指定抽象接口。</li><li><b>ConcreteBuilder</b> —— 实现 Builder 接口以构造和装配产品的各个部件；定义并提供获取最终产品的接口。</li><li><b>Director</b> —— 构造一个使用 Builder 接口的对象，负责安排装配顺序。</li><li><b>Product</b> —— 表示被构造的复杂对象，由多个部件组成。</li></ul>
+<h4>协作要点</h4>
+<ol><li>客户端创建 Director 与某个 ConcreteBuilder。</li><li>把 ConcreteBuilder 传给 Director（或让 Director 持有它）。</li><li>Director 调用 <code>construct()</code>，按固定顺序依次调用 buildPartX。</li><li>ConcreteBuilder 在每一步里创建并组装自己的部件。</li><li>客户端通过 <code>getResult()</code> 取回成品，全程不关心装配顺序。</li></ol>
+<h4>适用场景</h4>
+<ul><li>需要生成的产品对象有复杂的内部结构（由多个部件组成）。</li><li>创建复杂对象的算法稳定，或者建造者模式需要强制一定的生成顺序。</li><li>当构造过程允许被构造的对象有不同的表示时。</li><li>需要「分步构造」并在中途做校验、或需要不可变对象（Builder 链式调用）。</li></ul>
+<h4>优缺点</h4>
+<div class="pros-cons">
+<div class="pros-cons__col"><h5>优点</h5><ul><li>产品的内部表象可以独立变化，客户端不必知道产品内部组成的细节。</li><li>每一个 Builder 都相对独立，与其他 Builder 无关，可替换。</li><li>对构造过程有更精细的控制，能强制装配顺序、能做逐步校验。</li><li>把构建代码与表示代码彻底分开。</li></ul></div>
+<div class="pros-cons__col"><h5>代价 / 缺点</h5><ul><li>难以应付「分步骤构建算法」本身的需求变动——步骤一变，Director 要改。</li><li>会引入 Builder / ConcreteBuilder / Director / Product 多个类，对简单对象是过度设计。</li><li>客户端必须知道有哪些具体 Builder 可选。</li></ul></div>
+</div>
+<h4>与相似模式的区别</h4>
+<div class="table-wrap"><table>
+<thead><tr><th>维度</th><th>建造者</th><th>抽象工厂</th></tr></thead>
+<tbody><tr><td>关注点</td><td>分步装配一个复杂对象</td><td>一次性创建一族相关对象</td></tr><tr><td>返回时机</td><td>最后一步 getResult() 才产出</td><td>每次 create 立刻返回一个产品</td></tr><tr><td>产品结构</td><td>一个复杂对象（组合体）</td><td>多个平级产品</td></tr><tr><td>扩展方向</td><td>新增一种表示（新 Builder）</td><td>新增一个产品族（新 Factory）</td></tr><tr><td>典型场景</td><td>组装电脑、构建 SQL、造房子</td><td>换皮肤、跨平台 UI</td></tr></tbody>
+</table></div>
+<h4>参考实现</h4>
+<figure class="code" data-lang="java" data-file="HouseBuilder.java">
+<pre><code>// 产品：复杂对象
+public class House {
+    private String floor, wall, door, window, ceiling;
+    public void setFloor(String v)   { this.floor = v; }
+    public void setWall(String v)    { this.wall = v; }
+    public void setDoor(String v)    { this.door = v; }
+    public void setWindow(String v)  { this.window = v; }
+    public void setCeiling(String v) { this.ceiling = v; }
+    public String toString() {
+        return "房屋[" + floor + "," + wall + "," + door + "," + window + "," + ceiling + "]";
+    }
+}
+
+// 抽象建造者：易变的部分
+public abstract class Builder {
+    protected House house = new House();
+    public abstract void buildFloor();
+    public abstract void buildWall();
+    public abstract void buildDoor();
+    public abstract void buildWindow();
+    public abstract void buildCeiling();
+    public House getResult() { return house; }
+}
+
+// 具体建造者：罗马式房屋
+public class RomanHouseBuilder extends Builder {
+    public void buildFloor()   { house.setFloor("大理石地板"); }
+    public void buildWall()    { house.setWall("石墙"); }
+    public void buildDoor()    { house.setDoor("拱门"); }
+    public void buildWindow()  { house.setWindow("圆窗"); }
+    public void buildCeiling() { house.setCeiling("穹顶"); }
+}
+
+// Director：稳定的构建算法
+public class GameManager {
+    public static House createHouse(Builder builder) {
+        builder.buildFloor();
+        builder.buildWall();
+        builder.buildDoor();
+        builder.buildWindow();
+        builder.buildCeiling();
+        return builder.getResult();
+    }
+}
+
+// 客户端
+public class Client {
+    public static void main(String[] args) {
+        House house = GameManager.createHouse(new RomanHouseBuilder());
+        System.out.println(house);
+    }
+}</code></pre>
+</figure>
+<div class="callout callout--danger">
+<span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-stop"></use></svg></span>
+<div class="callout__body"><p><span class="callout__title">易错点 · 把建造者和工厂当成同一个东西。</span>工厂模式关心「<b>创建哪一个类</b>」，一次调用返回一个完整对象；建造者关心「<b>怎样一步步装配</b>」，返回时机在最后一步。判断口诀：<b>产品是「一个」还是「一堆」→ 建造者；产品是「一族」→ 抽象工厂</b>。另外建造者的步骤是稳定的，工厂的产品种类是变化的。</p></div>
+</div>
+
+</article><article class="pblock" id="p-prototype">
+<div class="pblock__head">
+<span class="pblock__no">05</span>
+<h3 class="pblock__title">原型模式 <span>Prototype Pattern</span></h3>
+<span class="chip chip--accent">创建型</span>
+</div>
+<p class="pblock__intent"><b>意图：</b>用原型实例指定创建对象的种类，并且通过拷贝这些原型创建新的对象。客户端不需要知道具体类名，只需要一个 <code>clone()</code> 方法。</p>
+<h4>动机 / 问题场景</h4>
+<p>设想一个图形编辑器：用户画好一个复杂图形（含几十个子图元、样式、图层），现在要复制粘贴出第二个。如果重新 new 再逐个属性赋值，既要知道具体类，又要重新走一遍昂贵的初始化。原型模式让对象自己负责复制自己——<code>Graphic.clone()</code> 返回一个同类型的新对象，客户端只面向 <code>Graphic</code> 接口操作，新增图形类型时复制逻辑一行不用改。</p>
+<h4>结构</h4>
+<div class="cd"><div class="cd__row"><span class="cd__box cd__box--abs">Prototype<small>+ clone(): Prototype</small></span></div><div class="cd__arrow">实现</div><div class="cd__row"><span class="cd__box">ConcretePrototypeA</span><span class="cd__box">ConcretePrototypeB</span></div><div class="cd__arrow cd__arrow--h">Client 调用 clone()</div><div class="cd__row"><span class="cd__box">Client<small>只持有 Prototype 引用</small></span></div><p class="cd__note">若对象有可变子对象，必须做<b>深拷贝</b>，否则副本与原对象共享同一份数据。</p><p class="cd__note">原型模式把「创建」这个职责下放给对象自己，客户端只发一条 clone 消息。</p></div>
+<ul><li><b>Prototype</b> —— 声明一个克隆自身的接口（Java 里通常是 <code>Cloneable</code> + <code>clone()</code>）。</li><li><b>ConcretePrototype</b> —— 实现克隆操作，返回一个与自身类型相同的副本。</li><li><b>Client</b> —— 通过调用原型的 clone 方法得到新对象，不需要知道具体类名。</li></ul>
+<h4>协作要点</h4>
+<ol><li>客户端持有一个原型注册表（<code>Map&lt;String, Prototype&gt;</code>）或直接持有原型引用。</li><li>客户端调用 <code>prototype.clone()</code>。</li><li>具体原型复制自身内部状态，返回新实例（浅拷贝或深拷贝）。</li><li>客户端按需修改副本的少量属性，得到目标对象。</li></ol>
+<h4>适用场景</h4>
+<ul><li>创建新对象的成本过大（访问数据库、网络请求、大量计算）。</li><li>系统要保存对象的状态，而对象状态变化很小（配合备忘录模式做撤销）。</li><li>需要避免创建与产品类层次平行的工厂类层次。</li><li>类名不应对客户端暴露（如通过配置注册一批原型）。</li></ul>
+<h4>优缺点</h4>
+<div class="pros-cons">
+<div class="pros-cons__col"><h5>优点</h5><ul><li>可以在运行时动态增加或删除产品种类，客户端无需改动。</li><li>对「创建代价高」的对象，克隆往往比重新构造快得多。</li><li>可以用「深拷贝 + 少量修改」代替「完整重新构造」，简化复杂对象的创建。</li></ul></div>
+<div class="pros-cons__col"><h5>代价 / 缺点</h5><ul><li>必须正确实现深拷贝，否则原型与副本共享可变子对象，一处修改两处生效。</li><li>带循环引用的对象图深拷贝实现困难，容易栈溢出。</li><li>每个具体原型都要实现 clone，类数量不少；Java 的 <code>Cloneable</code> 语义也常被误用。</li></ul></div>
+</div>
+<h4>与相似模式的区别</h4>
+<div class="table-wrap"><table>
+<thead><tr><th>维度</th><th>原型</th><th>工厂方法</th></tr></thead>
+<tbody><tr><td>创建方式</td><td>复制已有实例</td><td>由工厂 new 出实例</td></tr><tr><td>需要知道类名</td><td>不需要</td><td>具体工厂内部需要</td></tr><tr><td>初始状态</td><td>继承原型的当前状态</td><td>总是全新的初始状态</td></tr><tr><td>适合场景</td><td>创建代价高、状态复杂</td><td>产品种类需要动态扩展</td></tr></tbody>
+</table></div>
+<h4>参考实现</h4>
+<figure class="code" data-lang="java" data-file="GraphicPrototype.java">
+<pre><code>import java.util.ArrayList;
+import java.util.List;
+
+/** 原型：声明克隆自身的能力 */
+public abstract class Graphic implements Cloneable {
+    protected String color;
+    protected List&lt;String&gt; layers = new ArrayList&lt;&gt;();
+
+    public abstract Graphic clone();
+
+    public void addLayer(String l) { layers.add(l); }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + "{color=" + color + ", layers=" + layers + "}";
+    }
+}
+
+public class Circle extends Graphic {
+    private int radius;
+
+    public Circle(int radius, String color) {
+        this.radius = radius;
+        this.color = color;
+    }
+
+    /** 深拷贝：基本类型直接复制，可变引用必须重新建一份 */
+    @Override
+    public Circle clone() {
+        try {
+            Circle copy = (Circle) super.clone();      // 浅拷贝
+            copy.layers = new ArrayList&lt;&gt;(this.layers); // 把可变部分补成深拷贝
+            return copy;
+        } catch (CloneNotSupportedException e) {
+            throw new AssertionError(e);
+        }
+    }
+}
+
+public class Client {
+    public static void main(String[] args) {
+        Circle origin = new Circle(10, "red");
+        origin.addLayer("背景");
+
+        Circle copy = origin.clone();     // 不 new，靠克隆
+        copy.color = "blue";
+        copy.addLayer("前景");
+
+        System.out.println(origin);       // 背景（不受影响）
+        System.out.println(copy);         // 背景 + 前景
+    }
+}</code></pre>
+</figure>
+<div class="callout callout--danger">
+<span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-stop"></use></svg></span>
+<div class="callout__body"><p><span class="callout__title">易错点 · 以为 <code>clone()</code> 默认就是深拷贝。</span>Java 的 <code>Object.clone()</code> 是<b>逐字段浅拷贝</b>：基本类型复制值，引用类型只复制地址。如果原型里有 <code>List</code>、数组、其他可变对象，副本与原型会共享同一份数据，改一个另一个也变。必须在 clone 里对每个可变字段重新构造，或者改用「序列化 + 反序列化」实现深拷贝。</p></div>
+</div>
+
+</article><article class="pblock" id="p-singleton">
+<div class="pblock__head">
+<span class="pblock__no">06</span>
+<h3 class="pblock__title">单例模式 <span>Singleton Pattern</span></h3>
+<span class="chip chip--accent">创建型</span>
+</div>
+<p class="pblock__intent"><b>意图：</b>保证一个类仅有一个实例，并提供一个全局访问点。</p>
+<h4>动机 / 问题场景</h4>
+<p>系统中只能有一个窗口管理器、一个文件系统、一个配置中心、一个连接池。用全局变量可以访问，但<b>无法阻止别人再 new 一个</b>。更好的办法是让类自己负责保存唯一实例：构造函数私有化，对外只暴露一个静态的 <code>getInstance()</code>。课程用 C++ 版本来讲，Java 版本要点一致：私有构造 + 静态成员 + 静态访问方法。</p>
+<h4>结构</h4>
+<div class="cd"><div class="cd__row"><span class="cd__box cd__box--key">Singleton<small>- static instance: Singleton<br>- Singleton()<br>+ static getInstance()</small></span></div><div class="cd__arrow cd__arrow--h">唯一实例</div><div class="cd__row"><span class="cd__box cd__box--abs">instance<small>自身唯一实例</small></span></div><div class="cd__arrow"></div><div class="cd__row"><span class="cd__box">Client<small>通过 getInstance() 访问</small></span></div><p class="cd__note">类图里 Singleton 既是被创建者，也是自己的工厂——这是它与其他创建型模式最大的不同。</p></div>
+<ul><li><b>Singleton</b> —— 定义静态的 instance 成员与静态的 Instance() 操作，构造函数为 protected/private。</li><li><b>Client</b> —— 通过类名直接调用 <code>Singleton.getInstance()</code>，无法自行 new。</li></ul>
+<h4>协作要点</h4>
+<ol><li>客户端第一次调用 <code>getInstance()</code>。</li><li>方法检查静态成员是否为空；为空则 <code>new</code> 出唯一实例并保存。</li><li>后续调用直接返回已保存的实例。</li><li>客户端通过该实例调用业务方法，全局共享同一份状态。</li></ol>
+<h4>适用场景</h4>
+<ul><li>当类只能有一个实例，而且用户可以从一个众所周知的访问点访问它时。</li><li>当这个唯一实例应当通过子类化可扩展，且客户无需更改代码就能使用扩展实例时。</li><li>需要严格控制全局资源（配置、缓存、线程池、日志器）时。</li></ul>
+<h4>优缺点</h4>
+<div class="pros-cons">
+<div class="pros-cons__col"><h5>优点</h5><ul><li>对唯一实例的受控访问：类自己封装实例，可严格控制客户何时、怎样访问。</li><li>缩小命名空间：是对全局变量的改进，避免污染全局名字空间。</li><li>允许对操作和表示的精化：可以有子类，运行时用扩展类的实例配置应用。</li></ul></div>
+<div class="pros-cons__col"><h5>代价 / 缺点</h5><ul><li>引入全局状态，模块间产生隐式依赖，单元测试难以隔离（需 mock 单例）。</li><li>并发环境下需要额外同步，写法不当会出现双实例或性能问题。</li><li><b>反射、序列化、多个类加载器</b>都能破坏唯一性，需要额外防护。</li><li>违反单一职责：既管业务又管生命周期。</li></ul></div>
+</div>
+<h4>与相似模式的区别</h4>
+<div class="table-wrap"><table>
+<thead><tr><th>维度</th><th>单例</th><th>静态工具类</th></tr></thead>
+<tbody><tr><td>是否有实例</td><td>有唯一实例，可实现接口、可继承</td><td>无实例，只有静态方法</td></tr><tr><td>能否多态</td><td>可以（面向接口注入）</td><td>不能</td></tr><tr><td>生命周期</td><td>可控（懒加载 / 饿汉）</td><td>类加载即初始化</td></tr><tr><td>测试友好度</td><td>需 mock，较差</td><td>静态方法难替换，也差</td></tr></tbody>
+</table></div>
+<h4>参考实现</h4>
+<figure class="code" data-lang="java" data-file="Singleton.java">
+<pre><code>/** 写法一：饿汉式——类加载时就创建，天生线程安全，但不能懒加载 */
+public class EagerSingleton {
+    private static final EagerSingleton INSTANCE = new EagerSingleton();
+    private EagerSingleton() {}
+    public static EagerSingleton getInstance() { return INSTANCE; }
+}
+
+/** 写法二：双重检查锁（DCL）——必须给 instance 加 volatile，否则可能拿到半初始化对象 */
+public class DclSingleton {
+    private static volatile DclSingleton instance;
+    private DclSingleton() {}
+    public static DclSingleton getInstance() {
+        if (instance == null) {                       // 第一次检查，避免每次都加锁
+            synchronized (DclSingleton.class) {
+                if (instance == null) {               // 第二次检查，防止重复创建
+                    instance = new DclSingleton();
+                }
+            }
+        }
+        return instance;
+    }
+}
+
+/** 写法三：静态内部类——懒加载 + 线程安全，推荐 */
+public class HolderSingleton {
+    private HolderSingleton() {}
+    private static class Holder {
+        private static final HolderSingleton INSTANCE = new HolderSingleton();
+    }
+    public static HolderSingleton getInstance() { return Holder.INSTANCE; }
+}
+
+/** 写法四：枚举——天然防反射、防序列化破坏，Effective Java 首选 */
+public enum EnumSingleton {
+    INSTANCE;
+    public void doSomething() { System.out.println("业务方法"); }
+}
+
+// 使用
+class Demo {
+    public static void main(String[] args) {
+        HolderSingleton s1 = HolderSingleton.getInstance();
+        HolderSingleton s2 = HolderSingleton.getInstance();
+        System.out.println(s1 == s2);        // true
+        EnumSingleton.INSTANCE.doSomething();
+    }
+}</code></pre>
+</figure>
+<div class="callout callout--danger">
+<span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-stop"></use></svg></span>
+<div class="callout__body"><p><span class="callout__title">易错点 · 以为加了 <code>synchronized</code> 就万事大吉，或忘了 <code>volatile</code>。</span>双重检查锁里，<code>instance = new DclSingleton()</code> 不是原子操作：分配内存 → 初始化对象 → 把引用赋给 instance，可能被重排序。没有 <code>volatile</code> 时，另一个线程可能看到「引用已非空但对象还没初始化完」的状态。另外<b>反射可以调用私有构造</b>（<code>setAccessible(true)</code>）造出第二个实例，只有枚举写法能天然挡住反射与序列化。</p></div>
+</div>
+
+</article><div class="callout callout--tip">
+<span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-bulb"></use></svg></span>
+<div class="callout__body"><p><span class="callout__title">答题技巧</span>被问「创建型模式有什么用」时，先答<b>两条主旋律</b>（封装「用哪些具体类」、隐藏「实例如何创建与组装」），再点出<b>符合单一职责</b>：创建与使用分离；最后举一例（换数据库只换工厂）。三句话答完，比罗列五个模式更得分。</p></div>
+</div>
+</section><section class="section" id="compare" data-title="横向对比">
+<div class="section-head">
+<span class="section-head__num">04</span>
+<h2 class="section-title">横向对比</h2>
+<a class="section-anchor" href="#compare" aria-label="本节链接">#</a>
+</div>
+
+<p class="section-lead">创建型模式最爱在选择题里互相冒充。下面三张表覆盖了考场上 90% 的辨析题。</p><h3>表一：三种工厂形态的正面对比</h3><div class="table-wrap"><table>
+<thead><tr><th>对比维度</th><th>简单工厂</th><th>工厂方法</th><th>抽象工厂</th></tr></thead>
+<tbody><tr><td>是否 GoF 模式</td><td>否（课程补充）</td><td>是，类创建型</td><td>是，对象创建型</td></tr><tr><td>产品等级结构数</td><td>1 个</td><td>1 个</td><td>多个（≥2）</td></tr><tr><td>实例化延迟到</td><td>工厂的一个静态方法</td><td>工厂子类</td><td>具体工厂对象</td></tr><tr><td>新增一种产品</td><td>改工厂判断逻辑（违反 OCP）</td><td>新增工厂子类（满足 OCP）</td><td>改抽象工厂接口（违反 OCP）</td></tr><tr><td>新增一个产品族</td><td>不适用</td><td>不适用</td><td>新增具体工厂（满足 OCP）</td></tr><tr><td>类个数增长</td><td>1 + N</td><td>2N（工厂与产品平行）</td><td>工厂数 × 产品数</td></tr><tr><td>典型场景</td><td>支付方式、日期格式化</td><td>日志、解析器、文档</td><td>换皮肤、跨平台 UI、多数据库</td></tr></tbody>
+</table></div><h3>表二：创建型五模式总览（意图 / 关键动作 / 代价）</h3><div class="table-wrap"><table>
+<thead><tr><th>模式</th><th>一句话意图</th><th>关键动作</th><th>主要代价</th><th>考试关键词</th></tr></thead>
+<tbody><tr><td>工厂方法</td><td>让子类决定实例化哪一个类</td><td>抽象工厂方法 + 子类实现</td><td>类个数成对增长</td><td>延迟到子类</td></tr><tr><td>抽象工厂</td><td>创建一系列相关对象而无需指定具体类</td><td>一组 create 方法</td><td>新增产品等级结构难</td><td>产品族 / 开闭倾斜</td></tr><tr><td>建造者</td><td>构建与表示分离，同过程造不同表示</td><td>Director 固定步骤 + Builder 装配</td><td>难应付步骤变化</td><td>分步构建 / 装配顺序</td></tr><tr><td>原型</td><td>通过拷贝原型创建新对象</td><td>clone()（注意深浅拷贝）</td><td>深拷贝实现复杂</td><td>克隆 / 复制粘贴</td></tr><tr><td>单例</td><td>保证唯一实例 + 全局访问点</td><td>私有构造 + 静态实例</td><td>全局状态 / 并发与反射</td><td>唯一实例 / 双重检查锁</td></tr></tbody>
+</table></div><h3>表三：建造者 vs 工厂 / 原型 vs 单例 两组高频混淆</h3><div class="table-wrap"><table>
+<thead><tr><th>易混组合</th><th>区别要点</th><th>判断口诀</th></tr></thead>
+<tbody><tr><td>建造者 vs 抽象工厂</td><td>建造者分步装配<b>一个</b>复杂对象，最后 getResult 才产出；抽象工厂一次创建<b>一族</b>平级产品，每次 create 立即返回。</td><td>「一个复杂对象」→ 建造者；「一族相关对象」→ 抽象工厂。</td></tr><tr><td>原型 vs 工厂方法</td><td>原型靠复制已有实例，新对象继承原型的当前状态；工厂每次 new 出全新初始状态的对象。</td><td>要「保持状态复制」→ 原型；要「全新对象」→ 工厂。</td></tr><tr><td>单例 vs 静态工具类</td><td>单例有实例、可实现接口、可继承、生命周期可控；静态工具类无实例、不能多态。</td><td>需要多态或注入 → 单例；纯函数集合 → 静态工具类。</td></tr><tr><td>简单工厂 vs 工厂方法</td><td>简单工厂用一个静态方法集中判断；工厂方法把判断分散到各个工厂子类。</td><td>新增产品要改判断逻辑 → 简单工厂；只新增类 → 工厂方法。</td></tr></tbody>
+</table></div><div class="callout callout--info">
+<span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-info"></use></svg></span>
+<div class="callout__body"><p><span class="callout__title">记忆线索</span>五个创建型模式其实对应五种「推迟创建」的方式：<b>工厂方法 → 推迟到子类；抽象工厂 → 推迟到具体工厂对象；建造者 → 推迟到最后一步；原型 → 推迟到已有实例；单例 → 推迟到首次访问</b>。抓住「推迟到哪里」这一条线，五个模式就不会记串。</p></div>
+</div>
+</section><section class="section" id="pitfalls" data-title="易错点">
+<div class="section-head">
+<span class="section-head__num">05</span>
+<h2 class="section-title">易错点</h2>
+<a class="section-anchor" href="#pitfalls" aria-label="本节链接">#</a>
+</div>
+
+<p class="section-lead">下面每一条都来自真实作业与考卷，注意它们不是「知识点复述」，而是「学生常犯的具体错误」。</p><ul class="pitfalls"><li><strong>把简单工厂算作 GoF 23 种之一。</strong>GoF 书里没有简单工厂。它的判断逻辑集中在一个静态方法里，新增产品必须改这段逻辑，直接违反开闭原则。考试若问「23 种模式分类」，创建型只有 5 种：工厂方法、抽象工厂、建造者、原型、单例。</li><li><strong>认为工厂方法一定满足开闭原则，却把 switch 塞进了抽象工厂方法里。</strong>判定标准不是「有没有抽象类」，而是<b>新增产品时是否只新增类、不修改已有类</b>。如果 <code>create()</code> 里还有 <code>if (type == ...)</code>，那只是给简单工厂套了层壳。</li><li><strong>把抽象工厂的扩展方向记反。</strong>抽象工厂<b>加产品族容易</b>（新增一个具体工厂即可），<b>加产品等级结构难</b>（要改 AbstractFactory 接口和所有具体工厂）。这就是教材说的「开闭原则的倾斜性」，答反了等于没答。</li><li><strong>单例只写「私有构造 + 静态实例」，不提并发与破坏。</strong>完整的单例答案必须覆盖：懒加载与线程安全（双重检查锁需 <code>volatile</code>）、反射可通过 <code>setAccessible</code> 破坏私有构造、序列化反序列化会产生新实例、多类加载器环境各自一份。枚举写法是唯一能同时防住反射与序列化的方案。</li><li><strong>原型模式的 clone 直接返回 <code>super.clone()</code> 就交卷。</strong><code>Object.clone()</code> 是浅拷贝，引用字段只复制地址。原型里有 <code>List</code>、数组、其他可变对象时，副本与原型共享数据，必须手动重建每个可变字段（或序列化往返）实现深拷贝。</li><li><strong>建造者只写 Builder 不写 Director，或让 Director 直接 new 产品。</strong>Director 的职责是<b>固化装配顺序</b>，它只能依赖 Builder 抽象；一旦 Director 里出现 <code>new RomanHouse()</code>，「同样的构建过程可以创建不同的表示」这个意图就彻底失效了。</li></ul>
+</section><section class="section" id="quiz" data-title="本节自测">
+<div class="section-head">
+<span class="section-head__num">06</span>
+<h2 class="section-title">本节自测</h2>
+<a class="section-anchor" href="#quiz" aria-label="本节链接">#</a>
+</div>
+<p class="section-lead">题目数据来自本页底部 <code>&lt;script id="quiz-data"&gt;</code>，由 site.js 渲染判分。</p>
+<div class="quiz" id="quiz-root"></div>
+</section><section class="section" id="cards" data-title="记忆卡片">
+<div class="section-head">
+<span class="section-head__num">07</span>
+<h2 class="section-title">记忆卡片</h2>
+<a class="section-anchor" href="#cards" aria-label="本节链接">#</a>
+</div>
+<p class="section-lead">点击卡片翻面；标记「已掌握」会记住进度，下次接着看。</p>
+<div class="flash" id="cards-root"></div>
+</section><section class="section" id="slides" data-title="课件原图"><div class="section-head"><span class="section-head__num">08</span><h2 class="section-title">课件原图</h2><a class="section-anchor" href="#slides" aria-label="本节链接">#</a></div><p class="section-lead">创建型模式课件共 108 页，由 <code>tools/extract_slides.py</code> 从 PDF 逐页导出。点击缩略图可放大，支持 ← → 翻页。</p><div class="slides" data-slides-dir="slides/creation" data-count="108" data-prefix="slide" data-ext="jpg" data-pad="3" data-start="1" data-title="创建型模式 · 课件原图（108 页）"></div></section>
+        <section class="section" id="videos" data-title="视频讲解">
+          <div class="section-head">
+            <span class="section-head__num">09</span>
+            <h2 class="section-title">视频讲解</h2>
+            <a class="section-anchor" href="#videos" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">
+            创建型 5 个模式各有一段讲解（含课程补充的简单工厂）。视频里演示的是「同一需求换一种创建方式」的对照，和上面的模式卡配套看。
+          </p>
+          <div class="videos" id="videos-root"></div>
+          <p class="muted tiny" style="margin-top:var(--sp-3)">共 5 段，均为 1080p 讲解视频；点封面播放，<kbd>Esc</kbd> 关闭。</p>
+        </section>
+
+        <nav class="pager" id="pager-root" aria-label="章节导航"></nav>
+      </div>
+    </main>
+  </div>
+</div>
+
+<footer class="footer" id="footer-root"></footer>
+
+<script type="application/json" id="quiz-data">
+[
+  {
+    "type": "single",
+    "stem": "创建型模式共同的两条「主旋律」是？",
+    "options": [
+      "提高运行效率、减少内存占用",
+      "封装系统使用哪些具体类的信息、隐藏这些类的实例如何被创建和组合",
+      "分离接口与实现、优先使用组合而非继承",
+      "降低耦合、提高内聚"
+    ],
+    "answer": 1,
+    "explain": "这是 GoF 对创建型模式的经典概括。A 是性能目标而非创建型模式的意图；C 是结构型模式的手段；D 太笼统，任何模式都能套。",
+    "tag": "总览"
+  },
+  {
+    "type": "single",
+    "stem": "简单工厂模式最致命的缺陷是？",
+    "options": [
+      "客户端必须记住具体产品类名",
+      "工厂类无法返回抽象产品类型",
+      "新增产品必须修改工厂的判断逻辑，违反开闭原则",
+      "不能配合配置文件使用"
+    ],
+    "answer": 2,
+    "explain": "简单工厂把所有创建逻辑集中在一个静态方法里，新增产品就要加分支。A 恰好相反（客户端只需参数）；B 错，它正返回抽象类型；D 错，配合配置文件恰恰是它的优点之一。",
+    "tag": "简单工厂"
+  },
+  {
+    "type": "single",
+    "stem": "工厂方法模式中，实例化被延迟到了哪里？",
+    "options": [
+      "工厂类的静态方法",
+      "工厂子类",
+      "客户端",
+      "产品类自身"
+    ],
+    "answer": 1,
+    "explain": "Creator 只声明抽象工厂方法，由 ConcreteCreator（工厂子类）决定实例化哪一个 ConcreteProduct。延迟到静态方法是简单工厂，延迟到产品自身是原型/单例的思路。",
+    "tag": "工厂方法"
+  },
+  {
+    "type": "single",
+    "stem": "抽象工厂模式中，增加一个新的「产品等级结构」（如给 UI 库新增 CheckBox）会导致什么？",
+    "options": [
+      "只需新增一个具体工厂，无需修改其他代码",
+      "需要修改 AbstractFactory 接口及其所有具体工厂",
+      "只需修改客户端代码",
+      "无法实现，必须放弃使用抽象工厂"
+    ],
+    "answer": 1,
+    "explain": "这正是抽象工厂「开闭原则倾斜」的体现：加产品族容易，加产品等级结构要动抽象工厂接口和全部子类。A 描述的是新增产品族的情形。",
+    "tag": "抽象工厂"
+  },
+  {
+    "type": "single",
+    "stem": "建造者模式中，负责「固化装配顺序」的角色是？",
+    "options": [
+      "Builder",
+      "ConcreteBuilder",
+      "Director",
+      "Product"
+    ],
+    "answer": 2,
+    "explain": "Director 只依赖 Builder 抽象，在 construct() 里按固定顺序调用 buildPartX。Builder 声明接口，ConcreteBuilder 实现零件，Product 是成品。",
+    "tag": "建造者"
+  },
+  {
+    "type": "single",
+    "stem": "下列哪种场景最适合使用原型模式？",
+    "options": [
+      "需要保证一个类只有一个实例",
+      "需要创建一族相关对象而不指定具体类",
+      "对象创建代价很高，且希望保留原型当前的复杂状态",
+      "需要把复杂对象的构建与表示分离"
+    ],
+    "answer": 2,
+    "explain": "原型通过拷贝已有实例创建新对象，特别适合「创建昂贵 + 状态复杂」的场景。A 是单例，B 是抽象工厂，D 是建造者。",
+    "tag": "原型"
+  },
+  {
+    "type": "single",
+    "stem": "双重检查锁（DCL）实现单例时，静态实例字段为什么必须加 volatile？",
+    "options": [
+      "为了让实例可以被序列化",
+      "为了防止指令重排序导致其他线程看到「引用非空但对象未初始化完成」的状态",
+      "为了允许子类继承该单例",
+      "为了让 getInstance 可以被反射调用"
+    ],
+    "answer": 1,
+    "explain": "new 包含分配内存、初始化、赋值三步，可能被重排序。volatile 禁止这种重排序并保证可见性，否则别的线程可能拿到半初始化对象。",
+    "tag": "单例"
+  },
+  {
+    "type": "single",
+    "stem": "Java 中 <code>Object.clone()<\/code> 默认执行的拷贝语义是？",
+    "options": [
+      "深拷贝",
+      "浅拷贝（引用字段只复制地址）",
+      "序列化拷贝",
+      "不复制任何字段"
+    ],
+    "answer": 1,
+    "explain": "默认 clone 是逐字段浅拷贝：基本类型复制值，引用类型只复制引用。原型模式里若有可变子对象，必须手动补深拷贝。",
+    "tag": "原型"
+  },
+  {
+    "type": "multiple",
+    "stem": "下列关于抽象工厂与工厂方法的说法，正确的有（多选）：",
+    "options": [
+      "工厂方法只面对一个产品等级结构，抽象工厂面对多个",
+      "抽象工厂中增加新的产品族通常只需新增一个具体工厂",
+      "工厂方法中增加新产品通常需要新增一个具体工厂",
+      "抽象工厂中增加新的产品等级结构不需要修改已有代码"
+    ],
+    "answer": [
+      0,
+      1,
+      2
+    ],
+    "explain": "D 错误：抽象工厂新增产品等级结构必须修改 AbstractFactory 接口及其所有子类，这正是它的开闭倾斜之处。",
+    "tag": "辨析"
+  },
+  {
+    "type": "multiple",
+    "stem": "单例模式可能被下列哪些方式破坏唯一性（多选）：",
+    "options": [
+      "反射调用私有构造函数",
+      "序列化后反序列化",
+      "存在多个类加载器",
+      "使用枚举实现单例"
+    ],
+    "answer": [
+      0,
+      1,
+      2
+    ],
+    "explain": "枚举实现恰恰是防破坏的手段：JVM 保证枚举实例唯一，反序列化也返回同一实例。前三项都能造出第二个实例。",
+    "tag": "单例"
+  },
+  {
+    "type": "multiple",
+    "stem": "建造者模式的适用条件包括（多选）：",
+    "options": [
+      "产品对象有复杂的内部结构",
+      "构建算法相对稳定，零件部分易变",
+      "需要强制一定的装配顺序",
+      "产品只有两三个简单字段需要赋值"
+    ],
+    "answer": [
+      0,
+      1,
+      2
+    ],
+    "explain": "D 是过度设计：字段很少时直接构造函数或 setter 更清晰。建造者的价值在于「复杂结构 + 稳定步骤」。",
+    "tag": "建造者"
+  },
+  {
+    "type": "multiple",
+    "stem": "下列关于创建型模式的说法，正确的有（多选）：",
+    "options": [
+      "创建型模式体现了「对象的创建与使用分离」的单一职责思想",
+      "创建型模式都符合开闭原则",
+      "原型模式可以避免创建与产品类层次平行的工厂类层次",
+      "简单工厂属于 GoF 23 种模式"
+    ],
+    "answer": [
+      0,
+      2
+    ],
+    "explain": "B 错：简单工厂与抽象工厂在扩展某些方向上都违反开闭原则；D 错：简单工厂不是 GoF 23 种之一。",
+    "tag": "总览"
+  },
+  {
+    "type": "boolean",
+    "stem": "工厂方法模式中，具体工厂类与具体产品类通常形成一一对应的平行类层次。",
+    "answer": true,
+    "explain": "这是工厂方法「连接平行类层次」的效果：ConcreteCreator 的工厂方法返回对应的 ConcreteProduct。",
+    "tag": "工厂方法"
+  },
+  {
+    "type": "boolean",
+    "stem": "简单工厂模式满足开闭原则，因为客户端代码不需要修改。",
+    "answer": false,
+    "explain": "客户端确实不用改，但<b>服务端的工厂类必须修改<\/b>。开闭原则考察的是整个系统「对扩展开放、对修改关闭」，新增产品要改工厂判断逻辑就破坏了它。",
+    "tag": "简单工厂"
+  },
+  {
+    "type": "boolean",
+    "stem": "建造者模式的 Director 可以直接 new 具体产品，只要 Builder 是抽象的就仍然符合模式意图。",
+    "answer": false,
+    "explain": "Director 一旦 new 具体产品，就与具体表示耦合，「同样的构建过程可以创建不同的表示」这一意图失效。Director 只能依赖 Builder 抽象。",
+    "tag": "建造者"
+  }
+]
+</script>
+
+<script type="application/json" id="cards-data">
+[
+  {
+    "front": "创建型模式的两条主旋律是什么？",
+    "back": "① 封装系统使用<b>哪些具体类<\/b>的信息；② 隐藏这些类的实例<b>如何被创建和组合<\/b>。",
+    "tag": "总览"
+  },
+  {
+    "front": "GoF 创建型模式有哪 5 种？",
+    "back": "工厂方法、抽象工厂、建造者、原型、单例。<b>简单工厂不在其中<\/b>。",
+    "tag": "总览"
+  },
+  {
+    "front": "简单工厂模式的三个角色？",
+    "back": "<b>Factory<\/b>（工厂，含判断逻辑）、<b>Product<\/b>（抽象产品）、<b>ConcreteProduct<\/b>（具体产品）。",
+    "tag": "简单工厂"
+  },
+  {
+    "front": "简单工厂为什么违反开闭原则？",
+    "back": "新增产品必须修改工厂类里的 <code>if/else<\/code> 判断逻辑——对修改没有关闭。",
+    "tag": "简单工厂"
+  },
+  {
+    "front": "工厂方法模式的意图？",
+    "back": "定义一个创建对象的接口，让<b>子类<\/b>决定实例化哪一个类，使实例化<b>延迟到子类<\/b>。",
+    "tag": "工厂方法"
+  },
+  {
+    "front": "工厂方法模式的四个角色？",
+    "back": "<b>Product<\/b>、<b>ConcreteProduct<\/b>、<b>Creator<\/b>（声明工厂方法）、<b>ConcreteCreator<\/b>（重定义工厂方法）。",
+    "tag": "工厂方法"
+  },
+  {
+    "front": "工厂方法的别名是什么？",
+    "back": "<b>虚拟构造器<\/b>（Virtual Constructor）模式、<b>多态工厂<\/b>模式。",
+    "tag": "工厂方法"
+  },
+  {
+    "front": "抽象工厂模式的意图？",
+    "back": "提供一个创建<b>一系列相关或相互依赖对象<\/b>的接口，而无需指定它们具体的类。别名 <b>Kit<\/b>。",
+    "tag": "抽象工厂"
+  },
+  {
+    "front": "什么是产品族？什么是产品等级结构？",
+    "back": "<b>产品等级结构<\/b>＝同一抽象产品下的继承链（如 Button 系）；<b>产品族<\/b>＝不同等级结构中同一系列的一组产品（如 WindowsButton + WindowsText）。",
+    "tag": "抽象工厂"
+  },
+  {
+    "front": "抽象工厂的开闭原则「倾斜」指什么？",
+    "back": "加<b>产品族<\/b>容易（新增具体工厂）；加<b>产品等级结构<\/b>难（要改 AbstractFactory 接口及所有子类）。",
+    "tag": "抽象工厂"
+  },
+  {
+    "front": "建造者模式的意图？",
+    "back": "将一个复杂对象的<b>构建<\/b>与其<b>表示<\/b>分离，使同样的构建过程可以创建不同的表示。",
+    "tag": "建造者"
+  },
+  {
+    "front": "建造者模式的四个角色及职责？",
+    "back": "<b>Builder<\/b>（部件接口）、<b>ConcreteBuilder<\/b>（装配零件 + getResult）、<b>Director<\/b>（固化装配顺序）、<b>Product<\/b>（复杂对象）。",
+    "tag": "建造者"
+  },
+  {
+    "front": "建造者与抽象工厂的关键区别？",
+    "back": "建造者分步装配<b>一个复杂对象<\/b>，最后 getResult 才产出；抽象工厂一次创建<b>一族平级产品<\/b>，每次 create 立即返回。",
+    "tag": "辨析"
+  },
+  {
+    "front": "原型模式的意图？",
+    "back": "用原型实例指定创建对象的种类，并通过<b>拷贝这些原型<\/b>创建新对象；客户端无需知道具体类名。",
+    "tag": "原型"
+  },
+  {
+    "front": "浅拷贝与深拷贝的区别？",
+    "back": "浅拷贝只复制引用地址，副本与原对象<b>共享<\/b>可变子对象；深拷贝递归复制子对象，两者完全独立。",
+    "tag": "原型"
+  },
+  {
+    "front": "原型模式最适合什么场景？",
+    "back": "创建代价高（数据库/网络/大量计算）、状态复杂需要保留、或类名不应对客户端暴露。",
+    "tag": "原型"
+  },
+  {
+    "front": "单例模式的意图？",
+    "back": "保证一个类<b>仅有一个实例<\/b>，并提供一个<b>全局访问点<\/b>。",
+    "tag": "单例"
+  },
+  {
+    "front": "单例的三种常见写法？",
+    "back": "饿汉式（类加载即创建，天然安全）、双重检查锁（懒加载 + volatile）、静态内部类（懒加载且安全）、枚举（防反射/序列化）。",
+    "tag": "单例"
+  },
+  {
+    "front": "DCL 单例为什么必须加 volatile？",
+    "back": "防止 <code>new<\/code> 的三步（分配/初始化/赋值）被<b>重排序<\/b>，避免其他线程看到「引用非空但对象未初始化完成」。",
+    "tag": "单例"
+  },
+  {
+    "front": "哪些方式能破坏单例的唯一性？",
+    "back": "<b>反射<\/b>（setAccessible 调私有构造）、<b>序列化<\/b>（反序列化产生新实例）、<b>多类加载器<\/b>。枚举写法可防前两者。",
+    "tag": "单例"
+  },
+  {
+    "front": "单例模式的主要缺点（三点）？",
+    "back": "① 引入<b>全局状态<\/b>，模块间隐式依赖；② 单元测试难隔离；③ 并发、反射、序列化都可能破坏唯一性。",
+    "tag": "单例"
+  },
+  {
+    "front": "五种创建型模式分别把「创建」推迟到哪里？",
+    "back": "工厂方法→<b>子类<\/b>；抽象工厂→<b>具体工厂对象<\/b>；建造者→<b>最后一步<\/b>；原型→<b>已有实例<\/b>；单例→<b>首次访问<\/b>。",
+    "tag": "辨析"
+  }
+]
+</script>
+
+<script src="../../data/videos.js"></script>
+<script src="../../data/chapters.js"></script>
+<script src="../../assets/js/site.js"></script>
+</body>
+</html>

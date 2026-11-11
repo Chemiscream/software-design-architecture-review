@@ -1,0 +1,1730 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page="chapter" data-chapter="ch3">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="第 3 章 软件设计的模式 复习要点：模式的起源与定义、模式四要素、GoF 23 种模式完整速查表与三型分类、描述模板、反模式与误用、模式与框架/类库/架构的辨析。">
+<meta name="color-scheme" content="light dark">
+<title>第 3 章 软件设计的模式 · 软件设计与体系架构</title>
+<link rel="stylesheet" href="../../assets/css/site.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%235b4a72'/%3E%3Cpath d='M6 8h12M6 12h12M6 16h7' stroke='%23fff' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
+<script>
+  /* 主题初始化：必须内联在 <head> 中，且必须一字不改地保留 */
+  (function () {
+    try {
+      var t = JSON.parse(localStorage.getItem('sda.theme'));
+      if (t !== 'dark' && t !== 'light') {
+        t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      document.documentElement.setAttribute('data-theme', t);
+    } catch (e) {
+      document.documentElement.setAttribute('data-theme', 'light');
+    }
+  })();
+</script>
+<style>
+  /* 知识地图的 4 列排版已由共享样式 assets/css/site.css 统一处理，本章无需覆盖。 */
+
+  /* 仅本章：23 模式总表有 5 列，给「类型」列留出不换行的宽度。 */
+  .table-wrap--pat table { table-layout: auto; }
+  .table-wrap--pat th:nth-child(1), .table-wrap--pat td:nth-child(1) { width: 2.2rem; }
+  .table-wrap--pat th:nth-child(2), .table-wrap--pat td:nth-child(2) { width: 8.6rem; }
+  .table-wrap--pat th:nth-child(3), .table-wrap--pat td:nth-child(3) { width: 4.2rem; }
+  .table-wrap--pat .tc-type { white-space: nowrap; }
+  .table-wrap--pat td:nth-child(2) .tiny { font-size: 0.72rem; }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">跳到正文</a>
+
+<div class="progress-bar" aria-hidden="true"><div class="progress-bar__fill" id="progress-fill"></div></div>
+
+<header class="topbar" id="topbar-root"></header>
+
+<div class="wrap">
+  <div class="layout">
+    <aside class="sidebar" id="sidebar-root" aria-label="章节目录"></aside>
+
+    <main class="main" id="main">
+      <div class="main__inner">
+
+        <!-- ================================================================
+             01 overview —— 章首：hero + 学习目标 + 知识地图 + 关系图
+             ================================================================ -->
+        <section class="section" id="overview" data-title="本章导览">
+          <div class="hero">
+            <span class="hero__eyebrow">第 3 章 · 软件设计的模式</span>
+            <h1>模式：把前人的设计经验变成可复用的语言</h1>
+            <p class="hero__lead">
+              设计模式不是 23 段可以照抄的代码，而是一套描述「问题—方案—代价」的共同语言。
+              本章讲清模式的来历、四要素、描述模板与三型分类，并给出 GoF 23 种模式的完整速查表——
+              在第 4 章逐个展开之前，先把这张地图建立起来。
+            </p>
+            <div class="hero__meta">
+              <span class="chip chip--accent"><svg class="icon" aria-hidden="true"><use href="#i-target"></use></svg>考试重点</span>
+              <span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-clock"></use></svg>约 25 分钟</span>
+              <span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-compass"></use></svg>概念与分类</span>
+              <span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg>简答 + 选择高频</span>
+            </div>
+            <div class="hero__actions">
+              <a class="btn btn--primary" href="#concepts">
+                <svg class="icon" aria-hidden="true"><use href="#i-play"></use></svg>开始阅读
+              </a>
+              <a class="btn" href="#compare">
+                <svg class="icon" aria-hidden="true"><use href="#i-grid"></use></svg>23 模式速查表
+              </a>
+              <a class="btn" href="#quiz">
+                <svg class="icon" aria-hidden="true"><use href="#i-target"></use></svg>直接自测
+              </a>
+            </div>
+          </div>
+
+          <h2 class="section-title" style="margin-top:var(--sp-5)">
+            <svg class="icon" aria-hidden="true"><use href="#i-target"></use></svg>学习目标
+          </h2>
+          <p class="section-lead">读完后应能做到以下几点。</p>
+          <ol class="objectives">
+            <li>能说出模式的定义与起源（Alexander 的建筑模式 → GoF 的 23 种设计模式），并解释「模式不是被发明的，而是被总结和命名的」。</li>
+            <li>能完整背出模式的四要素（名称、问题、解决方案、效果），并说明每一要素缺失会造成什么后果。</li>
+            <li>能把任意一个 GoF 模式正确归入创建型 / 结构型 / 行为型，并说清三型的划分依据。</li>
+            <li>能按 GoF 描述模板（名称、问题、解决方案、效果、适用性、相关模式）复述一个模式，并解释「效果」一栏为什么必须写代价。</li>
+            <li>能辨析模式、惯用法、框架、类库、架构模式五个概念的层次差异，并在给定场景中判断「该不该用模式」。</li>
+          </ol>
+
+          <h2 class="section-title" style="margin-top:var(--sp-6)">
+            <svg class="icon" aria-hidden="true"><use href="#i-network"></use></svg>知识地图
+          </h2>
+          <p class="section-lead">把全章压缩成四列：为什么需要模式、模式给什么、一个模式写什么、用模式要付什么。</p>
+          <div class="kmap">
+            <div class="kmap__col">
+              <p class="kmap__title">问题</p>
+              <ul class="kmap__list">
+                <li>经验难口头传递</li>
+                <li>同类坑反复踩</li>
+                <li>团队缺共同词汇</li>
+                <li>读代码不懂意图</li>
+              </ul>
+            </div>
+            <div class="kmap__col">
+              <p class="kmap__title">方案</p>
+              <ul class="kmap__list">
+                <li>给问题命名</li>
+                <li>记录上下文</li>
+                <li>形成设计词汇</li>
+                <li>给出结构与协作</li>
+              </ul>
+            </div>
+            <div class="kmap__col">
+              <p class="kmap__title">要素</p>
+              <ul class="kmap__list">
+                <li>名称 / 别名</li>
+                <li>问题</li>
+                <li>解决方案</li>
+                <li>效果（含代价）</li>
+              </ul>
+            </div>
+            <div class="kmap__col">
+              <p class="kmap__title">代价</p>
+              <ul class="kmap__list">
+                <li>抽象层增多</li>
+                <li>运行性能下降</li>
+                <li>架构复杂度上升</li>
+                <li>过度设计风险</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:var(--sp-6)">
+            <h4 class="card__title">
+              <svg class="icon" aria-hidden="true"><use href="#i-network"></use></svg>
+              图 3-1　设计原则 → 设计模式 → 架构模式
+            </h4>
+            <div class="card__body">
+              <div class="dg-scroll">
+                <svg class="dg" viewBox="0 0 812 440" role="img"
+                     aria-label="设计原则指导并约束设计模式，设计模式组合实现架构模式；架构的质量属性反过来约束模式与原则的取舍。">
+                  <style>
+                    .dg text { font-family: var(--font-sans); }
+                    .dg .dg-layer { fill: var(--surface-2); stroke: var(--border-strong); stroke-width: 1; }
+                    .dg .dg-box { fill: var(--surface); stroke: var(--border-strong); stroke-width: 1; }
+                    .dg .dg-chip { fill: var(--surface); stroke: var(--border-strong); stroke-width: 1; }
+                    .dg .dg-t { fill: var(--text); }
+                    .dg .dg-t2 { fill: var(--text-2); }
+                    .dg .dg-taccent { fill: var(--accent-ui); }
+                    .dg .dg-line { stroke: var(--accent-ui); stroke-width: 1.8; fill: none; }
+                    .dg .dg-dash { stroke: var(--accent-ui); stroke-width: 1.5; fill: none; stroke-dasharray: 5 4; }
+                    .dg .dg-arw { fill: var(--accent-ui); }
+                    .dg-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+                    .dg-scroll .dg { display: block; width: 100%; min-width: 600px; height: auto; }
+                  </style>
+
+                  <!-- ① 设计原则 -->
+                  <rect class="dg-layer" x="10" y="10" width="700" height="86" rx="12"></rect>
+                  <text class="dg-t" x="26" y="36" font-size="16" font-weight="700">① 设计原则 —— 为什么这样设计（目标与约束）</text>
+                  <rect class="dg-chip" x="26" y="48" width="108" height="32" rx="7"></rect>
+                  <text class="dg-t2" x="80" y="69" font-size="12.5" text-anchor="middle">抽象</text>
+                  <rect class="dg-chip" x="141" y="48" width="108" height="32" rx="7"></rect>
+                  <text class="dg-t2" x="195" y="69" font-size="12.5" text-anchor="middle">松耦合</text>
+                  <rect class="dg-chip" x="256" y="48" width="108" height="32" rx="7"></rect>
+                  <text class="dg-t2" x="310" y="69" font-size="12.5" text-anchor="middle">信息隐藏</text>
+                  <rect class="dg-chip" x="371" y="48" width="108" height="32" rx="7"></rect>
+                  <text class="dg-t2" x="425" y="69" font-size="12.5" text-anchor="middle">明确职责</text>
+                  <rect class="dg-chip" x="486" y="48" width="108" height="32" rx="7"></rect>
+                  <text class="dg-t2" x="540" y="69" font-size="12.5" text-anchor="middle">依赖倒置</text>
+                  <rect class="dg-chip" x="601" y="48" width="108" height="32" rx="7"></rect>
+                  <text class="dg-t2" x="655" y="69" font-size="12.5" text-anchor="middle">开闭原则</text>
+
+                  <!-- 箭头 ①→② -->
+                  <line class="dg-line" x1="355" y1="96" x2="355" y2="114"></line>
+                  <polygon class="dg-arw" points="349,112 361,112 355,122"></polygon>
+                  <text class="dg-t2" x="370" y="112" font-size="13">指导 · 约束：原则定目标，模式定手法</text>
+
+                  <!-- ② 设计模式 -->
+                  <rect class="dg-layer" x="10" y="122" width="700" height="176" rx="12"></rect>
+                  <text class="dg-t" x="26" y="148" font-size="16" font-weight="700">② 设计模式 —— 怎么做（微架构：类与对象的协作）</text>
+                  <rect class="dg-box" x="20" y="160" width="220" height="126" rx="9"></rect>
+                  <text class="dg-taccent" x="34" y="184" font-size="14" font-weight="700">创建型 ×5</text>
+                  <text class="dg-t2" x="34" y="208" font-size="12">单例 · 工厂方法 · 抽象工厂</text>
+                  <text class="dg-t2" x="34" y="228" font-size="12">建造者 · 原型</text>
+                  <rect class="dg-box" x="250" y="160" width="220" height="126" rx="9"></rect>
+                  <text class="dg-taccent" x="264" y="184" font-size="14" font-weight="700">结构型 ×7</text>
+                  <text class="dg-t2" x="264" y="208" font-size="12">适配器 · 桥接 · 组合</text>
+                  <text class="dg-t2" x="264" y="228" font-size="12">装饰器 · 外观 · 享元</text>
+                  <text class="dg-t2" x="264" y="248" font-size="12">代理</text>
+                  <rect class="dg-box" x="480" y="160" width="220" height="126" rx="9"></rect>
+                  <text class="dg-taccent" x="494" y="184" font-size="14" font-weight="700">行为型 ×11</text>
+                  <text class="dg-t2" x="494" y="208" font-size="12">责任链 · 命令 · 解释器</text>
+                  <text class="dg-t2" x="494" y="228" font-size="12">迭代器 · 中介者 · 备忘录</text>
+                  <text class="dg-t2" x="494" y="248" font-size="12">观察者 · 状态 · 策略</text>
+                  <text class="dg-t2" x="494" y="268" font-size="12">模板方法 · 访问者</text>
+
+                  <!-- 箭头 ②→③ -->
+                  <line class="dg-line" x1="355" y1="298" x2="355" y2="316"></line>
+                  <polygon class="dg-arw" points="349,314 361,314 355,324"></polygon>
+                  <text class="dg-t2" x="370" y="314" font-size="13">组合 · 实现：MVC = 观察者 + 组合 + 策略</text>
+
+                  <!-- ③ 架构模式 -->
+                  <rect class="dg-layer" x="10" y="324" width="700" height="96" rx="12"></rect>
+                  <text class="dg-t" x="26" y="350" font-size="16" font-weight="700">③ 架构模式 —— 整体怎么组织（粗粒度：子系统、通信、部署）</text>
+                  <rect class="dg-chip" x="20" y="360" width="130" height="36" rx="7"></rect>
+                  <text class="dg-t2" x="85" y="384" font-size="12.5" text-anchor="middle">分层架构</text>
+                  <rect class="dg-chip" x="158" y="360" width="130" height="36" rx="7"></rect>
+                  <text class="dg-t2" x="223" y="384" font-size="12.5" text-anchor="middle">MVC</text>
+                  <rect class="dg-chip" x="296" y="360" width="130" height="36" rx="7"></rect>
+                  <text class="dg-t2" x="361" y="384" font-size="12.5" text-anchor="middle">管道-过滤器</text>
+                  <rect class="dg-chip" x="434" y="360" width="130" height="36" rx="7"></rect>
+                  <text class="dg-t2" x="499" y="384" font-size="12.5" text-anchor="middle">事件驱动</text>
+                  <rect class="dg-chip" x="572" y="360" width="130" height="36" rx="7"></rect>
+                  <text class="dg-t2" x="637" y="384" font-size="12.5" text-anchor="middle">微服务</text>
+
+                  <!-- 反向约束：架构质量属性反馈到原则 -->
+                  <path class="dg-dash" d="M 712 384 H 736 V 53 H 716"></path>
+                  <polygon class="dg-arw" points="720,47 720,59 710,53"></polygon>
+                  <text class="dg-taccent" x="795" y="220" font-size="12" text-anchor="middle"
+                        transform="rotate(-90 795 220)">质量属性反向约束取舍</text>
+                </svg>
+              </div>
+              <p class="muted tiny" style="margin:var(--sp-3) 0 0">
+                读法：自下而上「原则定目标，模式定手法，架构定格局」；自上而下则是「质量属性反过来筛选可用的模式」。
+                注意箭头的粗细含义——原则与模式之间是<b>约束</b>关系，模式与架构之间是<b>组成</b>关系，
+                而架构对上的虚线表示<b>反馈</b>：同样的原则，在不同质量属性要求下会选到不同的模式。
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================================
+             02 concepts —— 核心概念
+             ================================================================ -->
+        <section class="section" id="concepts" data-title="核心概念">
+          <div class="section-head">
+            <span class="section-head__num">02</span>
+            <h2 class="section-title">核心概念</h2>
+            <a class="section-anchor" href="#concepts" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">先把术语钉死。本章之后所有的讨论，都建立在这十个词的区分之上。</p>
+
+          <div class="grid">
+            <div class="concept">
+              <p class="concept__term">模式 <span class="concept__en">Pattern</span></p>
+              <p class="concept__body">
+                在<b>特定上下文</b>中，针对<b>反复出现</b>的设计问题，给出的<b>经过验证</b>的解决方案的核心。
+                它描述的是「元素、职责与协作关系」的抽象结构，而不是某段可以照抄的代码。
+              </p>
+              <div class="concept__tags">
+                <span class="chip chip--accent">定义</span>
+                <span class="chip">可复用经验</span>
+              </div>
+            </div>
+
+            <div class="concept">
+              <p class="concept__term">模式四要素 <span class="concept__en">Four Elements</span></p>
+              <p class="concept__body">
+                <b>名称</b>（共同词汇）、<b>问题</b>（何时适用、有哪些力在冲突）、
+                <b>解决方案</b>（角色与协作）、<b>效果</b>（收益与代价）。四者缺一不可，
+                缺「效果」就会只见优点不见坑。
+              </p>
+              <div class="concept__tags">
+                <span class="chip chip--accent">必背</span>
+                <span class="chip">简答题骨架</span>
+              </div>
+            </div>
+
+            <div class="concept">
+              <p class="concept__term">模式语言 <span class="concept__en">Pattern Language</span></p>
+              <p class="concept__body">
+                建筑学家 <b>Christopher Alexander</b> 在《模式语言》中提出的思想：把若干模式组织成一张
+                「大模式包含小模式」的网络，让非专家也能按图索骥地做出好设计。设计模式的源头就在这里。
+              </p>
+              <div class="concept__tags">
+                <span class="chip">起源</span>
+                <span class="chip chip--warn">易考</span>
+              </div>
+            </div>
+
+            <div class="concept">
+              <p class="concept__term">GoF 23 种模式 <span class="concept__en">Gang of Four</span></p>
+              <p class="concept__body">
+                1994 年 Gamma、Helm、Johnson、Vlissides 四人在《设计模式》中归纳的 23 种面向对象设计模式：
+                <b>创建型 5 + 结构型 7 + 行为型 11</b>。注意：他们是<b>总结与命名</b>，不是发明。
+              </p>
+              <div class="concept__tags">
+                <span class="chip chip--accent">23 种</span>
+                <span class="chip">1994</span>
+              </div>
+            </div>
+
+            <div class="concept">
+              <p class="concept__term">三型分类 <span class="concept__en">Creational / Structural / Behavioral</span></p>
+              <p class="concept__body">
+                按<b>意图</b>划分：创建型管「对象怎么来」，结构型管「对象怎么拼」，
+                行为型管「对象怎么协作与分配职责」。分类依据是<b>目的</b>，不是结构长相。
+              </p>
+              <div class="concept__tags">
+                <span class="chip chip--accent">分类</span>
+                <span class="chip">选择题高频</span>
+              </div>
+            </div>
+
+            <div class="concept">
+              <p class="concept__term">惯用法 <span class="concept__en">Idiom</span></p>
+              <p class="concept__body">
+                与<b>具体编程语言</b>绑定的低层模式，如 C++ 的 Pimpl、Java 的双检锁。
+                抽象层次低于设计模式：换语言就失效，因此不属于 GoF 的 23 种。
+              </p>
+              <div class="concept__tags">
+                <span class="chip chip--warn">层次辨析</span>
+                <span class="chip">语言相关</span>
+              </div>
+            </div>
+
+            <div class="concept">
+              <p class="concept__term">反模式 <span class="concept__en">Anti-pattern</span></p>
+              <p class="concept__body">
+                看起来合理、实践中却<b>反复造成损害</b>的常见解法，如上帝类、意大利面代码、
+                复制粘贴式复用。<b>反模式不是「坏模式」</b>，而是「被证伪的伪模式」。
+              </p>
+              <div class="concept__tags">
+                <span class="chip chip--danger">反面</span>
+                <span class="chip">易错</span>
+              </div>
+            </div>
+
+            <div class="concept">
+              <p class="concept__term">框架 <span class="concept__en">Framework</span></p>
+              <p class="concept__body">
+                一组<b>可运行的半成品代码</b>，通过<b>控制反转</b>在合适的时机回调你写的类。
+                模式是知识，框架是产品；框架内部大量使用模式，但模式不等于框架。
+              </p>
+              <div class="concept__tags">
+                <span class="chip chip--warn">易混淆</span>
+                <span class="chip">控制反转</span>
+              </div>
+            </div>
+
+            <div class="concept">
+              <p class="concept__term">微架构 <span class="concept__en">Micro-architecture</span></p>
+              <p class="concept__body">
+                课件对设计模式的定位：<b>经过验证的适用原则</b>。它决定「把子系统拆成哪些部分、
+                部分之间如何合作」，粒度比架构模式细、比惯用法粗。
+              </p>
+              <div class="concept__tags">
+                <span class="chip">定位</span>
+                <span class="chip">课件原话</span>
+              </div>
+            </div>
+
+            <div class="concept">
+              <p class="concept__term">委托原则 <span class="concept__en">Delegation</span></p>
+              <p class="concept__body">
+                「<b>优先使用组合 / 委托，而不是继承</b>」。把请求转交给另一个对象处理，
+                被委托者可以是聚合的部分对象，也可以是<b>运行时注入的抽象</b>——后者正是绝大多数模式实现可替换性的手段。
+              </p>
+              <div class="concept__tags">
+                <span class="chip chip--accent">实现手法</span>
+                <span class="chip">组合优于继承</span>
+              </div>
+            </div>
+          </div>
+
+          <h3 style="margin-top:var(--sp-6)">模板示例：一个模式被描述成什么样</h3>
+          <p>
+            下面用第 4 章会详讲的<b>策略模式</b>做示范。注意五行的顺序是固定的：
+            <b>意图 → 适用场景 → 参与角色 → 主要代价 → 相关模式</b>。
+            考试让你「描述一个模式」时，照这个骨架写就不会漏项。
+          </p>
+
+          <div class="pattern">
+            <div class="pattern__head">
+              <h4 class="pattern__name">策略模式</h4>
+              <span class="pattern__en">Strategy Pattern</span>
+              <span class="pattern__type">行为型</span>
+            </div>
+            <div class="pattern__body">
+              <dl class="pattern__rows">
+                <div class="pattern__row">
+                  <dt>意图</dt>
+                  <dd>定义一系列算法，把它们分别封装起来并使其可以互相替换，让算法的变化独立于使用它的客户。</dd>
+                </div>
+                <div class="pattern__row">
+                  <dt>适用场景</dt>
+                  <dd>
+                    同一问题有多种算法、且需要在运行时切换；<br>
+                    许多相关类仅在行为上不同；<br>
+                    算法中含有客户不该知道的复杂数据结构。
+                  </dd>
+                </div>
+                <div class="pattern__row">
+                  <dt>参与角色</dt>
+                  <dd>Strategy（策略接口）、ConcreteStrategy（具体策略）、Context（持有策略并委托调用）</dd>
+                </div>
+                <div class="pattern__row">
+                  <dt>主要代价</dt>
+                  <dd>客户必须了解各策略的差异才能选对；策略类数量增多；策略与上下文之间可能产生额外通信开销。</dd>
+                </div>
+                <div class="pattern__row">
+                  <dt>相关模式</dt>
+                  <dd>状态模式（行为随内部状态自动切换，客户不选）、命令模式（把请求封装成对象）、模板方法（用继承固定骨架）</dd>
+                </div>
+              </dl>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================================
+             03 detail —— 展开讲解
+             ================================================================ -->
+        <section class="section" id="detail" data-title="模式的定义与描述">
+          <div class="section-head">
+            <span class="section-head__num">03</span>
+            <h2 class="section-title">模式的定义与描述</h2>
+            <a class="section-anchor" href="#detail" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">这一节回答四个问题：模式从哪来、由哪四块组成、怎么把它写清楚、以及为什么「优先用委托」。</p>
+
+          <div class="prose">
+            <h3>3.1　从建筑到软件：模式是怎么来的</h3>
+            <p>
+              模式的思想不是软件界发明的。建筑学家 <b>Christopher Alexander</b> 在《模式语言》中提出：
+              城市与建筑中反复出现的问题，可以用一套「模式」来描述——每个模式都写清<b>问题</b>、
+              <b>解决方案的核心</b>以及<b>在什么上下文下适用</b>；把模式串成网络，就成了一种
+              <b>模式语言</b>，让不精通建筑的人也能据此做出不坏的设计。
+            </p>
+            <p>
+              1987 年前后，Kent Beck 与 Ward Cunningham 把这套思路带进面向对象界；
+              1994 年，Gamma、Helm、Johnson、Vlissides（合称 <b>GoF</b>）在《设计模式：可复用面向对象软件的基础》
+              中整理出 <b>23 种</b>模式，并第一次用统一的模板把它们写清楚。
+            </p>
+            <div class="callout callout--info">
+              <span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-info"></use></svg></span>
+              <div class="callout__body">
+                <p><span class="callout__title">关键认识：模式不是被发明的</span>
+                GoF 的贡献不是「发明了 23 种巧妙写法」，而是<b>把优秀设计师早就在用的做法总结出来、起了名字、
+                并写清了上下文与代价</b>。所以同一段结构，在不同语言、不同年代可能叫不同名字；
+                而同一个名字，在具体项目里的实现可以千差万别。
+                正因为是「总结」而非「发明」，模式才会<b>不依赖平台、不限定编程语言</b>——
+                它描述的是职责与协作关系，不是某段代码。</p>
+              </div>
+            </div>
+            <p>
+              这解释了模式的真正价值：它首先是一套<b>共同词汇</b>。说一句「这里用观察者模式」，
+              比画半小时类图更能让同事立刻明白你的意图、以及你将付出什么代价。
+              其次才是<b>可复用的经验</b>——让你不必从零试错。
+            </p>
+
+            <h3>3.2　模式四要素：一个模式必须说清的四件事</h3>
+            <p>
+              四要素是本章最硬的考点。它同时是「模式的定义」和「描述一个模式的骨架」，
+              考简答题时按这四点铺开即可。
+            </p>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>要素</th><th>回答什么问题</th><th>缺失会导致</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>名称 Name</td>
+                    <td>用一个词指代这套方案，含别名（如「策略」又称 Policy）</td>
+                    <td>无法在设计讨论中引用，模式退化成一个私人技巧</td>
+                  </tr>
+                  <tr>
+                    <td>问题 Problem</td>
+                    <td>在什么<b>上下文</b>下、面对什么<b>反复出现</b>的问题，有哪些<b>力</b>在互相冲突</td>
+                    <td>变成无脑套用，在不该用的地方硬套</td>
+                  </tr>
+                  <tr>
+                    <td>解决方案 Solution</td>
+                    <td>由哪些<b>元素</b>组成、各自<b>职责</b>是什么、彼此<b>如何协作</b>（抽象描述，不是代码）</td>
+                    <td>退化为一段只能照抄的代码，无法迁移到别的场景</td>
+                  </tr>
+                  <tr>
+                    <td>效果 Consequences</td>
+                    <td>收益<b>与代价</b>：对灵活性、扩展性、可移植性的影响，以及时间空间的代价</td>
+                    <td>只见优点不见坑，直接滑向过度设计</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="callout callout--tip">
+              <span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-bulb"></use></svg></span>
+              <div class="callout__body">
+                <p><span class="callout__title">答题技巧</span>
+                问「什么是设计模式」时，标准答法是<b>定义 + 四要素</b>：
+                「设计模式是在特定上下文中，对反复出现的设计问题所给出的经过验证的解决方案的核心，
+                它由名称、问题、解决方案、效果四个要素构成。」
+                最后补一句「模式描述的是元素、职责与协作关系，而不是具体代码或可复用的类库」，通常就能拿满。</p>
+              </div>
+            </div>
+
+            <h3>3.3　描述模式的模板：GoF 的六段式</h3>
+            <p>
+              课件给出的模板共六项，比四要素更细，是<b>写文档</b>和<b>做设计题</b>时的实际格式。
+              注意第 3 项「解决方法」下面还有四个子项——这四项正是把「解决方案」落到实处的地方。
+            </p>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>序号</th><th>模板项</th><th>写什么</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>1</td><td>名称 / 别名</td><td>模式名 + 业界别名，便于检索与交流</td></tr>
+                  <tr><td>2</td><td>问题</td><td>适用上下文、要解决的问题、相关的设计力</td></tr>
+                  <tr>
+                    <td>3</td>
+                    <td>解决方法</td>
+                    <td>
+                      ① <b>参与者</b>：有哪些类与对象、各自职责；<br>
+                      ② <b>类图</b>：类之间的静态结构关系（继承、关联、聚合、组合）；<br>
+                      ③ <b>动态关系</b>：一次请求/通知在对象间如何流转；<br>
+                      ④ <b>程序举例</b>：一段能说明结构的示例代码
+                    </td>
+                  </tr>
+                  <tr><td>4</td><td>评价（优缺点）</td><td>即四要素中的「效果」，必须同时写收益与代价</td></tr>
+                  <tr><td>5</td><td>适用范围</td><td>什么时候该用、什么时候<b>不该</b>用</td></tr>
+                  <tr><td>6</td><td>类似的模式</td><td>易混模式及其差异，帮助选型</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="callout callout--warn">
+              <span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg></span>
+              <div class="callout__body">
+                <p><span class="callout__title">课件用词说明</span>
+                第 3 项下课件原文写作「类图（金台关系）」，指的是类图中体现的<b>静态结构关系</b>
+                （继承、关联、聚合、组合等），与第 ③ 小项的「动态关系」相对。
+                复习时按「静态结构 / 动态交互」这一对来记即可，不要被字面写法卡住。</p>
+              </div>
+            </div>
+
+            <h3>3.4　委托原则：绝大多数模式的实现手法</h3>
+            <p>
+              课件在讲「模式的使用」时专门强调了一条原则：<b>优先使用组合 / 委托</b>。
+              所谓委托，就是<b>把请求转交给另一个对象处理</b>。被委托的对象有两种来源：
+              一是它本就是当前对象<b>聚合</b>进来的部分对象；二是它是一个<b>运行时才确定</b>的抽象
+              （接口或抽象类）实现。第二种正是模式能「可插拔」的根源。
+            </p>
+            <p>
+              为什么不用继承？因为继承是<b>编译期</b>绑定、白箱复用，父类的实现细节对子类暴露；
+              委托是<b>运行期</b>绑定、黑箱复用，只依赖被委托者的接口。下面这段对比说明了差别。
+            </p>
+
+            <figure class="code" data-lang="java" data-file="InheritanceVsDelegation.java">
+<pre><code>import java.util.ArrayList;
+import java.util.List;
+
+/* ---------- ✗ 用继承复用：编译期绑定，行为写死在类型里 ---------- */
+class LoggingList extends ArrayList&lt;String&gt; {
+    @Override
+    public boolean add(String s) {
+        System.out.println("[log] add " + s);
+        return super.add(s);          // 复用父类实现，但也被父类实现绑死
+    }
+}
+
+/* ---------- ✓ 用委托复用：持有抽象，运行时替换 ---------- */
+interface Sink {
+    void write(String s);
+}
+
+/** 装饰者式的委托：在转发前后加日志，被委托者可以是任意 Sink */
+class LoggingSink implements Sink {
+
+    private final Sink target;        // 关键：字段类型是抽象，不是具体类
+
+    LoggingSink(Sink target) {
+        this.target = target;
+    }
+
+    @Override
+    public void write(String s) {
+        System.out.println("[log] " + s);
+        target.write(s);              // 把消息继续传递给被委托对象
+    }
+}
+
+class ConsoleSink implements Sink {
+    @Override
+    public void write(String s) {
+        System.out.println(s);
+    }
+}</code></pre>
+            </figure>
+
+            <p>
+              用法差别一目了然：<code>new LoggingSink(new ConsoleSink())</code> 可以在运行时任意组合；
+              而 <code>LoggingList</code> 只能通过新增子类来变化，类数量会随需求组合爆炸。
+              观察者、策略、状态、命令、装饰器、代理、桥接——这些模式的骨架里都藏着一个
+              「持有抽象 + 转发调用」的委托字段。
+            </p>
+
+            <h3>3.5　模式的目标：提高架构属性，但要付三笔账</h3>
+            <p>
+              课件把模式的主要目标归为两条：<b>再次使用已获得的经验</b>，
+              以及<b>提高架构的灵活性和可扩展性</b>。落到具体属性上：
+            </p>
+            <ul>
+              <li><b>可理解性</b>：靠<b>简易性</b>达到——结构清晰、职责单一，并配有结构化的全面文档。
+                模式名本身就是一种文档：看到 <code>XxxFactory</code> 就知道对象的创建被集中管理了。</li>
+              <li><b>可扩展性</b>：有两条路。一是<b>静态继承</b>（编译期扩展，简单但僵化）；
+                二是<b>使用聚合接口或抽象类</b>，即<b>针对接口 / 抽象编程</b>（运行期扩展，模式主要走这条路）。</li>
+            </ul>
+            <p>而这一切都不是免费的。课件明确列出模式的三项代价：</p>
+
+            <div class="grid grid--2">
+              <div class="card">
+                <h4 class="card__title">
+                  <svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg>
+                  收益：扩展性提高
+                </h4>
+                <div class="card__body">
+                  <p class="muted">变化点被隔离到一个抽象之后，新增实现只需新增类，不必修改既有代码——
+                  这正是开闭原则在起作用。</p>
+                </div>
+              </div>
+              <div class="card">
+                <h4 class="card__title">
+                  <svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg>
+                  代价一：性能下降
+                </h4>
+                <div class="card__body">
+                  <p class="muted">多一层间接（接口调用、动态分派、对象转发），调用链变长；
+                  极端情况下还会增加对象数量与内存占用。</p>
+                </div>
+              </div>
+              <div class="card">
+                <h4 class="card__title">
+                  <svg class="icon" aria-hidden="true"><use href="#i-blocks"></use></svg>
+                  代价二：复杂度上升
+                </h4>
+                <div class="card__body">
+                  <p class="muted">类与接口数量增加，控制流不再线性；新人读代码需要先理解模式的约定，
+                  调试时也要跨多个对象追调用。</p>
+                </div>
+              </div>
+              <div class="card">
+                <h4 class="card__title">
+                  <svg class="icon" aria-hidden="true"><use href="#i-stop"></use></svg>
+                  代价三：过度设计风险
+                </h4>
+                <div class="card__body">
+                  <p class="muted">为「将来可能的变化」预留抽象，结果变化从未发生，
+                  白白背上一层间接——这是模式最常见的失败方式。</p>
+                </div>
+              </div>
+            </div>
+
+            <h3>3.6　反模式与模式误用</h3>
+            <p>
+              <b>反模式</b>（Anti-pattern）指那些<b>初看合理、实践中反复造成损害</b>的常见解法。
+              它有两个必要成分：一是「看起来像解决方案」，二是「有据可查的负面后果」。
+              所以反模式不是「写得丑的代码」，而是<b>被证伪的伪模式</b>。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>反模式</th><th>表现</th><th>为什么会发生</th><th>正确做法</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>上帝类</td>
+                    <td>一个类几千行，什么都管</td>
+                    <td>需求不断往里加，没人敢拆</td>
+                    <td>按职责拆分为多个协作对象</td>
+                  </tr>
+                  <tr>
+                    <td>意大利面代码</td>
+                    <td>控制流四处跳转，无层次</td>
+                    <td>缺少分层与统一抽象</td>
+                    <td>先立分层，再谈模式</td>
+                  </tr>
+                  <tr>
+                    <td>复制粘贴式复用</td>
+                    <td>相似代码多份并存</td>
+                    <td>改一处忘一处，越改越不敢动</td>
+                    <td>提炼共同抽象，用委托复用</td>
+                  </tr>
+                  <tr>
+                    <td>模式堆砌</td>
+                    <td>简单 CRUD 也要工厂 + 策略 + 外观</td>
+                    <td>把「用了模式」当成了目标本身</td>
+                    <td>先确认变化点，再决定是否引入模式</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>判断自己是不是在误用模式，看三个信号：</p>
+            <ol>
+              <li><b>说不出这个模式在隔离哪个变化点。</b>如果答不上「将来什么会变」，这层抽象就是空的。</li>
+              <li><b>为了套模式而增加了类，却没减少任何条件分支。</b>模式的收益应体现为「改动点收敛」。</li>
+              <li><b>只有一种实现，且明确知道不会有第二种。</b>此时抽象的成本大于收益，直接写具体类更好。</li>
+            </ol>
+
+            <h3>3.7　如何选择模式：五步决策法</h3>
+            <p>
+              选模式的顺序<b>不能颠倒</b>：先有问题，再有模式；而不是先挑一个模式，再去找地方用。
+              下面五步可以直接当作设计题的作答框架。
+            </p>
+            <div class="track">
+              <div class="track__step track__step--now">
+                <div class="track__dot">01</div>
+                <div class="track__body">
+                  <p class="track__title">描述问题，而不是描述方案</p>
+                  <p class="track__desc">先写清「谁在什么场景下遇到了什么困难」，禁止在这一步提模式名。</p>
+                </div>
+              </div>
+              <div class="track__step">
+                <div class="track__dot">02</div>
+                <div class="track__body">
+                  <p class="track__title">定位变化点</p>
+                  <p class="track__desc">问「将来最可能变的是什么」——算法？对象创建方式？对象结构？交互流程？
+                    变化点决定候选模式的<b>类别</b>。</p>
+                </div>
+              </div>
+              <div class="track__step">
+                <div class="track__dot">03</div>
+                <div class="track__body">
+                  <p class="track__title">按意图匹配候选</p>
+                  <p class="track__desc">用 23 模式总表的「意图」列筛选：创建型对创建、结构型对组成、行为型对职责分配。</p>
+                </div>
+              </div>
+              <div class="track__step">
+                <div class="track__dot">04</div>
+                <div class="track__body">
+                  <p class="track__title">评估代价与替代方案</p>
+                  <p class="track__desc">对比候选模式的「主要代价」，并问一句：<b>不用模式能不能解决？</b>
+                    简单重构、提取方法、引入参数往往就够了。</p>
+                </div>
+              </div>
+              <div class="track__step">
+                <div class="track__dot">05</div>
+                <div class="track__body">
+                  <p class="track__title">小步引入，重构而非重写</p>
+                  <p class="track__desc">先用最小改动验证抽象是否站得住，再逐步扩展。
+                    模式应当在重构中<b>长出来</b>，而不是一开始就设计进去。</p>
+                </div>
+              </div>
+            </div>
+
+            <h3>3.8　模式与设计原则的关系</h3>
+            <p>
+              一句话概括：<b>原则是目标，模式是手段</b>。原则说「应该松耦合、应对扩展开放」，
+              但没有告诉你具体怎么写；模式给出了一套经过验证的具体写法。
+              所以每个模式背后都能找到它服务的原则：
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>设计原则</th><th>由哪些模式具体化</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>开闭原则（对扩展开放、对修改关闭）</td>
+                    <td>策略、装饰器、工厂方法、观察者——新增实现只加类、不改调用方</td>
+                  </tr>
+                  <tr>
+                    <td>依赖倒置原则（依赖抽象，不依赖具体）</td>
+                    <td>工厂方法、抽象工厂、桥接——把具体类的创建与使用分离</td>
+                  </tr>
+                  <tr>
+                    <td>单一职责 / 明确的职责</td>
+                    <td>外观（对外简化）、中介者（集中交互）、命令（把请求对象化）</td>
+                  </tr>
+                  <tr>
+                    <td>接口隔离（客户端只依赖它需要的接口）</td>
+                    <td>适配器、代理——为不同客户端提供窄接口</td>
+                  </tr>
+                  <tr>
+                    <td>组合 / 委托优于继承</td>
+                    <td>装饰器、策略、状态、桥接——用持有抽象替代继承层次</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="callout callout--danger">
+              <span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-stop"></use></svg></span>
+              <div class="callout__body">
+                <p><span class="callout__title">反向不成立</span>
+                「用了模式」不等于「遵守了原则」。单例模式若被滥用为全局变量，会同时破坏单一职责
+                （既管创建又管业务）与可测试性；模式堆砌更是直接违背「简单优于复杂」。
+                判卷时看到「因为用了 XX 模式，所以符合开闭原则」这种无条件推断，是不给分的。</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================================
+             04 compare —— 横向对比
+             ================================================================ -->
+        <section class="section" id="compare" data-title="横向对比">
+          <div class="section-head">
+            <span class="section-head__num">04</span>
+            <h2 class="section-title">横向对比</h2>
+            <a class="section-anchor" href="#compare" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">本节是本页最该反复看的部分：23 种模式的总表，以及最容易混淆的几组概念。</p>
+
+          <h3>4.1　GoF 23 种设计模式完整速查表</h3>
+          <p>
+            下表是本章最核心的资产。<b>5 + 7 + 11 = 23</b>，三型的数量分配本身就常被考。
+            背法是「先记类型、再记数量、最后记意图关键词」：创建型看「谁负责 new」，
+            结构型看「怎么拼装、怎么加职责」，行为型看「职责与算法怎么分配」。
+          </p>
+
+          <div class="table-wrap table-wrap--pat">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>模式名 / 英文</th>
+                  <th>类型</th>
+                  <th>意图（一句话）</th>
+                  <th>一句话场景</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>1</td>
+                  <td>单例<br><span class="muted tiny">Singleton</span></td>
+                  <td class="tc-type">创建型</td>
+                  <td>保证一个类仅有一个实例，并提供全局访问点。</td>
+                  <td>配置管理器、连接池、日志器——全局只需一份。</td>
+                </tr>
+                <tr>
+                  <td>2</td>
+                  <td>工厂方法<br><span class="muted tiny">Factory Method</span></td>
+                  <td class="tc-type">创建型</td>
+                  <td>定义创建对象的接口，让子类决定实例化哪一个类。</td>
+                  <td>同一套业务流程，按不同渠道创建不同订单对象。</td>
+                </tr>
+                <tr>
+                  <td>3</td>
+                  <td>抽象工厂<br><span class="muted tiny">Abstract Factory</span></td>
+                  <td class="tc-type">创建型</td>
+                  <td>提供一个创建一系列相关或相互依赖对象的接口，而无需指定具体类。</td>
+                  <td>一套 UI 控件要整体切换主题（Windows 风格 / Mac 风格），不能混搭。</td>
+                </tr>
+                <tr>
+                  <td>4</td>
+                  <td>建造者<br><span class="muted tiny">Builder</span></td>
+                  <td class="tc-type">创建型</td>
+                  <td>将一个复杂对象的构建与它的表示分离，使同样的构建过程可创建不同表示。</td>
+                  <td>组装一台配置项极多的电脑或一辆车，需要分步、可读地构建。</td>
+                </tr>
+                <tr>
+                  <td>5</td>
+                  <td>原型<br><span class="muted tiny">Prototype</span></td>
+                  <td class="tc-type">创建型</td>
+                  <td>用原型实例指定创建对象的种类，并通过复制这个原型来创建新对象。</td>
+                  <td>对象创建成本高（要查库、算很久），直接克隆一份再改。</td>
+                </tr>
+                <tr>
+                  <td>6</td>
+                  <td>适配器<br><span class="muted tiny">Adapter</span></td>
+                  <td class="tc-type">结构型</td>
+                  <td>将一个类的接口转换成客户期望的另一个接口，使原本不兼容的类能一起工作。</td>
+                  <td>接入第三方支付 SDK，把它的接口转成系统内部的统一接口。</td>
+                </tr>
+                <tr>
+                  <td>7</td>
+                  <td>桥接<br><span class="muted tiny">Bridge</span></td>
+                  <td class="tc-type">结构型</td>
+                  <td>将抽象部分与它的实现部分分离，使它们都可以独立地变化。</td>
+                  <td>「形状 × 颜色」两个维度独立扩展，避免继承层次爆炸。</td>
+                </tr>
+                <tr>
+                  <td>8</td>
+                  <td>组合<br><span class="muted tiny">Composite</span></td>
+                  <td class="tc-type">结构型</td>
+                  <td>将对象组合成树形结构来表示「部分-整体」层次，使客户对单个对象和组合对象的使用具有一致性。</td>
+                  <td>文件系统、组织架构、UI 容器——叶子与容器一视同仁地递归处理。</td>
+                </tr>
+                <tr>
+                  <td>9</td>
+                  <td>装饰器<br><span class="muted tiny">Decorator</span></td>
+                  <td class="tc-type">结构型</td>
+                  <td>动态地给一个对象添加一些额外的职责，比生成子类更灵活。</td>
+                  <td>给数据流依次叠加压缩、加密、缓冲，任意组合且顺序可变。</td>
+                </tr>
+                <tr>
+                  <td>10</td>
+                  <td>外观<br><span class="muted tiny">Facade</span></td>
+                  <td class="tc-type">结构型</td>
+                  <td>为子系统中的一组接口提供一个一致的、更高层的界面，使子系统更易使用。</td>
+                  <td>一个「一键下单」接口，内部封装库存、支付、物流多个子系统的调用。</td>
+                </tr>
+                <tr>
+                  <td>11</td>
+                  <td>享元<br><span class="muted tiny">Flyweight</span></td>
+                  <td class="tc-type">结构型</td>
+                  <td>运用共享技术有效地支持大量细粒度对象。</td>
+                  <td>文本编辑器里几十万个字符共享同一份字形数据，只存位置与样式。</td>
+                </tr>
+                <tr>
+                  <td>12</td>
+                  <td>代理<br><span class="muted tiny">Proxy</span></td>
+                  <td class="tc-type">结构型</td>
+                  <td>为其他对象提供一种代理以控制对这个对象的访问。</td>
+                  <td>远程代理、虚拟代理（大图懒加载）、保护代理（权限校验）。</td>
+                </tr>
+                <tr>
+                  <td>13</td>
+                  <td>责任链<br><span class="muted tiny">Chain of Responsibility</span></td>
+                  <td class="tc-type">行为型</td>
+                  <td>使多个对象都有机会处理请求，从而避免请求的发送者与接收者之间的耦合。</td>
+                  <td>审批流、过滤器链、异常处理链——沿链传递直到有人处理。</td>
+                </tr>
+                <tr>
+                  <td>14</td>
+                  <td>命令<br><span class="muted tiny">Command</span></td>
+                  <td class="tc-type">行为型</td>
+                  <td>将一个请求封装为一个对象，从而使你可用不同的请求对客户进行参数化、支持撤销与排队。</td>
+                  <td>编辑器的撤销/重做、任务队列、宏录制。</td>
+                </tr>
+                <tr>
+                  <td>15</td>
+                  <td>解释器<br><span class="muted tiny">Interpreter</span></td>
+                  <td class="tc-type">行为型</td>
+                  <td>给定一个语言，定义它的文法的一种表示，并定义一个解释器来解释该语言中的句子。</td>
+                  <td>简单的表达式求值、规则引擎、SQL 子集解析。</td>
+                </tr>
+                <tr>
+                  <td>16</td>
+                  <td>迭代器<br><span class="muted tiny">Iterator</span></td>
+                  <td class="tc-type">行为型</td>
+                  <td>提供一种方法顺序访问一个聚合对象中的各个元素，而又不暴露其内部表示。</td>
+                  <td>统一遍历数组、链表、树、图，客户只用一个 <code>next()</code>。</td>
+                </tr>
+                <tr>
+                  <td>17</td>
+                  <td>中介者<br><span class="muted tiny">Mediator</span></td>
+                  <td class="tc-type">行为型</td>
+                  <td>用一个中介对象来封装一系列对象的交互，使各对象不需要显式地相互引用。</td>
+                  <td>聊天室、对话框里控件之间的联动——把网状依赖收敛为星形。</td>
+                </tr>
+                <tr>
+                  <td>18</td>
+                  <td>备忘录<br><span class="muted tiny">Memento</span></td>
+                  <td class="tc-type">行为型</td>
+                  <td>在不破坏封装性的前提下，捕获并保存一个对象的内部状态，以便日后恢复。</td>
+                  <td>撤销操作、事务回滚、游戏存档。</td>
+                </tr>
+                <tr>
+                  <td>19</td>
+                  <td>观察者<br><span class="muted tiny">Observer</span></td>
+                  <td class="tc-type">行为型</td>
+                  <td>定义对象间一对多的依赖关系，当一个对象状态改变时，所有依赖者都得到通知并自动更新。</td>
+                  <td>事件监听、MVC 中模型变化后多视图刷新、价格订阅推送。</td>
+                </tr>
+                <tr>
+                  <td>20</td>
+                  <td>状态<br><span class="muted tiny">State</span></td>
+                  <td class="tc-type">行为型</td>
+                  <td>允许一个对象在其内部状态改变时改变它的行为，看起来像是修改了它的类。</td>
+                  <td>订单状态机、电梯、TCP 连接——不同状态下的同一操作行为不同。</td>
+                </tr>
+                <tr>
+                  <td>21</td>
+                  <td>策略<br><span class="muted tiny">Strategy</span></td>
+                  <td class="tc-type">行为型</td>
+                  <td>定义一系列算法，把它们封装起来并使它们可以互相替换，让算法独立于使用它的客户变化。</td>
+                  <td>多种计价/排序/压缩算法，运行时按配置切换。</td>
+                </tr>
+                <tr>
+                  <td>22</td>
+                  <td>模板方法<br><span class="muted tiny">Template Method</span></td>
+                  <td class="tc-type">行为型</td>
+                  <td>定义一个操作中的算法骨架，而将一些步骤延迟到子类中，使子类可不改变算法结构就重定义某些步骤。</td>
+                  <td>框架的钩子方法：流程固定，具体步骤由子类填空。</td>
+                </tr>
+                <tr>
+                  <td>23</td>
+                  <td>访问者<br><span class="muted tiny">Visitor</span></td>
+                  <td class="tc-type">行为型</td>
+                  <td>表示一个作用于某对象结构中的各元素的操作，使你可以在不改变各元素类的前提下定义作用于这些元素的新操作。</td>
+                  <td>对 AST 或文档树做多种分析（求值、格式化、导出），操作易增、元素稳定。</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="callout callout--tip">
+            <span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-bulb"></use></svg></span>
+            <div class="callout__body">
+              <p><span class="callout__title">23 模式的记忆口诀</span>
+              <b>创建型 5</b>：单例、工厂方法、抽象工厂、建造者、原型——「<b>单工抽建原</b>」；<br>
+              <b>结构型 7</b>：适配器、桥接、组合、装饰器、外观、享元、代理——「<b>适桥组装外享代</b>」；<br>
+              <b>行为型 11</b>：责任链、命令、解释器、迭代器、中介者、备忘录、观察者、状态、策略、模板方法、访问者——「<b>责命解迭中备观状策模访</b>」。<br>
+              数量校验：<b>5 + 7 + 11 = 23</b>。考试若让你「列举行为型模式」，至少写出 8 个才算稳。</p>
+            </div>
+          </div>
+
+          <h3>4.2　三型分类的划分依据</h3>
+          <p>
+            分类不是按「代码长什么样」，而是按<b>模式的意图</b>——它想让系统的哪一部分获得灵活性。
+            判断一个模式属于哪型，只问一句：<b>它在给什么东西留出变化空间？</b>
+          </p>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>维度</th>
+                  <th>创建型（5）</th>
+                  <th>结构型（7）</th>
+                  <th>行为型（11）</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>关注点</td>
+                  <td>对象的<b>创建</b>机制</td>
+                  <td>类与对象的<b>组成</b>结构</td>
+                  <td>对象间的<b>职责分配</b>与算法</td>
+                </tr>
+                <tr>
+                  <td>留出的变化点</td>
+                  <td>「创建什么、由谁创建、怎么创建」</td>
+                  <td>「怎么拼装、怎么加职责」</td>
+                  <td>「谁来做、怎么协作、流程怎么走」</td>
+                </tr>
+                <tr>
+                  <td>典型手法</td>
+                  <td>把 <code>new</code> 藏到接口之后</td>
+                  <td>组合、委托、继承</td>
+                  <td>委托、回调、多态分派</td>
+                </tr>
+                <tr>
+                  <td>解决的痛点</td>
+                  <td>硬编码具体类导致换实现要改代码</td>
+                  <td>继承层次爆炸、接口不兼容</td>
+                  <td>大量 if-else、调用方与被调方强耦合</td>
+                </tr>
+                <tr>
+                  <td>数量</td>
+                  <td>5</td>
+                  <td>7</td>
+                  <td>11</td>
+                </tr>
+                <tr>
+                  <td>易错归属</td>
+                  <td>原型（看着像结构，实为创建）</td>
+                  <td>享元（重点是共享，不是性能优化技巧）</td>
+                  <td>模板方法（用继承实现，容易被误当结构型）</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="callout callout--warn">
+            <span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg></span>
+            <div class="callout__body">
+              <p><span class="callout__title">分类只按「意图」，不按「实现技术」</span>
+              模板方法用<b>继承</b>实现，状态用<b>委托</b>实现，但两者都是行为型——因为它们的意图都是分配职责与算法。
+              反过来，工厂方法既可能是创建型（GoF 的定义），也会被某些教材称为「多态工厂」；
+              判断时永远回到意图。这是选择题最爱设的陷阱。</p>
+            </div>
+          </div>
+
+          <h3>4.3　模式 vs 惯用法 vs 架构模式：差别就是抽象程度</h3>
+          <p>
+            课件用一句话点明了三者的界限：<b>「区别就是抽象的程度」</b>。
+            架构模式关注系统架构，设计模式原则上不影响系统架构，惯用法则绑定具体编程语言。
+            再补上框架与类库，就构成了下面这张完整的层次表。
+          </p>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>维度</th>
+                  <th>惯用法 Idiom</th>
+                  <th>设计模式 Design Pattern</th>
+                  <th>架构模式 Architectural Pattern</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>抽象程度</td><td>最低（语言级）</td><td>中（类与对象级）</td><td>最高（子系统 / 系统级）</td></tr>
+                <tr><td>粒度</td><td>几行代码的写法</td><td>若干类与接口的协作</td><td>模块划分、通信机制、部署结构</td></tr>
+                <tr><td>是否依赖语言</td><td><b>强依赖</b>，换语言即失效</td><td>不依赖，可用任意 OO 语言实现</td><td>不依赖</td></tr>
+                <tr><td>对架构的影响</td><td>无</td><td><b>原则上不影响</b>系统架构</td><td>本身即定义架构</td></tr>
+                <tr><td>典型例子</td><td>C++ Pimpl、Java 双检锁</td><td>观察者、策略、工厂方法</td><td>分层、MVC、管道-过滤器、微服务</td></tr>
+                <tr><td>课件定位</td><td>特定程序语言中的模式</td><td>经过验证的适用原则，<b>微架构</b></td><td>关注系统架构</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p>课件特别强调了两条包含关系，考简答题时几乎必问：</p>
+          <ul>
+            <li><b>一个系统的架构可以包含多个架构模式</b>——例如同时采用分层架构与 MVC。</li>
+            <li><b>架构模式可以包含多个设计模式，但这不是必要条件</b>——最经典的例子是
+              <b>MVC 包含观察者模式、组合模式、策略模式</b>：模型变化通知视图是观察者，
+              视图的嵌套结构是组合，控制器选择不同的视图/行为是策略。</li>
+          </ul>
+          <p>
+            课件还给了两句高度凝练的判断：<b>设计模式描述的是细致的模式，架构模式是粗略的模式</b>；
+            以及<b>设计模式是「经过验证的适用原则」，属于微架构</b>——
+            其结构和机制决定「把子系统拆分成哪些部分、并确定相互间的合作」。
+          </p>
+
+          <h3>4.4　模式、框架、类库：三种不同性质的「复用」</h3>
+          <p>
+            这是最容易混为一谈的一组。核心差别不在「代码多少」，而在<b>控制权在谁手里</b>。
+          </p>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>维度</th><th>设计模式</th><th>类库 Library</th><th>框架 Framework</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>本质</td>
+                  <td><b>知识 / 经验</b>，是描述而非代码</td>
+                  <td>可被调用的<b>代码集合</b></td>
+                  <td>可运行的<b>半成品应用</b>，含骨架与扩展点</td>
+                </tr>
+                <tr>
+                  <td>控制权</td>
+                  <td>无（不涉及调用关系）</td>
+                  <td><b>你调用它</b>（我方控制）</td>
+                  <td><b>它调用你</b>（控制反转 / 好莱坞原则）</td>
+                </tr>
+                <tr>
+                  <td>复用单位</td>
+                  <td>设计与结构</td>
+                  <td>函数 / 类</td>
+                  <td>架构骨架与生命周期</td>
+                </tr>
+                <tr>
+                  <td>与模式的关系</td>
+                  <td>——</td>
+                  <td>通常不含模式，只是工具</td>
+                  <td><b>内部大量使用模式</b>（如 Spring 用单例、工厂、代理、模板方法）</td>
+                </tr>
+                <tr>
+                  <td>典型例子</td>
+                  <td>观察者模式</td>
+                  <td>JDK 集合类、Guava</td>
+                  <td>Spring、MyBatis、Vue</td>
+                </tr>
+                <tr>
+                  <td>误用后果</td>
+                  <td>过度设计，抽象层空转</td>
+                  <td>无（选错就换）</td>
+                  <td>被框架绑定，替换成本极高</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="callout callout--info">
+            <span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-info"></use></svg></span>
+            <div class="callout__body">
+              <p><span class="callout__title">一句话记住三者</span>
+              <b>模式是「怎么想」，类库是「拿来用」，框架是「照着填」</b>。
+              用类库时程序的主控权在你手上；用框架时主控权交给了框架，你只填写扩展点——
+              这个「控制反转」就是框架与类库的分水岭，也是「框架里必然有模式、但模式绝不是框架」的原因。</p>
+            </div>
+          </div>
+
+          <h3>4.5　四组高频混淆的模式辨析</h3>
+          <p>第 4 章会逐个展开，这里先记住「差在哪一个点上」，选择题基本够用。</p>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>对比</th><th>关键差异</th><th>判断口诀</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>策略 vs 状态</td>
+                  <td>策略由<b>客户显式选择</b>，算法之间互不知道；状态的切换由<b>对象内部</b>驱动，状态之间知道彼此并会触发转移</td>
+                  <td>「谁决定换」——客户选策略，对象自己变状态</td>
+                </tr>
+                <tr>
+                  <td>装饰器 vs 代理</td>
+                  <td>装饰器<b>增强</b>功能且可层层嵌套；代理<b>控制</b>访问，通常只包一层</td>
+                  <td>「加功能还是管访问」</td>
+                </tr>
+                <tr>
+                  <td>适配器 vs 桥接</td>
+                  <td>适配器让<b>已有</b>的不兼容接口能协作（事后补救）；桥接是<b>设计时</b>就分离抽象与实现两个维度</td>
+                  <td>「事后补救还是事前分层」</td>
+                </tr>
+                <tr>
+                  <td>组合 vs 装饰器</td>
+                  <td>结构几乎相同（都持有同类型引用）；组合表示<b>部分-整体</b>的树，装饰器表示<b>功能叠加</b>的链</td>
+                  <td>「是树还是链，是包含还是增强」</td>
+                </tr>
+                <tr>
+                  <td>工厂方法 vs 抽象工厂</td>
+                  <td>工厂方法创建<b>一个</b>产品；抽象工厂创建<b>一族</b>相关产品</td>
+                  <td>「一个还是一族」</td>
+                </tr>
+                <tr>
+                  <td>外观 vs 中介者</td>
+                  <td>外观是<b>单向</b>简化调用（客户→子系统）；中介者是<b>双向</b>协调（同事之间互相隔离）</td>
+                  <td>「简化入口还是协调交互」</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ================================================================
+             05 pitfalls —— 易错点
+             ================================================================ -->
+        <section class="section" id="pitfalls" data-title="易错点">
+          <div class="section-head">
+            <span class="section-head__num">05</span>
+            <h2 class="section-title">易错点</h2>
+            <a class="section-anchor" href="#pitfalls" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">这些是批改时最常见的失分点，多来自「把 A 当成 B」。</p>
+
+          <ul class="pitfalls">
+            <li><strong>把「模式」当成「可复用的代码」。</strong>
+              模式描述的是<b>元素、职责与协作关系</b>，不是一段能直接粘进项目的代码。
+              同一模式在 Java、C#、Python 里的实现可以完全不同；把模式当代码库用，
+              就会出现「为了用模式而硬套结构」的典型错误。</li>
+
+            <li><strong>认为 GoF「发明」了 23 种模式。</strong>
+              GoF 做的是<b>总结、分类与命名</b>。模式来自大量优秀设计中反复出现的做法，
+              其思想源头是 Christopher Alexander 的建筑模式语言。答「模式是专家发明的巧妙技巧」
+              会直接失分。</li>
+
+            <li><strong>只写模式的「效果」里的优点，不写代价。</strong>
+              四要素中的「效果」必须包含<b>代价</b>：性能下降、复杂度上升、类数量增加。
+              课件明确列了这三条。简答题只夸好处，通常只能拿一半分。</li>
+
+            <li><strong>按「实现技术」判断模式属于哪一型。</strong>
+              模板方法用继承实现、状态用委托实现，但两者都是<b>行为型</b>；
+              原型通过复制对象创建实例，看着像结构型，实为<b>创建型</b>。
+              分类依据永远是<b>意图</b>，不是代码长相。</li>
+
+            <li><strong>把「模式」与「框架 / 类库」混为一谈。</strong>
+              模式是知识，类库是<b>你调用它</b>的代码，框架是<b>它调用你</b>的半成品（控制反转）。
+              「框架里用了很多模式」正确，但「框架就是一组模式的集合」错误——
+              框架还包含基础设施、生命周期管理与约定。</li>
+
+            <li><strong>以为「用了模式」就等于「设计得好」。</strong>
+              模式有代价，误用即过度设计。判断标准是有没有隔离真实的变化点：
+              只有一种实现且明确不会再有第二种时，引入抽象层是负收益。
+              同样，单例被当全局变量滥用时会破坏单一职责与可测试性。</li>
+
+            <li><strong>把反模式理解为「写得很差的代码」。</strong>
+              反模式有两个必要成分：<b>初看合理</b>且<b>有据可查地造成损害</b>。
+              它是一类「被证伪的伪模式」，而不是随手写的烂代码。答题时要点出「反复出现」与「看似是解法」这两点。</li>
+
+            <li><strong>混淆设计模式与架构模式的层次。</strong>
+              课件原话：<b>设计模式描述的是细致的模式，架构模式是粗略的模式</b>；
+              设计模式原则上<b>不影响</b>系统架构，属于微架构。
+              另外「架构模式包含多个设计模式」成立，但「架构模式必须包含设计模式」<b>不成立</b>——
+              这是课件特别标注的「不是必要条件」。</li>
+          </ul>
+
+          <div class="callout callout--tip" style="margin-top:var(--sp-5)">
+            <span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-bulb"></use></svg></span>
+            <div class="callout__body">
+              <p><span class="callout__title">本章自测清单</span>
+              合上页面，逐条自问，能顺畅答出再进第 4 章：<br>
+              ① 模式的定义能否用一句话说清，并补上四要素？<br>
+              ② 23 种模式能否在 3 分钟内按三型写全（5 / 7 / 11）？<br>
+              ③ 随便点一个模式，能否说出它的类型与一句话意图？<br>
+              ④ GoF 模板的六项是什么？第 3 项下的四个子项是什么？<br>
+              ⑤ 模式、惯用法、架构模式三者的界限用哪句话概括？<br>
+              ⑥ MVC 里包含了哪三个设计模式？<br>
+              ⑦ 框架与类库的分水岭是哪个机制？<br>
+              ⑧ 模式的三项代价是什么？</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================================
+             06 quiz —— 自测
+             ================================================================ -->
+        <section class="section" id="quiz" data-title="本章自测">
+          <div class="section-head">
+            <span class="section-head__num">06</span>
+            <h2 class="section-title">本章自测</h2>
+            <a class="section-anchor" href="#quiz" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">20 道题，其中 9 道考三型分类与模式归属——这是本章最值钱的选择题考点。答案与解析由 site.js 渲染判分。</p>
+
+          <div class="quiz" id="quiz-root"></div>
+        </section>
+
+        <!-- ================================================================
+             07 cards —— 记忆卡片
+             ================================================================ -->
+        <section class="section" id="cards" data-title="记忆卡片">
+          <div class="section-head">
+            <span class="section-head__num">07</span>
+            <h2 class="section-title">记忆卡片</h2>
+            <a class="section-anchor" href="#cards" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">30 张：23 种模式各一张 + 7 张基础概念卡。点击卡片翻面，标记「已掌握」会记住进度。</p>
+
+          <div class="flash" id="cards-root"></div>
+        </section>
+
+        <!-- ================================================================
+             08 slides —— 课件原图
+             ================================================================ -->
+        <section class="section" id="slides" data-title="课件原图">
+          <div class="section-head">
+            <span class="section-head__num">08</span>
+            <h2 class="section-title">课件原图</h2>
+            <a class="section-anchor" href="#slides" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">
+            本章课件共 8 页，已全部导出。第 3 页讲模式的目标与代价，第 4 页讲模式属性与设计原则，
+            第 5—6 页讲架构模式 / 设计模式 / 惯用法的界限，第 7 页是描述模式的模板——建议对照原图复习。
+          </p>
+
+          <div class="slides"
+               data-slides-dir="slides"
+               data-count="8"
+               data-prefix="slide"
+               data-ext="jpg"
+               data-pad="3"
+               data-start="1"
+               data-title="第 3 章 · 软件设计的模式 · 课件原图"></div>
+        </section>
+
+        <nav class="pager" id="pager-root" aria-label="章节导航"></nav>
+      </div>
+    </main>
+  </div>
+</div>
+
+<footer class="footer" id="footer-root"></footer>
+
+<script type="application/json" id="quiz-data">
+[
+  {
+    "type": "single",
+    "stem": "GoF《设计模式》一书共归纳了多少种设计模式？其中创建型、结构型、行为型各多少种？",
+    "options": [
+      "23 种；创建型 5、结构型 7、行为型 11",
+      "23 种；创建型 7、结构型 5、行为型 11",
+      "24 种；创建型 5、结构型 8、行为型 11",
+      "23 种；创建型 5、结构型 6、行为型 12"
+    ],
+    "answer": 0,
+    "explain": "5 + 7 + 11 = 23。B 把创建型与结构型的数量对调了；C 多算了一种；D 的结构型少 1、行为型多 1。数量分配本身就是高频考点。",
+    "tag": "分类"
+  },
+  {
+    "type": "single",
+    "stem": "设计模式的四个基本要素是？",
+    "options": [
+      "类、对象、接口、实现",
+      "名称、问题、解决方案、效果",
+      "参与者、类图、动态关系、程序举例",
+      "封装、继承、多态、抽象"
+    ],
+    "answer": 1,
+    "explain": "四要素是名称、问题、解决方案、效果。C 是 GoF 模板中「解决方法」一项下的四个子项，属于解决方案的展开，不是四要素本身。",
+    "tag": "基础"
+  },
+  {
+    "type": "single",
+    "stem": "按课件观点，设计模式、惯用法、架构模式三者的根本区别在于？",
+    "options": [
+      "代码量的多少",
+      "抽象的程度",
+      "是否使用面向对象语言",
+      "是否包含设计原则"
+    ],
+    "answer": 1,
+    "explain": "课件原文：「区别就是抽象的程度」。架构模式关注系统架构，设计模式原则上不影响架构，惯用法是特定程序语言中的模式。",
+    "tag": "层次辨析"
+  },
+  {
+    "type": "single",
+    "stem": "下列哪一组全部属于创建型模式？",
+    "options": [
+      "单例、建造者、原型、抽象工厂",
+      "工厂方法、适配器、单例、原型",
+      "建造者、桥接、单例、工厂方法",
+      "原型、享元、单例、建造者"
+    ],
+    "answer": 0,
+    "explain": "创建型共 5 种：单例、工厂方法、抽象工厂、建造者、原型。B 的适配器与 C 的桥接是结构型；D 的享元也是结构型。",
+    "tag": "分类"
+  },
+  {
+    "type": "single",
+    "stem": "下列哪一组全部属于结构型模式？",
+    "options": [
+      "适配器、桥接、组合、装饰器、外观、享元、代理",
+      "适配器、组合、装饰器、外观、享元、代理、迭代器",
+      "桥接、组合、装饰器、外观、享元、代理、中介者",
+      "适配器、桥接、组合、装饰器、外观、享元、策略"
+    ],
+    "answer": 0,
+    "explain": "结构型共 7 种：适配器、桥接、组合、装饰器、外观、享元、代理。B 的迭代器、C 的中介者、D 的策略都是行为型。",
+    "tag": "分类"
+  },
+  {
+    "type": "single",
+    "stem": "下列哪一组全部属于行为型模式？",
+    "options": [
+      "责任链、命令、解释器、迭代器、中介者",
+      "责任链、命令、解释器、迭代器、外观",
+      "命令、解释器、迭代器、中介者、享元",
+      "解释器、迭代器、中介者、备忘录、代理"
+    ],
+    "answer": 0,
+    "explain": "行为型共 11 种。B 的外观是结构型，C 的享元是结构型，D 的代理是结构型。这三者是最常见的干扰项。",
+    "tag": "分类"
+  },
+  {
+    "type": "single",
+    "stem": "「将抽象部分与它的实现部分分离，使它们都可以独立地变化」描述的是哪个模式？",
+    "options": ["适配器模式", "桥接模式", "外观模式", "组合模式"],
+    "answer": 1,
+    "explain": "这是桥接模式的意图，典型场景是「形状 × 颜色」两个维度独立扩展。适配器是把已有接口转成客户期望的接口，属于事后补救。",
+    "tag": "分类"
+  },
+  {
+    "type": "single",
+    "stem": "模板方法模式虽然主要依靠继承实现，但它属于哪一类模式？",
+    "options": [
+      "创建型，因为它定义了对象的生成骨架",
+      "结构型，因为它依赖类之间的继承结构",
+      "行为型，因为它的意图是分配算法步骤与职责",
+      "不属于 GoF 23 种模式"
+    ],
+    "answer": 2,
+    "explain": "分类依据是意图而非实现技术。模板方法把算法骨架固定、将可变步骤延迟到子类，属于职责与算法的分配，因此是行为型。这是「按实现技术分类」的典型陷阱。",
+    "tag": "分类"
+  },
+  {
+    "type": "single",
+    "stem": "原型模式通过复制已有对象来创建新对象，它属于哪一类？",
+    "options": [
+      "创建型，因为它解决的是「对象怎么产生」的问题",
+      "结构型，因为它复制的是对象结构",
+      "行为型，因为克隆是对象的一种行为",
+      "架构型，因为它影响系统架构"
+    ],
+    "answer": 0,
+    "explain": "原型模式属于创建型 5 种之一。它关心的是创建机制——用原型实例指定创建对象的种类，而不是对象之间的组成关系。",
+    "tag": "分类"
+  },
+  {
+    "type": "single",
+    "stem": "「为子系统中的一组接口提供一个一致的、更高层的界面」描述的是哪个模式？",
+    "options": ["中介者模式", "外观模式", "代理模式", "适配器模式"],
+    "answer": 1,
+    "explain": "外观模式（Facade）对外简化调用，是单向的「客户 → 子系统」。中介者则是双向协调同事对象之间的交互，把网状依赖收敛为星形。",
+    "tag": "分类"
+  },
+  {
+    "type": "single",
+    "stem": "按课件观点，设计模式在系统中的定位最准确的说法是？",
+    "options": [
+      "设计模式决定系统的整体架构",
+      "设计模式原则上不影响系统的架构，属于微架构",
+      "设计模式就是可复用的类库",
+      "设计模式是特定编程语言中的惯用法"
+    ],
+    "answer": 1,
+    "explain": "课件明确指出：设计模式原则上不影响系统的架构，它是「经过验证的适用原则」，属于微架构；惯用法才是特定语言中的模式。",
+    "tag": "层次辨析"
+  },
+  {
+    "type": "multiple",
+    "stem": "关于设计模式的四要素「效果」，下列说法正确的有（多选）：",
+    "options": [
+      "效果必须同时说明收益与代价",
+      "效果用于描述模式对灵活性、扩展性、可移植性的影响",
+      "模式的三项主要代价包括提高扩展性、降低复杂度、减少类数量",
+      "只写优点的「效果」在简答题中会被扣分"
+    ],
+    "answer": [0, 1, 3],
+    "explain": "C 把课件列出的三项代价完全说反了：模式提高扩展性但降低性能、增加架构复杂度。正确表述是「提高扩展性、降低性能、增加复杂度」。",
+    "tag": "基础"
+  },
+  {
+    "type": "multiple",
+    "stem": "下列属于创建型模式的有（多选）：",
+    "options": ["单例", "抽象工厂", "建造者", "桥接"],
+    "answer": [0, 1, 2],
+    "explain": "桥接是结构型模式，用于分离抽象与实现两个维度。其余三项均为创建型（创建型 5 种：单例、工厂方法、抽象工厂、建造者、原型）。",
+    "tag": "分类"
+  },
+  {
+    "type": "multiple",
+    "stem": "按课件观点，关于架构模式与设计模式的关系，说法正确的有（多选）：",
+    "options": [
+      "一个系统的架构可以包含多个架构模式",
+      "架构模式可以包含多个设计模式，但这不是必要条件",
+      "MVC 中包含观察者模式、组合模式、策略模式",
+      "架构模式必须至少包含一个设计模式"
+    ],
+    "answer": [0, 1, 2],
+    "explain": "D 错误：课件特别标注「不是必要条件」。架构模式可以包含设计模式，但并非必须；A、B、C 均为课件原文要点。",
+    "tag": "层次辨析"
+  },
+  {
+    "type": "multiple",
+    "stem": "关于设计模式与框架的区别，说法正确的有（多选）：",
+    "options": [
+      "模式是知识经验，框架是可运行的半成品代码",
+      "使用框架时控制权在框架手中，属于控制反转",
+      "框架内部通常会使用多种设计模式",
+      "框架就是一组设计模式的集合"
+    ],
+    "answer": [0, 1, 2],
+    "explain": "D 错误：框架除模式之外还包含基础设施、生命周期管理与约定，模式只是其内部实现手段之一。模式是「怎么想」，框架是「照着填」。",
+    "tag": "层次辨析"
+  },
+  {
+    "type": "multiple",
+    "stem": "下列属于反模式或模式误用表现的有（多选）：",
+    "options": [
+      "上帝类：一个类承担几乎所有职责",
+      "为「将来可能的变化」预留大量抽象，结果变化从未发生",
+      "只有一种实现且明确不会有第二种，仍引入策略接口",
+      "在确认变化点后，用策略模式替换庞大的 if-else"
+    ],
+    "answer": [0, 1, 2],
+    "explain": "D 是模式的正确使用：先有变化点，再用模式隔离。前三项分别是上帝类、过度设计与抽象空转，都属于典型的模式误用。",
+    "tag": "误用"
+  },
+  {
+    "type": "boolean",
+    "stem": "GoF 的贡献是发明了 23 种全新的设计技巧。",
+    "answer": false,
+    "explain": "GoF 的贡献是总结、分类与命名已有优秀设计中反复出现的做法，其思想源头是 Christopher Alexander 的建筑模式语言。模式不是被发明的。",
+    "tag": "起源"
+  },
+  {
+    "type": "boolean",
+    "stem": "惯用法与具体编程语言绑定，抽象层次低于设计模式，因此不属于 GoF 的 23 种模式。",
+    "answer": true,
+    "explain": "正确。惯用法是特定程序语言中的模式（如 C++ 的 Pimpl），换语言即失效；GoF 23 种是语言无关的设计模式。",
+    "tag": "层次辨析"
+  },
+  {
+    "type": "boolean",
+    "stem": "只要在系统中使用了设计模式，就说明该系统符合开闭原则等设计原则。",
+    "answer": false,
+    "explain": "反向不成立。模式有代价，误用即过度设计；单例被当全局变量滥用时会破坏单一职责与可测试性。原则是目标，模式只是可能达成目标的手段之一。",
+    "tag": "误用"
+  },
+  {
+    "type": "boolean",
+    "stem": "策略模式与状态模式结构相似，但策略由客户显式选择算法，状态的切换则由对象内部驱动。",
+    "answer": true,
+    "explain": "正确。判断口诀是「谁决定换」：客户选策略，对象自己变状态；状态之间通常知道彼此并会触发转移，策略之间互不知晓。",
+    "tag": "辨析"
+  }
+]
+</script>
+<script type="application/json" id="cards-data">
+[
+  {
+    "front": "设计模式的定义、四要素与思想源头？",
+    "back": "定义：在<b>特定上下文</b>中，对<b>反复出现</b>的设计问题给出的<b>经过验证</b>的解决方案的核心，描述元素、职责与协作关系而非代码。<br>四要素：<b>名称、问题、解决方案、效果</b>（效果含收益与代价）。<br>源头：<b>Alexander</b> 的建筑模式语言；GoF 1994 年<b>总结命名</b>了 23 种。",
+    "tag": "基础"
+  },
+  {
+    "front": "三型分类的数量分配与划分依据？",
+    "back": "<b>创建型 5 + 结构型 7 + 行为型 11 = 23</b>。划分依据是<b>意图</b>而非实现技术：创建型管「对象怎么来」，结构型管「怎么拼」，行为型管「职责与算法怎么分配」。",
+    "tag": "分类"
+  },
+  {
+    "front": "单例模式（Singleton）的意图与场景？",
+    "back": "保证一个类<b>仅有一个实例</b>并提供全局访问点。场景：配置管理器、连接池、日志器。<b>创建型</b>。",
+    "tag": "创建型"
+  },
+  {
+    "front": "工厂方法（Factory Method）的意图？",
+    "back": "定义创建对象的接口，让<b>子类决定</b>实例化哪一个类。场景：同一流程按不同渠道创建不同对象。<b>创建型</b>。",
+    "tag": "创建型"
+  },
+  {
+    "front": "抽象工厂（Abstract Factory）与工厂方法的关键区别？",
+    "back": "抽象工厂创建<b>一族</b>相关或相互依赖的产品（如整套 UI 控件换主题）；工厂方法只创建<b>一个</b>产品。均为创建型。",
+    "tag": "创建型"
+  },
+  {
+    "front": "建造者（Builder）的意图？",
+    "back": "将复杂对象的<b>构建过程</b>与<b>表示</b>分离，使同样的构建过程可创建不同表示。场景：分步组装配置项极多的对象。<b>创建型</b>。",
+    "tag": "创建型"
+  },
+  {
+    "front": "原型（Prototype）的意图？",
+    "back": "用原型实例指定创建对象的种类，通过<b>复制原型</b>创建新对象。场景：创建成本高时直接克隆再改。<b>创建型</b>。",
+    "tag": "创建型"
+  },
+  {
+    "front": "适配器（Adapter）的意图？",
+    "back": "将一个类的接口转换成客户期望的另一个接口，使原本不兼容的类能协作。场景：接入第三方 SDK。<b>结构型</b>。",
+    "tag": "结构型"
+  },
+  {
+    "front": "桥接（Bridge）的意图？",
+    "back": "将<b>抽象部分与实现部分分离</b>，使两者都能独立变化。场景：「形状 × 颜色」两维度独立扩展，避免继承爆炸。<b>结构型</b>。",
+    "tag": "结构型"
+  },
+  {
+    "front": "组合（Composite）的意图？",
+    "back": "把对象组合成<b>树形结构</b>表示「部分-整体」层次，使客户对单个对象与组合对象的使用具有<b>一致性</b>。场景：文件系统、UI 容器。<b>结构型</b>。",
+    "tag": "结构型"
+  },
+  {
+    "front": "装饰器（Decorator）的意图？",
+    "back": "<b>动态</b>地给对象添加额外职责，比生成子类更灵活、可层层嵌套。场景：数据流依次叠加压缩、加密、缓冲。<b>结构型</b>。",
+    "tag": "结构型"
+  },
+  {
+    "front": "外观（Facade）的意图？",
+    "back": "为子系统的一组接口提供<b>一致的更高层界面</b>，使其更易使用。是<b>单向</b>简化（客户→子系统）。<b>结构型</b>。",
+    "tag": "结构型"
+  },
+  {
+    "front": "享元（Flyweight）的意图？",
+    "back": "运用<b>共享</b>技术有效支持大量细粒度对象。场景：编辑器里几十万字符共享同一份字形数据。<b>结构型</b>。",
+    "tag": "结构型"
+  },
+  {
+    "front": "代理（Proxy）的意图？",
+    "back": "为其他对象提供一种代理以<b>控制</b>对该对象的访问。场景：远程代理、虚拟代理（懒加载）、保护代理（权限）。<b>结构型</b>。",
+    "tag": "结构型"
+  },
+  {
+    "front": "责任链（Chain of Responsibility）的意图？",
+    "back": "使<b>多个对象都有机会处理请求</b>，避免发送者与接收者耦合；请求沿链传递直到被处理。场景：审批流、过滤器链。<b>行为型</b>。",
+    "tag": "行为型"
+  },
+  {
+    "front": "命令（Command）的意图？",
+    "back": "将<b>请求封装为对象</b>，从而可参数化客户、支持<b>撤销</b>与排队。场景：编辑器撤销/重做、任务队列。<b>行为型</b>。",
+    "tag": "行为型"
+  },
+  {
+    "front": "解释器（Interpreter）的意图？",
+    "back": "给定一个语言，定义其<b>文法表示</b>并定义解释器来解释该语言中的句子。场景：表达式求值、规则引擎。<b>行为型</b>。",
+    "tag": "行为型"
+  },
+  {
+    "front": "迭代器（Iterator）的意图？",
+    "back": "提供方法<b>顺序访问</b>聚合对象中的元素，而<b>不暴露其内部表示</b>。场景：统一遍历数组、链表、树。<b>行为型</b>。",
+    "tag": "行为型"
+  },
+  {
+    "front": "中介者（Mediator）的意图？",
+    "back": "用中介对象封装一系列对象的<b>交互</b>，使各对象无需显式相互引用。场景：聊天室、对话框控件联动。<b>行为型</b>。",
+    "tag": "行为型"
+  },
+  {
+    "front": "备忘录（Memento）的意图？",
+    "back": "在<b>不破坏封装性</b>的前提下捕获并保存对象的内部状态，以便日后恢复。场景：撤销、事务回滚、游戏存档。<b>行为型</b>。",
+    "tag": "行为型"
+  },
+  {
+    "front": "观察者（Observer）的意图？",
+    "back": "定义对象间<b>一对多</b>依赖，一个对象状态改变时所有依赖者得到通知并<b>自动更新</b>。场景：事件监听、MVC 多视图刷新。<b>行为型</b>。",
+    "tag": "行为型"
+  },
+  {
+    "front": "状态（State）的意图？",
+    "back": "允许对象在<b>内部状态改变时改变其行为</b>，看起来像修改了它的类。场景：订单状态机、TCP 连接。<b>行为型</b>。",
+    "tag": "行为型"
+  },
+  {
+    "front": "策略（Strategy）的意图？",
+    "back": "定义一系列算法并分别封装，使其可<b>互相替换</b>，让算法独立于使用它的客户变化。场景：多种计价/排序算法。<b>行为型</b>。",
+    "tag": "行为型"
+  },
+  {
+    "front": "模板方法（Template Method）的意图？",
+    "back": "定义算法<b>骨架</b>，把某些步骤<b>延迟到子类</b>，使子类不改变结构即可重定义步骤。场景：框架钩子方法。<b>行为型</b>。",
+    "tag": "行为型"
+  },
+  {
+    "front": "访问者（Visitor）的意图？",
+    "back": "表示作用于某对象结构中各元素的操作，使你能<b>不改变元素类</b>就定义新操作。场景：对 AST 做多种分析。<b>行为型</b>。",
+    "tag": "行为型"
+  },
+  {
+    "front": "模式 vs 惯用法 vs 架构模式，区别用哪句话概括？",
+    "back": "课件原话：<b>「区别就是抽象的程度」</b>。架构模式关注系统架构；设计模式原则上<b>不影响</b>架构，属微架构；惯用法绑定特定编程语言。",
+    "tag": "层次辨析"
+  },
+  {
+    "front": "MVC 中包含哪三个设计模式？",
+    "back": "<b>观察者</b>（模型变化通知视图）、<b>组合</b>（视图的嵌套结构）、<b>策略</b>（控制器选择视图/行为）。架构模式可含设计模式，但<b>非必要条件</b>。",
+    "tag": "层次辨析"
+  },
+  {
+    "front": "框架与类库的分水岭是什么？",
+    "back": "<b>控制反转</b>：用类库是<b>你调用它</b>，用框架是<b>它调用你</b>（好莱坞原则）。模式是知识，框架是可运行的半成品。",
+    "tag": "层次辨析"
+  },
+  {
+    "front": "GoF 描述模式的模板六项？模式的代价是什么？",
+    "back": "模板：① 名称/别名 ② 问题 ③ 解决方法（参与者/类图/动态关系/程序举例）④ 评价（优缺点）⑤ 适用范围 ⑥ 类似的模式。<br>代价：<b>降低性能、增加复杂度、过度设计风险</b>。",
+    "tag": "模板"
+  },
+  {
+    "front": "什么是反模式（Anti-pattern）？",
+    "back": "初看合理、实践中<b>反复造成损害</b>的常见解法，即「被证伪的伪模式」。两个必要成分：<b>看似是解法</b> + <b>有据可查的负面后果</b>。",
+    "tag": "误用"
+  }
+]
+</script>
+
+<script src="../../data/chapters.js"></script>
+<script src="../../assets/js/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page="chapter" data-chapter="ch4" data-subpage="index">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="GoF 23 种设计模式全景复习：创建型 5、结构型 7、行为型 11 的分类、速查总表、选型决策树、跨模式对比、12 个易错点、自测与记忆卡片。">
+<meta name="color-scheme" content="light dark">
+<title>第 4 章 面向对象设计模式 · 软件设计与体系架构</title>
+<link rel="stylesheet" href="../../assets/css/site.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%238a5a2b'/%3E%3Cpath d='M6 8h12M6 12h12M6 16h7' stroke='%23fff' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
+<script>
+  /* 主题初始化：必须内联在 <head> 中，且必须一字不改地保留 */
+  (function () {
+    try {
+      var t = JSON.parse(localStorage.getItem('sda.theme'));
+      if (t !== 'dark' && t !== 'light') {
+        t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      document.documentElement.setAttribute('data-theme', t);
+    } catch (e) {
+      document.documentElement.setAttribute('data-theme', 'light');
+    }
+  })();
+</script>
+<style>
+  /* ===== ch4 章节本地样式：子页导航 / 类图 / 模式详述块 ===== */
+  /* 知识地图 4 列与学习目标文本流已由共享样式 assets/css/site.css 统一修复，此处不再覆盖。 */
+
+  .subnav {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem;
+    margin: var(--sp-5) 0 0; padding: 0.55rem 0.7rem;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--surface);
+  }
+  .subnav__label {
+    font-size: var(--fs-tiny); font-weight: 700; letter-spacing: 0.06em;
+    color: var(--text-3); margin-right: 0.2rem;
+  }
+  .subnav a {
+    font-size: var(--fs-small); padding: 0.3rem 0.75rem; text-decoration: none;
+    border: 1px solid var(--border); border-radius: var(--radius-pill);
+    color: var(--text-2);
+  }
+  .subnav a:hover { border-color: var(--accent-ui); color: var(--accent-strong); }
+  .subnav a[aria-current="page"] {
+    background: var(--accent-fill); border-color: var(--accent-fill); color: var(--on-accent); font-weight: 600;
+  }
+  html[data-theme="dark"] .subnav a[aria-current="page"] { color: #12161d; }
+
+  /* 类图：纯 CSS 角色框图 */
+  .cd {
+    display: flex; flex-direction: column; gap: 0.4rem;
+    padding: var(--sp-4); margin: 0 0 var(--sp-4);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--surface);
+  }
+  .cd__row {
+    display: flex; flex-wrap: wrap; gap: 0.5rem;
+    align-items: center; justify-content: center;
+  }
+  .cd__box {
+    padding: 0.4rem 0.7rem; min-width: 6rem; text-align: center;
+    border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+    background: var(--surface-2); font-size: var(--fs-small);
+    font-weight: 600; line-height: 1.35;
+  }
+  .cd__box small {
+    display: block; font-weight: 400; font-size: var(--fs-tiny);
+    color: var(--text-3); font-family: var(--font-mono);
+  }
+  .cd__box--abs {
+    background: var(--surface); border: 1.5px dashed var(--accent-ui);
+    color: var(--accent-strong);
+  }
+  html[data-theme="dark"] .cd__box--abs { color: var(--accent-ui); }
+  .cd__box--key { background: var(--accent-fill); border-color: var(--accent-fill); color: var(--on-accent); }
+  .cd__box--key small { color: var(--on-accent); opacity: .78; }
+  .cd__arrow {
+    display: flex; flex-direction: column; align-items: center; gap: 0.15rem;
+    font-size: var(--fs-tiny); font-family: var(--font-mono);
+    color: var(--text-3); line-height: 1.1; white-space: nowrap;
+  }
+  .cd__arrow::after {
+    content: ""; border-left: 5px solid transparent; border-right: 5px solid transparent;
+    border-top: 7px solid var(--border-strong);
+  }
+  .cd__arrow--h { flex-direction: row; justify-content: center; width: 100%; }
+  .cd__arrow--h::after {
+    border-left: 7px solid var(--border-strong); border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent; border-right: 0;
+  }
+  .cd__note {
+    margin: 0.15rem 0 0; text-align: center;
+    font-size: var(--fs-tiny); color: var(--text-3);
+  }
+  /* 窄屏修正：类图箭头上的说明可能很长（如「双重分派：element.accept(v) → v.visitXxx(this)」），
+     .cd__arrow 的 white-space:nowrap 会把整页撑出横向滚动条。手机上允许换行。 */
+  @media (max-width: 640px) {
+    .cd { overflow-x: auto; }
+    .cd__arrow { white-space: normal; max-width: 100%; text-align: center; }
+  }
+
+  /* 模式详述块 */
+  .pblock {
+    border: 1px solid var(--border); border-radius: var(--radius-lg);
+    background: var(--surface); padding: var(--sp-5);
+    margin: 0 0 var(--sp-6); box-shadow: var(--shadow-sm);
+    scroll-margin-top: calc(var(--topbar-h) + 1rem);
+  }
+  .pblock__head {
+    display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
+    margin-bottom: 0.7rem;
+  }
+  .pblock__no {
+    font-family: var(--font-mono); font-size: var(--fs-tiny); font-weight: 700;
+    color: var(--accent-ui); background: var(--accent-soft);
+    border-radius: var(--radius-sm); padding: 0.1rem 0.45rem;
+  }
+  .pblock__title { margin: 0; font-size: 1.25rem; }
+  .pblock__title span {
+    font-family: var(--font-mono); font-size: var(--fs-small);
+    font-weight: 500; color: var(--text-3);
+  }
+  .pblock__intent {
+    margin: 0 0 var(--sp-3); padding: 0.6rem 0.9rem;
+    border-left: 3px solid var(--accent-ui); border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    background: var(--accent-softer); font-size: 0.9688rem;
+  }
+  .pblock h4 { margin: var(--sp-4) 0 0.4rem; font-size: 1rem; }
+  .pblock > p { color: var(--text-2); }
+  .pblock ul, .pblock ol { margin: 0 0 var(--sp-3); padding-left: 1.35rem; }
+  .pblock li { margin: 0.2rem 0; color: var(--text-2); }
+  .pros-cons {
+    display: grid; gap: var(--sp-3); margin: 0 0 var(--sp-3);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  }
+  .pros-cons__col {
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: var(--sp-3) var(--sp-4); background: var(--surface-2);
+  }
+  .pros-cons__col h5 { margin: 0 0 0.3rem; font-size: var(--fs-small); }
+  .pros-cons__col ul { margin: 0; padding-left: 1.2rem; font-size: var(--fs-small); }
+
+  /* 决策树 SVG */
+  .dt { display: block; width: 100%; height: auto; margin: 0 0 var(--sp-3); }
+  .dt-box { fill: var(--surface-2); stroke: var(--border-strong); stroke-width: 1.2; }
+  .dt-box--root { fill: var(--accent-soft); stroke: var(--accent-ui); stroke-width: 1.6; }
+  .dt-box--leaf { fill: var(--surface); stroke: var(--accent-ui); stroke-width: 1.2; }
+  .dt-line { fill: none; stroke: var(--border-strong); stroke-width: 1.5; }
+  .dt-t { font-family: var(--font-sans); font-size: 15.5px; fill: var(--text); }
+  .dt-t--b { font-weight: 700; }
+  .dt-t--sm { font-family: var(--font-mono); font-size: 12px; fill: var(--text-3); }
+
+  /* 决策清单三栏 */
+  .decide {
+    display: grid; gap: var(--sp-3); margin: 0 0 var(--sp-4);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  @media (max-width: 720px) {
+    .decide { grid-template-columns: minmax(0, 1fr); }
+  }
+  .decide__col {
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--surface); padding: var(--sp-4);
+  }
+  .decide__col h4 { margin: 0 0 0.5rem; font-size: var(--fs-small); }
+  .decide__row {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.5rem;
+    align-items: baseline; padding: 0.32rem 0; font-size: var(--fs-small);
+    border-bottom: 1px dashed var(--border);
+  }
+  .decide__row:last-child { border-bottom: 0; }
+  .decide__row span { color: var(--text-2); }
+  .decide__row a { font-weight: 700; white-space: nowrap; }
+
+  /* 模式索引条 */
+  .pindex { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0 0 var(--sp-5); }
+  .pindex a {
+    font-size: var(--fs-tiny); padding: 0.22rem 0.6rem; text-decoration: none;
+    border: 1px solid var(--border); border-radius: var(--radius-pill);
+    color: var(--text-2); background: var(--surface);
+  }
+  .pindex a:hover { border-color: var(--accent-ui); color: var(--accent-strong); }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">跳到正文</a>
+
+<div class="progress-bar" aria-hidden="true"><div class="progress-bar__fill" id="progress-fill"></div></div>
+
+<header class="topbar" id="topbar-root"></header>
+
+<div class="wrap">
+  <div class="layout">
+    <aside class="sidebar" id="sidebar-root" aria-label="章节目录"></aside>
+
+    <main class="main" id="main">
+      <div class="main__inner">
+<section class="section" id="overview" data-title="本章导览">
+<div class="hero">
+<span class="hero__eyebrow">第 4 章 · 面向对象设计模式</span>
+<h1>GoF 23 种设计模式：从「记住名字」到「选对模式」</h1>
+<p class="hero__lead">本章覆盖创建型 5 种、结构型 7 种、行为型 11 种共 23 个 GoF 模式。考试既考「这个模式的意图与结构」，也考「这个场景该用哪个模式」。本页是全景索引：先用一张总表建立整体印象，再用决策树练习选型，最后通过对比表把容易混淆的模式两两钉死。</p>
+<div class="hero__meta"><span class="chip chip--accent"><svg class="icon" aria-hidden="true"><use href="#i-target"></use></svg>考试重点</span><span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-clock"></use></svg>约 120 分钟</span><span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-puzzle"></use></svg>23 种模式</span><span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-trophy"></use></svg>分值最高章节</span></div>
+<div class="hero__actions"><a class="btn btn--primary" href="#concepts"><svg class="icon" aria-hidden="true"><use href="#i-play"></use></svg>开始阅读</a><a class="btn" href="#compare"><svg class="icon" aria-hidden="true"><use href="#i-list"></use></svg>看 23 种总表</a><a class="btn" href="#quiz"><svg class="icon" aria-hidden="true"><use href="#i-target"></use></svg>直接自测</a></div>
+</div><nav class="subnav" aria-label="第 4 章子页面导航">
+<span class="subnav__label">第 4 章 · 子页面</span>
+<a href="index.html" aria-current="page">模式总览</a>
+<a href="creation.html">创建型 ×5</a>
+<a href="structural.html">结构型 ×7</a>
+<a href="behavioral.html">行为型 ×11</a>
+</nav><h2 class="section-title" style="margin-top:var(--sp-5)"><svg class="icon" aria-hidden="true"><use href="#i-target"></use></svg>学习目标</h2><p class="section-lead">本章体量大（三份课件共 350 页），必须靠结构化记忆。读完应当能：</p><ol class="objectives"><li><span>能默写 23 种模式的三类归属：创建型 5、结构型 7、行为型 11，并说出每类解决什么问题。</span></li><li><span>能对任意一个模式，用「意图 + 结构 + 代价」三句话讲清，并画出核心类图。</span></li><li><span>能在给出业务场景时，沿着决策树选出 1–2 个候选模式并说明取舍。</span></li><li><span>能辨析至少 8 组高频易混模式：工厂方法/抽象工厂、适配器/装饰器/代理、策略/状态、中介者/观察者等。</span></li><li><span>能指出每个模式「不适用的场景」，避免过度设计——这是设计题拿高分的关键。</span></li></ol><h2 class="section-title" style="margin-top:var(--sp-6)"><svg class="icon" aria-hidden="true"><use href="#i-network"></use></svg>知识地图</h2><p class="section-lead">23 个模式不是 23 个孤立知识点，而是三条主线上的 23 个节点。</p><div class="kmap"><div class="kmap__col"><p class="kmap__title">创建型 ×5</p><ul class="kmap__list"><li>封装「用哪些具体类」</li><li>隐藏实例如何创建组装</li><li>工厂方法 / 抽象工厂</li><li>建造者 / 原型 / 单例</li></ul></div><div class="kmap__col"><p class="kmap__title">结构型 ×7</p><ul class="kmap__list"><li>用组合替代继承</li><li>适配器 / 桥接 / 组合</li><li>装饰器 / 外观 / 享元</li><li>代理（控制访问）</li></ul></div><div class="kmap__col"><p class="kmap__title">行为型 ×11</p><ul class="kmap__list"><li>划分职责与算法</li><li>模板方法 / 命令 / 解释器</li><li>迭代器 / 中介者 / 备忘录</li><li>观察者 / 状态 / 策略 / 责任链 / 访问者</li></ul></div><div class="kmap__col"><p class="kmap__title">答题主线</p><ul class="kmap__list"><li>意图（GoF 原话）</li><li>结构（角色 + 关系）</li><li>协作（请求怎么走）</li><li>代价（不适用的场景）</li></ul></div></div>
+</section><section class="section" id="concepts" data-title="模式分类与 23 种速查表">
+<div class="section-head">
+<span class="section-head__num">02</span>
+<h2 class="section-title">模式分类与 23 种速查表</h2>
+<a class="section-anchor" href="#concepts" aria-label="本节链接">#</a>
+</div>
+<p class="section-lead">先建立分类框架，再用一张总表把 23 个模式压成可背诵的形式。</p>
+<div class="grid grid--2"><div class="card"><h4 class="card__title"><svg class="icon" aria-hidden="true"><use href="#i-blocks"></use></svg>创建型模式 ×5</h4><div class="card__body"><p class="muted">抽象实例化过程，让系统独立于对象<b>如何被创建、组合和表示</b>。两条永恒主旋律：封装「用哪些具体类」、隐藏「实例如何创建组装」。</p><p><a href="creation.html">进入创建型专题 →</a></p><p class="muted">工厂方法 · 抽象工厂 · 建造者 · 原型 · 单例</p></div></div><div class="card"><h4 class="card__title"><svg class="icon" aria-hidden="true"><use href="#i-grid"></use></svg>结构型模式 ×7</h4><div class="card__body"><p class="muted">处理类或对象的<b>组合</b>，用运行期的弱关联（组合/聚合）替换编译期的强关联（继承）。七个模式是合成复用原则的七种具体实现。</p><p><a href="structural.html">进入结构型专题 →</a></p><p class="muted">适配器 · 桥接 · 组合 · 装饰器 · 外观 · 享元 · 代理</p></div></div><div class="card"><h4 class="card__title"><svg class="icon" aria-hidden="true"><use href="#i-shuffle"></use></svg>行为型模式 ×11</h4><div class="card__body"><p class="muted">对不同对象之间<b>划分责任和算法</b>的抽象化，关注它们之间的交互与通信，刻画运行时的复杂控制流。数量最多、分值最高。</p><p><a href="behavioral.html">进入行为型专题 →</a></p><p class="muted">责任链 · 命令 · 解释器 · 迭代器 · 中介者 · 备忘录 · 观察者 · 状态 · 策略 · 模板方法 · 访问者</p></div></div><div class="card"><h4 class="card__title"><svg class="icon" aria-hidden="true"><use href="#i-compass"></use></svg>两条分类轴</h4><div class="card__body"><p class="muted"><b>按目的</b>：创建型 / 结构型 / 行为型。<b>按范围</b>：类模式（继承，编译期确定）与对象模式（运行期可变）。两轴交叉得到 6 类，其中<b>类结构型只有类适配器</b>，<b>类行为型只有模板方法与解释器</b>。</p></div></div></div><h3 style="margin-top:var(--sp-6)">四个必须先说清的术语</h3><p>后面三张专题页会反复用到这些词，先把定义钉死。</p><div class="grid"><div class="concept">
+<p class="concept__term">设计模式 <span class="concept__en">Design Pattern</span></p>
+<p class="concept__body">针对有一定复杂度的软件系统中<b>普遍存在、重复出现</b>的结构与套路，用来解决特定场景下具有一般性的设计问题。它不是代码库，而是<b>可复用的设计方案</b>。</p>
+<div class="concept__tags"><span class="chip chip--accent">术语</span><span class="chip">基础</span></div>
+</div><div class="concept">
+<p class="concept__term">模式的四个要素 <span class="concept__en">Four Elements</span></p>
+<p class="concept__body"><b>名字</b>（便于交流的词汇）、<b>问题</b>（何时适用）、<b>解决方案</b>（元素、关系、协作）、<b>效果</b>（优缺点与取舍）。答题时按这四项展开最稳妥。</p>
+<div class="concept__tags"><span class="chip chip--accent">术语</span><span class="chip">答题框架</span></div>
+</div><div class="concept">
+<p class="concept__term">模式 vs 框架 <span class="concept__en">Pattern vs Framework</span></p>
+<p class="concept__body">模式比框架<b>更抽象</b>、是<b>更小的体系结构元素</b>；框架比模式<b>更特例化</b>。框架规定应用的体系结构，模式是被反复使用的设计经验。</p>
+<div class="concept__tags"><span class="chip chip--accent">辨析</span><span class="chip">高频</span></div>
+</div><div class="concept">
+<p class="concept__term">反模式 <span class="concept__en">Anti-Pattern</span></p>
+<p class="concept__body">被反复使用却<b>有害</b>的「解法」，例如上帝类、面条代码、把单例当全局变量用。识别反模式与识别模式同样重要。</p>
+<div class="concept__tags"><span class="chip chip--accent">术语</span><span class="chip">易错</span></div>
+</div></div><h3 style="margin-top:var(--sp-6)">23 种模式速查总表</h3><p>「意图」一列尽量压到 20 字以内，便于背诵；「关键词」是考场上帮你回忆的钩子。点击模式名可跳到对应专题页的详解锚点。</p><div class="table-wrap"><table>
+<thead><tr><th>#</th><th>模式</th><th>类型</th><th>意图（一句话）</th><th>典型场景</th><th>关键词</th></tr></thead>
+<tbody><tr><td><span class="nowrap">1</span></td><td><a href="creation.html#p-factory-method">工厂方法</a> <span class="muted">Factory Method</span></td><td><span class="nowrap">创建型</span></td><td>让子类决定实例化哪一个类，使实例化延迟到子类</td><td>日志后端、解析器、文档创建</td><td><span class="nowrap">延迟到子类</span></td></tr><tr><td><span class="nowrap">2</span></td><td><a href="creation.html#p-abstract-factory">抽象工厂</a> <span class="muted">Abstract Factory</span></td><td><span class="nowrap">创建型</span></td><td>创建一系列相关对象而无需指定具体类</td><td>换皮肤、跨平台 UI、多数据库方言</td><td><span class="nowrap">产品族</span></td></tr><tr><td><span class="nowrap">3</span></td><td><a href="creation.html#p-builder">建造者</a> <span class="muted">Builder</span></td><td><span class="nowrap">创建型</span></td><td>构建与表示分离，同过程造不同表示</td><td>组装电脑、构建 SQL、造房子</td><td><span class="nowrap">分步装配</span></td></tr><tr><td><span class="nowrap">4</span></td><td><a href="creation.html#p-prototype">原型</a> <span class="muted">Prototype</span></td><td><span class="nowrap">创建型</span></td><td>通过拷贝原型创建新对象</td><td>复制粘贴、存档、昂贵对象复制</td><td><span class="nowrap">clone 深拷贝</span></td></tr><tr><td><span class="nowrap">5</span></td><td><a href="creation.html#p-singleton">单例</a> <span class="muted">Singleton</span></td><td><span class="nowrap">创建型</span></td><td>保证唯一实例并提供全局访问点</td><td>配置中心、连接池、日志器</td><td><span class="nowrap">唯一实例</span></td></tr><tr><td><span class="nowrap">6</span></td><td><a href="structural.html#p-adapter">适配器</a> <span class="muted">Adapter</span></td><td><span class="nowrap">结构型</span></td><td>转换接口使不兼容的类能协作</td><td>旧接口改造、电源转接头</td><td><span class="nowrap">改接口</span></td></tr><tr><td><span class="nowrap">7</span></td><td><a href="structural.html#p-bridge">桥接</a> <span class="muted">Bridge</span></td><td><span class="nowrap">结构型</span></td><td>抽象与实现分离，各自独立变化</td><td>跨平台、形状×颜色</td><td><span class="nowrap">两个维度</span></td></tr><tr><td><span class="nowrap">8</span></td><td><a href="structural.html#p-composite">组合</a> <span class="muted">Composite</span></td><td><span class="nowrap">结构型</span></td><td>树形结构统一对待部分与整体</td><td>文件系统、UI 容器、组织架构</td><td><span class="nowrap">递归树</span></td></tr><tr><td><span class="nowrap">9</span></td><td><a href="structural.html#p-decorator">装饰器</a> <span class="muted">Decorator</span></td><td><span class="nowrap">结构型</span></td><td>动态给对象添加职责</td><td>Java IO、咖啡加料、加边框</td><td><span class="nowrap">加功能</span></td></tr><tr><td><span class="nowrap">10</span></td><td><a href="structural.html#p-facade">外观</a> <span class="muted">Facade</span></td><td><span class="nowrap">结构型</span></td><td>为子系统提供统一简化接口</td><td>代办处、一键启动</td><td><span class="nowrap">简入口</span></td></tr><tr><td><span class="nowrap">11</span></td><td><a href="structural.html#p-flyweight">享元</a> <span class="muted">Flyweight</span></td><td><span class="nowrap">结构型</span></td><td>共享技术支撑大量细粒度对象</td><td>棋子颜色、字符字形、连接池</td><td><span class="nowrap">省内存</span></td></tr><tr><td><span class="nowrap">12</span></td><td><a href="structural.html#p-proxy">代理</a> <span class="muted">Proxy</span></td><td><span class="nowrap">结构型</span></td><td>为其他对象提供代理以控制访问</td><td>图片懒加载、远程调用、权限</td><td><span class="nowrap">控访问</span></td></tr><tr><td><span class="nowrap">13</span></td><td><a href="behavioral.html#p-chain">责任链</a> <span class="muted">Chain of Responsibility</span></td><td><span class="nowrap">行为型</span></td><td>沿链传递请求直到被处理</td><td>审批流、过滤器链、日志级别</td><td><span class="nowrap">沿链下传</span></td></tr><tr><td><span class="nowrap">14</span></td><td><a href="behavioral.html#p-command">命令</a> <span class="muted">Command</span></td><td><span class="nowrap">行为型</span></td><td>把请求封装成对象</td><td>撤销重做、任务队列、宏命令</td><td><span class="nowrap">可撤销</span></td></tr><tr><td><span class="nowrap">15</span></td><td><a href="behavioral.html#p-interpreter">解释器</a> <span class="muted">Interpreter</span></td><td><span class="nowrap">行为型</span></td><td>定义文法并解释句子</td><td>表达式求值、规则引擎、DSL</td><td><span class="nowrap">语法树</span></td></tr><tr><td><span class="nowrap">16</span></td><td><a href="behavioral.html#p-iterator">迭代器</a> <span class="muted">Iterator</span></td><td><span class="nowrap">行为型</span></td><td>顺序访问聚合而不暴露内部</td><td>集合遍历、多态迭代</td><td><span class="nowrap">遍历分离</span></td></tr><tr><td><span class="nowrap">17</span></td><td><a href="behavioral.html#p-mediator">中介者</a> <span class="muted">Mediator</span></td><td><span class="nowrap">行为型</span></td><td>用中介对象封装对象间交互</td><td>聊天室、对话框、交换机</td><td><span class="nowrap">星形收敛</span></td></tr><tr><td><span class="nowrap">18</span></td><td><a href="behavioral.html#p-memento">备忘录</a> <span class="muted">Memento</span></td><td><span class="nowrap">行为型</span></td><td>不破坏封装地保存/恢复状态</td><td>撤销栈、游戏存档、事务回滚</td><td><span class="nowrap">快照</span></td></tr><tr><td><span class="nowrap">19</span></td><td><a href="behavioral.html#p-observer">观察者</a> <span class="muted">Observer</span></td><td><span class="nowrap">行为型</span></td><td>一对多依赖，状态变化自动通知</td><td>事件监听、MVC 刷新、价格监控</td><td><span class="nowrap">广播</span></td></tr><tr><td><span class="nowrap">20</span></td><td><a href="behavioral.html#p-state">状态</a> <span class="muted">State</span></td><td><span class="nowrap">行为型</span></td><td>行为随内部状态改变而改变</td><td>TCP 连接、订单状态机、电梯</td><td><span class="nowrap">状态机</span></td></tr><tr><td><span class="nowrap">21</span></td><td><a href="behavioral.html#p-strategy">策略</a> <span class="muted">Strategy</span></td><td><span class="nowrap">行为型</span></td><td>封装可互换的算法</td><td>折扣、排序、压缩算法</td><td><span class="nowrap">换算法</span></td></tr><tr><td><span class="nowrap">22</span></td><td><a href="behavioral.html#p-template-method">模板方法</a> <span class="muted">Template Method</span></td><td><span class="nowrap">行为型</span></td><td>固定算法骨架，步骤延迟到子类</td><td>框架流程、账户计息、构建流程</td><td><span class="nowrap">骨架不变</span></td></tr><tr><td><span class="nowrap">23</span></td><td><a href="behavioral.html#p-visitor">访问者</a> <span class="muted">Visitor</span></td><td><span class="nowrap">行为型</span></td><td>不改变元素类而增加新操作</td><td>编译器 AST、报表导出、静态分析</td><td><span class="nowrap">双重分派</span></td></tr></tbody>
+</table></div><div class="callout callout--info">
+<span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-info"></use></svg></span>
+<div class="callout__body"><p><span class="callout__title">怎么用这张表</span>考前最后 10 分钟只看这张表：遮住「意图」列，看模式名能否说出意图；遮住「关键词」列，看意图能否反推出模式。能双向回忆，说明 23 个模式的骨架已经记住了。</p></div>
+</div>
+</section><section class="section" id="detail" data-title="如何选择模式">
+<div class="section-head">
+<span class="section-head__num">03</span>
+<h2 class="section-title">如何选择模式</h2>
+<a class="section-anchor" href="#detail" aria-label="本节链接">#</a>
+</div>
+<p class="section-lead">选型是设计题的核心能力：先走决策树，再用三栏清单交叉验证。</p>
+<h3>如何选择模式：三步决策树</h3><p>第一步判断「问题属于哪一类」，第二步在该类内按「变化点」定位候选，第三步用对比表排除干扰项。下图是前两步的压缩版。</p><svg class="dt" viewBox="0 0 736 460" role="img" aria-label="如何选择设计模式的决策树：按创建型、结构型、行为型三列给出模式线索"><rect class="dt-box dt-box--root" x="208.0" y="8" width="320.0" height="42" rx="10"/><text class="dt-t dt-t--b" x="368.0" y="35" text-anchor="middle">变化点在哪？</text><path class="dt-line" d="M368.0 50 V70"/><path class="dt-line" d="M122.0 70 H614.0"/><path class="dt-line" d="M122.0 70 V92"/><path class="dt-line" d="M368.0 70 V92"/><path class="dt-line" d="M614.0 70 V92"/><rect class="dt-box" x="6.0" y="92" width="232.0" height="40" rx="9"/><text class="dt-t dt-t--b" x="122.0" y="117" text-anchor="middle">① 对象怎么创建？</text><path class="dt-line" d="M122.0 132 V146"/><rect class="dt-box dt-box--leaf" x="6.0" y="146" width="232.0" height="36" rx="8"/><text class="dt-t" x="122.0" y="169" text-anchor="middle">只要一个实例 → 单例</text><path class="dt-line" d="M122.0 182 V190"/><rect class="dt-box dt-box--leaf" x="6.0" y="190" width="232.0" height="36" rx="8"/><text class="dt-t" x="122.0" y="213" text-anchor="middle">复制已有实例 → 原型</text><path class="dt-line" d="M122.0 226 V234"/><rect class="dt-box dt-box--leaf" x="6.0" y="234" width="232.0" height="36" rx="8"/><text class="dt-t" x="122.0" y="257" text-anchor="middle">分步造复杂对象 → 建造者</text><path class="dt-line" d="M122.0 270 V278"/><rect class="dt-box dt-box--leaf" x="6.0" y="278" width="232.0" height="36" rx="8"/><text class="dt-t" x="122.0" y="301" text-anchor="middle">一族产品 → 抽象工厂</text><path class="dt-line" d="M122.0 314 V322"/><rect class="dt-box dt-box--leaf" x="6.0" y="322" width="232.0" height="36" rx="8"/><text class="dt-t" x="122.0" y="345" text-anchor="middle">一种产品多实现 → 工厂方法</text><rect class="dt-box" x="252.0" y="92" width="232.0" height="40" rx="9"/><text class="dt-t dt-t--b" x="368.0" y="117" text-anchor="middle">② 结构怎么组合？</text><path class="dt-line" d="M368.0 132 V146"/><rect class="dt-box dt-box--leaf" x="252.0" y="146" width="232.0" height="36" rx="8"/><text class="dt-t" x="368.0" y="169" text-anchor="middle">接口不兼容 → 适配器</text><path class="dt-line" d="M368.0 182 V190"/><rect class="dt-box dt-box--leaf" x="252.0" y="190" width="232.0" height="36" rx="8"/><text class="dt-t" x="368.0" y="213" text-anchor="middle">运行期加功能 → 装饰器</text><path class="dt-line" d="M368.0 226 V234"/><rect class="dt-box dt-box--leaf" x="252.0" y="234" width="232.0" height="36" rx="8"/><text class="dt-t" x="368.0" y="257" text-anchor="middle">控制访问 → 代理</text><path class="dt-line" d="M368.0 270 V278"/><rect class="dt-box dt-box--leaf" x="252.0" y="278" width="232.0" height="36" rx="8"/><text class="dt-t" x="368.0" y="301" text-anchor="middle">部分-整体树 → 组合</text><path class="dt-line" d="M368.0 314 V322"/><rect class="dt-box dt-box--leaf" x="252.0" y="322" width="232.0" height="36" rx="8"/><text class="dt-t" x="368.0" y="345" text-anchor="middle">抽象 × 实现 → 桥接</text><path class="dt-line" d="M368.0 358 V366"/><rect class="dt-box dt-box--leaf" x="252.0" y="366" width="232.0" height="36" rx="8"/><text class="dt-t" x="368.0" y="389" text-anchor="middle">子系统入口复杂 → 外观</text><path class="dt-line" d="M368.0 402 V410"/><rect class="dt-box dt-box--leaf" x="252.0" y="410" width="232.0" height="36" rx="8"/><text class="dt-t" x="368.0" y="433" text-anchor="middle">大量小对象 → 享元</text><rect class="dt-box" x="498.0" y="92" width="232.0" height="40" rx="9"/><text class="dt-t dt-t--b" x="614.0" y="117" text-anchor="middle">③ 职责怎么分？</text><path class="dt-line" d="M614.0 132 V146"/><rect class="dt-box dt-box--leaf" x="498.0" y="146" width="232.0" height="36" rx="8"/><text class="dt-t" x="614.0" y="169" text-anchor="middle">算法可互换 → 策略</text><path class="dt-line" d="M614.0 182 V190"/><rect class="dt-box dt-box--leaf" x="498.0" y="190" width="232.0" height="36" rx="8"/><text class="dt-t" x="614.0" y="213" text-anchor="middle">行为随状态变 → 状态</text><path class="dt-line" d="M614.0 226 V234"/><rect class="dt-box dt-box--leaf" x="498.0" y="234" width="232.0" height="36" rx="8"/><text class="dt-t" x="614.0" y="257" text-anchor="middle">骨架固定步骤变 → 模板方法</text><path class="dt-line" d="M614.0 270 V278"/><rect class="dt-box dt-box--leaf" x="498.0" y="278" width="232.0" height="36" rx="8"/><text class="dt-t" x="614.0" y="301" text-anchor="middle">请求可撤销 → 命令</text><path class="dt-line" d="M614.0 314 V322"/><rect class="dt-box dt-box--leaf" x="498.0" y="322" width="232.0" height="36" rx="8"/><text class="dt-t" x="614.0" y="345" text-anchor="middle">状态变化要广播 → 观察者</text><path class="dt-line" d="M614.0 358 V366"/><rect class="dt-box dt-box--leaf" x="498.0" y="366" width="232.0" height="36" rx="8"/><text class="dt-t" x="614.0" y="389" text-anchor="middle">沿链找处理者 → 责任链</text><path class="dt-line" d="M614.0 402 V410"/><rect class="dt-box dt-box--leaf" x="498.0" y="410" width="232.0" height="36" rx="8"/><text class="dt-t" x="614.0" y="433" text-anchor="middle">对象互交太乱 → 中介者</text></svg><p class="muted tiny" style="text-align:center;margin-top:-0.5rem">图中列出 19 个最常用的模式；备忘录、迭代器、中介者、访问者、解释器见下方三栏清单。</p><h3>三栏选型清单（按问题关键词直接查）</h3><div class="decide"><div class="decide__col"><h4>创建型：谁负责 new？</h4><div class="decide__row"><span>全局只要一个实例</span><a href="creation.html#p-singleton">单例</a></div><div class="decide__row"><span>复制已有对象更便宜</span><a href="creation.html#p-prototype">原型</a></div><div class="decide__row"><span>复杂对象、分步装配</span><a href="creation.html#p-builder">建造者</a></div><div class="decide__row"><span>一族产品要配套创建</span><a href="creation.html#p-abstract-factory">抽象工厂</a></div><div class="decide__row"><span>一种产品多个实现</span><a href="creation.html#p-factory-method">工厂方法</a></div></div><div class="decide__col"><h4>结构型：怎么组合？</h4><div class="decide__row"><span>接口不兼容</span><a href="structural.html#p-adapter">适配器</a></div><div class="decide__row"><span>运行期动态加功能</span><a href="structural.html#p-decorator">装饰器</a></div><div class="decide__row"><span>控制对对象的访问</span><a href="structural.html#p-proxy">代理</a></div><div class="decide__row"><span>部分-整体树形结构</span><a href="structural.html#p-composite">组合</a></div><div class="decide__row"><span>抽象与实现两维度</span><a href="structural.html#p-bridge">桥接</a></div><div class="decide__row"><span>子系统入口太复杂</span><a href="structural.html#p-facade">外观</a></div><div class="decide__row"><span>大量小对象耗内存</span><a href="structural.html#p-flyweight">享元</a></div></div><div class="decide__col"><h4>行为型：职责怎么分？</h4><div class="decide__row"><span>算法可互换</span><a href="behavioral.html#p-strategy">策略</a></div><div class="decide__row"><span>行为随状态改变</span><a href="behavioral.html#p-state">状态</a></div><div class="decide__row"><span>骨架固定、步骤可变</span><a href="behavioral.html#p-template-method">模板方法</a></div><div class="decide__row"><span>请求要撤销/排队</span><a href="behavioral.html#p-command">命令</a></div><div class="decide__row"><span>状态变化要广播</span><a href="behavioral.html#p-observer">观察者</a></div><div class="decide__row"><span>沿链找处理者</span><a href="behavioral.html#p-chain">责任链</a></div><div class="decide__row"><span>对象间互交太乱</span><a href="behavioral.html#p-mediator">中介者</a></div><div class="decide__row"><span>保存/恢复状态</span><a href="behavioral.html#p-memento">备忘录</a></div><div class="decide__row"><span>不暴露内部地遍历</span><a href="behavioral.html#p-iterator">迭代器</a></div><div class="decide__row"><span>不改变元素加新操作</span><a href="behavioral.html#p-visitor">访问者</a></div><div class="decide__row"><span>解释简单文法</span><a href="behavioral.html#p-interpreter">解释器</a></div></div></div><div class="callout callout--warn">
+<span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg></span>
+<div class="callout__body"><p><span class="callout__title">选型第一原则：先问「变的是什么」</span>设计题最常见的失分不是选错模式，而是<b>没想清楚变化点</b>。拿到题目先回答三个问题：① 需求变化时，最可能改的是<b>哪一部分</b>？② 这部分现在是<b>硬编码</b>在哪里的？③ 把它抽成对象后，<b>谁</b>来负责选择？三问答清楚，模式自然浮现；答不清楚就套模式，一定是过度设计。</p></div>
+</div><h3>三个「不要用」的反面清单</h3><div class="grid grid--2"><div class="card"><h4 class="card__title">不要为了用模式而用模式</h4><div class="card__body"><p class="muted">只有两个实现、且可预见不会增加时，直接用 <code>if/else</code> 比工厂方法更清晰。模式的价值在于<b>应对变化</b>，没有变化就没有价值。</p></div></div><div class="card"><h4 class="card__title">不要在小程序里上抽象工厂</h4><div class="card__body"><p class="muted">抽象工厂会一次性引入 AbstractFactory + N 个 ConcreteFactory + 多个产品等级结构。只有一个产品族、且不打算扩展时，简单工厂足够。</p></div></div><div class="card"><h4 class="card__title">不要用单例代替全局状态管理</h4><div class="card__body"><p class="muted">单例会带来隐式依赖与测试困难。能用依赖注入传进来的对象，就不要做成单例；单例只适合真正「全局唯一」的资源（配置、连接池）。</p></div></div><div class="card"><h4 class="card__title">不要忽视模式之间的组合</h4><div class="card__body"><p class="muted">真实系统里模式是<b>组合使用</b>的：命令 + 备忘录做撤销、组合 + 访问者做遍历统计、抽象工厂 + 单例做全局配置工厂。答题时点出组合关系会加分。</p></div></div></div>
+</section><section class="section" id="compare" data-title="跨模式横向对比">
+<div class="section-head">
+<span class="section-head__num">04</span>
+<h2 class="section-title">跨模式横向对比</h2>
+<a class="section-anchor" href="#compare" aria-label="本节链接">#</a>
+</div>
+
+<p class="section-lead">跨类别的对比才是选择题的重灾区。下面三张表把「看着像、其实不同」的模式两两钉死。</p><h3>表一：跨类别高频辨析（8 组）</h3><div class="table-wrap"><table>
+<thead><tr><th>易混组合</th><th>核心区别</th><th>判断口诀</th></tr></thead>
+<tbody><tr><td>工厂方法 vs 抽象工厂</td><td>工厂方法面对<b>1 个</b>产品等级结构；抽象工厂面对<b>多个</b>，一次创建一族产品。</td><td>「一族」→ 抽象工厂；「一种」→ 工厂方法。</td></tr><tr><td>建造者 vs 抽象工厂</td><td>建造者分步装配<b>一个复杂对象</b>，最后 getResult 才产出；抽象工厂一次创建<b>一族平级产品</b>。</td><td>「一个复杂对象」→ 建造者。</td></tr><tr><td>适配器 vs 装饰器</td><td>适配器<b>改接口不改功能</b>；装饰器<b>不改接口只加功能</b>。</td><td>看接口是否改变。</td></tr><tr><td>装饰器 vs 代理</td><td>装饰器目的是<b>加功能</b>、可多层嵌套；代理目的是<b>控访问</b>、常自己创建真实对象、通常一层。</td><td>「门卫」→ 代理；「穿衣服」→ 装饰器。</td></tr><tr><td>组合 vs 装饰器</td><td>组合是<b>树</b>（多个子节点、向下递归）；装饰器是<b>链</b>（固定一个、向内委托）。</td><td>「树」→ 组合；「链」→ 装饰器。</td></tr><tr><td>策略 vs 状态</td><td>策略由<b>客户端</b>注入、策略间<b>互不相识</b>；状态由<b>状态类自身</b>转移、状态间<b>知道彼此</b>。</td><td>「谁切换」决定一切。</td></tr><tr><td>中介者 vs 观察者</td><td>中介者是<b>星形双向</b>（同事知道中介者）；观察者是<b>一对多单向广播</b>（Subject → Observer）。</td><td>「协调互交」→ 中介者。</td></tr><tr><td>命令 vs 策略</td><td>命令封装<b>请求</b>（持有 Receiver，支持 undo/排队）；策略封装<b>算法</b>（不持有接收者）。</td><td>「可撤销」→ 命令。</td></tr></tbody>
+</table></div><h3>表二：23 种模式的扩展性对照（谁能加、谁难加）</h3><div class="table-wrap"><table>
+<thead><tr><th>模式</th><th>容易扩展的方向</th><th>困难的方向</th><th>开闭原则</th></tr></thead>
+<tbody><tr><td>工厂方法</td><td>新增产品（加工厂子类）</td><td>—</td><td>满足</td></tr><tr><td>抽象工厂</td><td>新增产品族（加具体工厂）</td><td>新增产品等级结构</td><td>倾斜</td></tr><tr><td>建造者</td><td>新增表示（加 ConcreteBuilder）</td><td>构建算法本身变化</td><td>部分满足</td></tr><tr><td>原型</td><td>新增原型类型（实现 clone）</td><td>深拷贝实现</td><td>满足</td></tr><tr><td>单例</td><td>—</td><td>—</td><td>不涉及</td></tr><tr><td>适配器</td><td>新增适配者（加 Adapter）</td><td>—</td><td>满足</td></tr><tr><td>桥接</td><td>两个维度各自加子类</td><td>—</td><td>满足</td></tr><tr><td>组合</td><td>新增组件类型</td><td>—</td><td>满足</td></tr><tr><td>装饰器</td><td>新增装饰（加 Decorator）</td><td>—</td><td>满足</td></tr><tr><td>外观</td><td>新增子系统</td><td>子系统接口变化会波及门面</td><td>部分满足</td></tr><tr><td>享元</td><td>新增享元类型</td><td>内/外部状态划分</td><td>满足</td></tr><tr><td>代理</td><td>新增代理类型</td><td>Subject 接口变化需同步</td><td>满足</td></tr><tr><td>责任链</td><td>新增处理者</td><td>—</td><td>满足</td></tr><tr><td>命令</td><td>新增命令</td><td>—</td><td>满足</td></tr><tr><td>解释器</td><td>新增文法规则</td><td>文法复杂时类爆炸</td><td>满足但代价高</td></tr><tr><td>迭代器</td><td>新增遍历方式</td><td>聚合结构变化需改迭代器</td><td>满足</td></tr><tr><td>中介者</td><td>改变交互（加中介者子类）</td><td>中介者自身易膨胀</td><td>部分满足</td></tr><tr><td>备忘录</td><td>—</td><td>快照占用内存</td><td>不涉及</td></tr><tr><td>观察者</td><td>新增观察者</td><td>—</td><td>满足</td></tr><tr><td>状态</td><td>新增状态</td><td>状态转移逻辑分散</td><td>满足</td></tr><tr><td>策略</td><td>新增策略</td><td>客户端需知道策略</td><td>满足</td></tr><tr><td>模板方法</td><td>新增子类实现步骤</td><td>算法骨架变化</td><td>部分满足</td></tr><tr><td>访问者</td><td>新增操作（加 Visitor）</td><td>新增元素类</td><td>反向倾斜</td></tr></tbody>
+</table></div><h3>表三：三类模式的「共同主旋律」</h3><div class="table-wrap"><table>
+<thead><tr><th>类别</th><th>解决什么</th><th>共同手段</th><th>共同代价</th><th>数量</th></tr></thead>
+<tbody><tr><td>创建型</td><td>对象<b>怎么来</b></td><td>把实例化过程抽象、延迟、封装</td><td>类数量增加、抽象层变重</td><td>5</td></tr><tr><td>结构型</td><td>对象<b>怎么拼</b></td><td>用组合/聚合替代继承（合成复用）</td><td>多一层间接、调试变难</td><td>7</td></tr><tr><td>行为型</td><td>对象<b>怎么协作</b></td><td>把控制逻辑（算法/状态/请求）抽成对象</td><td>控制流隐式、类数量膨胀</td><td>11</td></tr></tbody>
+</table></div><div class="callout callout--tip">
+<span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-bulb"></use></svg></span>
+<div class="callout__body"><p><span class="callout__title">答题技巧</span>简答题问「XX 模式与 YY 模式的区别」时，按固定三段写：① <b>意图不同</b>（各自的 GoF 定义关键词）；② <b>结构不同</b>（谁持有谁、接口是否改变）；③ <b>适用场景不同</b>（举一个只有 A 适用、只有 B 适用的例子）。三段齐了基本满分，只写「类图一样/不一样」最多给一半。</p></div>
+</div>
+</section><section class="section" id="pitfalls" data-title="易错点">
+<div class="section-head">
+<span class="section-head__num">05</span>
+<h2 class="section-title">易错点</h2>
+<a class="section-anchor" href="#pitfalls" aria-label="本节链接">#</a>
+</div>
+
+<p class="section-lead">以下 12 条是整章最高频的失分点，按「分类错误 → 结构错误 → 意图错误」排列。</p><ul class="pitfalls"><li><strong>把简单工厂算作 GoF 23 种之一。</strong>GoF 23 种里<b>没有</b>简单工厂，创建型只有工厂方法、抽象工厂、建造者、原型、单例 5 种。简单工厂是课程补充的入门形态，且违反开闭原则。</li><li><strong>把「类模式 / 对象模式」与「创建型 / 结构型 / 行为型」混成一个轴。</strong>这是<b>两条独立的分类轴</b>：按目的分三类，按范围分类模式（继承）与对象模式（运行期可变）。两轴交叉得 6 类，其中类结构型只有类适配器，类行为型只有模板方法与解释器。</li><li><strong>抽象工厂的扩展方向记反。</strong>抽象工厂<b>加产品族容易</b>（新增具体工厂）、<b>加产品等级结构难</b>（改接口 + 所有子类）。访问者恰好相反：<b>加操作容易、加元素类难</b>。这两个「倾斜方向相反」是高频考点。</li><li><strong>把适配器、装饰器、代理三者混为一谈。</strong>三者都是「包一层」，但：适配器<b>改接口不改功能</b>；装饰器<b>不改接口加功能</b>、可多层嵌套；代理<b>不改接口控访问</b>、常自己创建真实对象、通常一层。</li><li><strong>策略模式和状态模式只说「类图一样」。</strong>类图确实几乎一致，但<b>切换机制</b>完全不同：策略由客户端注入、策略间互不相识；状态由状态类自身触发转移、状态间知道彼此。答题必须答到「谁负责切换」这一层。</li><li><strong>把观察者模式等同于发布-订阅。</strong>观察者模式中 Subject <b>直接持有</b> Observer 引用；发布-订阅在两者之间插入事件通道/代理，双方互不相识，属于架构层解耦。严格说后者已不是 GoF 观察者模式。</li><li><strong>模板方法的模板方法写成可覆盖的普通方法。</strong>模板方法必须<b>固定算法骨架</b>，工程上应声明为 <code>final</code>；只把原语操作留成 <code>abstract</code>/<code>protected</code>。否则子类改写顺序，模式失效。</li><li><strong>原型模式的 clone 直接 <code>return super.clone()</code> 就交卷。</strong><code>Object.clone()</code> 是<b>浅拷贝</b>，引用字段只复制地址。原型里有 List、数组等可变对象时必须手动重建，否则副本与原对象共享数据。</li><li><strong>责任链默认请求一定被处理。</strong>GoF 明确「<b>不保证被接受</b>」，必须提供兜底处理者；链若成环会导致无限循环。</li><li><strong>组合模式里 add/remove 只写在 Composite 上，却声称客户端完全一致。</strong>这是「透明性 vs 安全性」的取舍：放 Composite 是安全方案（客户端需类型判断，一致性被破坏），放 Component 是透明方案（叶子抛异常）。答题必须说明选了哪一边。</li><li><strong>把享元的外部状态也塞进享元对象。</strong>享元对象必须<b>可共享 → 必须不可变</b>。随场景变化的外部状态由客户端保存、调用时传参。把坐标存进棋子对象，所有黑子会共用同一坐标。</li><li><strong>认为单例只要「私有构造 + 静态实例」就无懈可击。</strong>完整答案要覆盖：并发（DCL 需 <code>volatile</code>）、反射（<code>setAccessible</code> 可破私有构造）、序列化（反序列化产生新实例）、多类加载器。枚举是唯一能同时防住反射与序列化的写法。</li></ul>
+</section><section class="section" id="quiz" data-title="本章自测">
+<div class="section-head">
+<span class="section-head__num">06</span>
+<h2 class="section-title">本章自测</h2>
+<a class="section-anchor" href="#quiz" aria-label="本节链接">#</a>
+</div>
+<p class="section-lead">题目数据来自本页底部 <code>&lt;script id="quiz-data"&gt;</code>，由 site.js 渲染判分。</p>
+<div class="quiz" id="quiz-root"></div>
+</section><section class="section" id="cards" data-title="记忆卡片">
+<div class="section-head">
+<span class="section-head__num">07</span>
+<h2 class="section-title">记忆卡片</h2>
+<a class="section-anchor" href="#cards" aria-label="本节链接">#</a>
+</div>
+<p class="section-lead">点击卡片翻面；标记「已掌握」会记住进度，下次接着看。</p>
+<div class="flash" id="cards-root"></div>
+</section><section class="section" id="slides" data-title="课件原图"><div class="section-head"><span class="section-head__num">08</span><h2 class="section-title">课件原图</h2><a class="section-anchor" href="#slides" aria-label="本节链接">#</a></div><p class="section-lead">本章课件共 350 页，分为三份 PDF。本页先展示<b>创建型模式</b>部分（108 页），结构型（118 页）与行为型（124 页）的完整课件请到对应专题页查看。点击缩略图可放大，支持 ← → 翻页。</p><div class="slides" data-slides-dir="slides/creation" data-count="108" data-prefix="slide" data-ext="jpg" data-pad="3" data-start="1" data-title="创建型模式 · 课件原图（108 页）"></div><p class="muted" style="margin-top:var(--sp-4)">另外两份课件：<a href="structural.html#slides">结构型 118 页</a> · <a href="behavioral.html#slides">行为型 124 页</a></p></section>
+        <nav class="pager" id="pager-root" aria-label="章节导航"></nav>
+      </div>
+    </main>
+  </div>
+</div>
+
+<footer class="footer" id="footer-root"></footer>
+
+<script type="application/json" id="quiz-data">
+[
+  {
+    "type": "single",
+    "stem": "GoF 23 种设计模式按目的分为三类，其数量分别是？",
+    "options": [
+      "创建型 5、结构型 7、行为型 11",
+      "创建型 5、结构型 6、行为型 12",
+      "创建型 4、结构型 7、行为型 12",
+      "创建型 6、结构型 7、行为型 10"
+    ],
+    "answer": 0,
+    "explain": "创建型 5（工厂方法、抽象工厂、建造者、原型、单例），结构型 7（适配器、桥接、组合、装饰器、外观、享元、代理），行为型 11（其余）。",
+    "tag": "分类"
+  },
+  {
+    "type": "single",
+    "stem": "下列哪个模式不属于 GoF 23 种？",
+    "options": [
+      "原型模式",
+      "简单工厂模式",
+      "享元模式",
+      "备忘录模式"
+    ],
+    "answer": 1,
+    "explain": "简单工厂不是 GoF 23 种之一，它是课程补充的工厂家族入门形态，且新增产品需修改工厂判断逻辑，违反开闭原则。",
+    "tag": "分类"
+  },
+  {
+    "type": "single",
+    "stem": "「类模式」与「对象模式」的划分依据是？",
+    "options": [
+      "按对象创建、组合还是交互划分",
+      "按使用继承（编译期确定）还是对象组合（运行期可变）划分",
+      "按模式出现的时间先后划分",
+      "按模式是否属于 GoF 划分"
+    ],
+    "answer": 1,
+    "explain": "按目的分三类（创建/结构/行为），按范围分类模式与对象模式。两轴交叉得 6 类。",
+    "tag": "分类"
+  },
+  {
+    "type": "single",
+    "stem": "抽象工厂模式在扩展时的「开闭原则倾斜」表现为？",
+    "options": [
+      "增加产品族容易，增加产品等级结构难",
+      "增加产品等级结构容易，增加产品族难",
+      "两者都容易",
+      "两者都难"
+    ],
+    "answer": 0,
+    "explain": "新增产品族只需新增一个具体工厂；新增产品等级结构必须修改 AbstractFactory 接口及其所有子类。访问者模式的倾斜方向恰好相反。",
+    "tag": "辨析"
+  },
+  {
+    "type": "single",
+    "stem": "要在运行时给单个对象动态添加职责，且可能叠加多层，应选？",
+    "options": [
+      "代理模式",
+      "装饰器模式",
+      "适配器模式",
+      "桥接模式"
+    ],
+    "answer": 1,
+    "explain": "装饰器不改变接口、可任意嵌套、运行期组合，正是为动态添加职责而设计。代理通常一层且目的是控制访问；适配器改变接口。",
+    "tag": "选型"
+  },
+  {
+    "type": "single",
+    "stem": "一个系统需要支持 m 种窗口和 n 种平台，用桥接模式后类数量约为？",
+    "options": [
+      "m × n",
+      "m + n",
+      "m",
+      "n"
+    ],
+    "answer": 1,
+    "explain": "桥接把「窗口」与「平台」分成两个独立继承层次，用聚合桥连接，类数量从 m×n 降为 m+n。",
+    "tag": "桥接"
+  },
+  {
+    "type": "single",
+    "stem": "下列哪个模式最适合「沿链传递请求直到有对象处理」的场景？",
+    "options": [
+      "观察者模式",
+      "中介者模式",
+      "责任链模式",
+      "命令模式"
+    ],
+    "answer": 2,
+    "explain": "责任链把处理者连成链，请求沿链传递直到被处理。观察者是广播通知，中介者是集中转发，命令是封装请求。",
+    "tag": "选型"
+  },
+  {
+    "type": "single",
+    "stem": "「对象看起来似乎修改了它的类」描述的是哪个模式？",
+    "options": [
+      "策略模式",
+      "状态模式",
+      "模板方法模式",
+      "访问者模式"
+    ],
+    "answer": 1,
+    "explain": "这是 GoF 对状态模式的经典描述：对象的行为随内部状态改变而改变，从外部看好像换了一个类。",
+    "tag": "状态"
+  },
+  {
+    "type": "multiple",
+    "stem": "下列模式中，属于对象结构型模式的有（多选）：",
+    "options": [
+      "对象适配器",
+      "桥接",
+      "装饰器",
+      "类适配器"
+    ],
+    "answer": [
+      0,
+      1,
+      2
+    ],
+    "explain": "类适配器是唯一的结构型类模式（用继承）。对象适配器、桥接、装饰器等六个都是对象结构型模式。",
+    "tag": "分类"
+  },
+  {
+    "type": "multiple",
+    "stem": "下列模式中，属于行为型类模式（使用继承分派行为）的有（多选）：",
+    "options": [
+      "模板方法",
+      "解释器",
+      "策略",
+      "状态"
+    ],
+    "answer": [
+      0,
+      1
+    ],
+    "explain": "行为型的类模式只有模板方法与解释器，其余九个（含策略、状态）都是对象行为型模式。",
+    "tag": "分类"
+  },
+  {
+    "type": "multiple",
+    "stem": "下列哪些模式组合在真实系统中经常一起使用（多选）：",
+    "options": [
+      "命令 + 备忘录（实现撤销重做）",
+      "组合 + 访问者（遍历对象结构并施加操作）",
+      "抽象工厂 + 单例（全局配置工厂）",
+      "适配器 + 享元（保证唯一实例）"
+    ],
+    "answer": [
+      0,
+      1,
+      2
+    ],
+    "explain": "D 错误：保证唯一实例是单例的职责，与适配器、享元无关。前三组都是教材与工程中的经典组合。",
+    "tag": "综合"
+  },
+  {
+    "type": "multiple",
+    "stem": "关于「模式与框架」的关系，下列说法正确的有（多选）：",
+    "options": [
+      "设计模式比框架更抽象",
+      "设计模式是比框架更小的体系结构元素",
+      "框架比设计模式更加特例化",
+      "一个框架中通常包含多个设计模式"
+    ],
+    "answer": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "explain": "课程原文：设计模式比框架更抽象、是更小的体系结构元素、框架比模式更特例化；框架内部通常实现了多个模式。",
+    "tag": "概念"
+  },
+  {
+    "type": "boolean",
+    "stem": "访问者模式和抽象工厂模式在开闭原则上的「倾斜方向」是相同的。",
+    "answer": false,
+    "explain": "方向相反：抽象工厂「加产品族易、加产品等级结构难」；访问者「加操作易、加元素类难」。",
+    "tag": "辨析"
+  },
+  {
+    "type": "boolean",
+    "stem": "设计模式的核心思想可以概括为「增加抽象层」与「分离出变化部分」。",
+    "answer": true,
+    "explain": "这是课程对模式核心思想的总结：通过增加抽象层把变化部分从不变部分中分离出来。",
+    "tag": "概念"
+  },
+  {
+    "type": "boolean",
+    "stem": "在只有两个实现且可预见不会增加的情况下，使用工厂方法模式一定优于直接 if/else。",
+    "answer": false,
+    "explain": "模式的价值在于应对变化。没有变化预期时，引入抽象层属于过度设计，直接 if/else 更清晰易读。",
+    "tag": "选型"
+  }
+]
+</script>
+
+<script type="application/json" id="cards-data">
+[
+  {
+    "front": "GoF 23 种模式按目的分为哪三类？各多少个？",
+    "back": "<b>创建型 5<\/b>、<b>结构型 7<\/b>、<b>行为型 11<\/b>。",
+    "tag": "分类"
+  },
+  {
+    "front": "创建型 5 种模式是哪些？",
+    "back": "工厂方法、抽象工厂、建造者、原型、单例。<b>简单工厂不是 GoF 模式<\/b>。",
+    "tag": "分类"
+  },
+  {
+    "front": "结构型 7 种模式是哪些？",
+    "back": "适配器、桥接、组合、装饰器、外观、享元、代理。",
+    "tag": "分类"
+  },
+  {
+    "front": "行为型 11 种模式是哪些？",
+    "back": "责任链、命令、解释器、迭代器、中介者、备忘录、观察者、状态、策略、模板方法、访问者。",
+    "tag": "分类"
+  },
+  {
+    "front": "设计模式的两条分类轴是什么？",
+    "back": "按<b>目的<\/b>：创建型/结构型/行为型；按<b>范围<\/b>：类模式（继承，编译期确定）/对象模式（运行期可变）。",
+    "tag": "分类"
+  },
+  {
+    "front": "唯一的结构型「类模式」是哪个？",
+    "back": "<b>类适配器<\/b>（继承 Adaptee 并实现 Target）。其余六个结构型模式都是对象模式。",
+    "tag": "分类"
+  },
+  {
+    "front": "行为型中的「类模式」有哪两个？",
+    "back": "<b>模板方法<\/b>与<b>解释器<\/b>。其余九个都是对象行为型模式。",
+    "tag": "分类"
+  },
+  {
+    "front": "设计模式的核心思想可以概括为哪两点？",
+    "back": "① <b>增加抽象层<\/b>；② <b>分离出变化部分<\/b>（从不变部分中）。",
+    "tag": "概念"
+  },
+  {
+    "front": "设计模式与框架的三个区别？",
+    "back": "① 模式比框架<b>更抽象<\/b>；② 模式是比框架<b>更小的体系结构元素<\/b>；③ 框架比模式<b>更特例化<\/b>。",
+    "tag": "概念"
+  },
+  {
+    "front": "创建型模式的共同主旋律？",
+    "back": "① 封装系统使用<b>哪些具体类<\/b>；② 隐藏这些类的实例<b>如何被创建和组合<\/b>。",
+    "tag": "创建型"
+  },
+  {
+    "front": "结构型模式的共同手段？",
+    "back": "用<b>组合/聚合（弱关联）<\/b>替代<b>继承（强关联）<\/b>，即合成复用原则。",
+    "tag": "结构型"
+  },
+  {
+    "front": "行为型模式的共同目标？",
+    "back": "把易变的<b>控制逻辑<\/b>（算法、状态、请求、遍历、交互）从硬编码中抽出来，变成可替换的对象。",
+    "tag": "行为型"
+  },
+  {
+    "front": "工厂方法与抽象工厂的关键区别？",
+    "back": "工厂方法面对 <b>1 个<\/b>产品等级结构；抽象工厂面对<b>多个<\/b>，一次创建一族相关产品。",
+    "tag": "辨析"
+  },
+  {
+    "front": "适配器、装饰器、代理三者的区别？",
+    "back": "适配器<b>改接口不改功能<\/b>；装饰器<b>不改接口加功能<\/b>、可多层；代理<b>不改接口控访问<\/b>、通常一层。",
+    "tag": "辨析"
+  },
+  {
+    "front": "组合与装饰器在结构上的区别？",
+    "back": "组合是<b>树<\/b>（一个节点可有多个子节点、向下递归）；装饰器是<b>链<\/b>（固定包一个、向内委托）。",
+    "tag": "辨析"
+  },
+  {
+    "front": "策略与状态的关键区别？",
+    "back": "策略由<b>客户端<\/b>注入、策略间<b>互不相识<\/b>；状态由<b>状态类自身<\/b>触发转移、状态间<b>知道彼此<\/b>。",
+    "tag": "辨析"
+  },
+  {
+    "front": "中介者与观察者的区别？",
+    "back": "中介者是<b>星形双向<\/b>（同事 ↔ 中介者，同事知道中介者）；观察者是<b>一对多单向广播<\/b>。",
+    "tag": "辨析"
+  },
+  {
+    "front": "命令与策略的区别？",
+    "back": "命令封装<b>请求<\/b>（持有 Receiver，支持 undo/排队/日志）；策略封装<b>算法<\/b>（不持有接收者，只做可替换计算）。",
+    "tag": "辨析"
+  },
+  {
+    "front": "抽象工厂与访问者的开闭倾斜方向？",
+    "back": "抽象工厂：<b>加产品族易、加产品等级结构难<\/b>；访问者：<b>加操作易、加元素类难<\/b>——方向<b>相反<\/b>。",
+    "tag": "辨析"
+  },
+  {
+    "front": "选型的第一步应该问什么？",
+    "back": "问「<b>变的是什么<\/b>」：① 最可能改哪一部分？② 现在硬编码在哪里？③ 抽成对象后谁负责选择？",
+    "tag": "选型"
+  },
+  {
+    "front": "什么情况下不该用设计模式？",
+    "back": "没有变化预期时。模式的价值在于<b>应对变化<\/b>，只有两三个实现且不会增加时，直接条件判断更清晰。",
+    "tag": "选型"
+  },
+  {
+    "front": "三个常见的模式组合用法？",
+    "back": "命令 + 备忘录（撤销重做）；组合 + 访问者（遍历并施加操作）；抽象工厂 + 单例（全局配置工厂）。",
+    "tag": "综合"
+  }
+]
+</script>
+
+<script src="../../data/chapters.js"></script>
+<script src="../../assets/js/site.js"></script>
+</body>
+</html>

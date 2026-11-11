@@ -1,0 +1,1373 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page="chapter" data-chapter="ch2">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="第 2 章 软件架构复习要点：架构的定义与作用、质量属性、架构视图（4+1）、参考架构/架构模式/设计模式的关系、架构师角色与架构决策、架构文档。">
+<meta name="color-scheme" content="light dark">
+<title>第 2 章 软件架构 · 软件设计与体系架构</title>
+<link rel="stylesheet" href="../../assets/css/site.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%232b4a6f'/%3E%3Cpath d='M6 8h12M6 12h12M6 16h7' stroke='%23fff' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
+<script>
+  /* 主题初始化：必须内联在 <head> 中，避免刷新时闪白 */
+  (function () {
+    try {
+      var t = JSON.parse(localStorage.getItem('sda.theme'));
+      if (t !== 'dark' && t !== 'light') {
+        t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      document.documentElement.setAttribute('data-theme', t);
+    } catch (e) {
+      document.documentElement.setAttribute('data-theme', 'light');
+    }
+  })();
+</script>
+<style>
+  /* ------------------------------------------------------------------
+     本章局部样式：仅服务于「4+1 架构视图示意」这一张 CSS 图。
+     全部颜色取自站点 CSS 变量，因此自动跟随本章青色主题与深色模式。
+     不覆盖任何共享组件，删掉本段也只影响该示意图。
+     ------------------------------------------------------------------ */
+  .viewmap {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--sp-3);
+    margin: var(--sp-5) 0 var(--sp-4);
+    max-width: 62rem;
+  }
+  .viewmap__cell {
+    position: relative;
+    padding: var(--sp-4) var(--sp-4) calc(var(--sp-3) + 0.1rem);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+  }
+  .viewmap__cell h4 {
+    margin: 0 0 var(--sp-2);
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+  }
+  .viewmap__cell h4 .icon {
+    width: 1.05em;
+    height: 1.05em;
+    color: var(--accent-ui);
+  }
+  .viewmap__cell p {
+    margin: 0 0 0.3rem;
+    font-size: var(--fs-small);
+    line-height: 1.6;
+    color: var(--text-2);
+  }
+  .viewmap__cell p:last-child { margin-bottom: 0; }
+  .viewmap__who {
+    color: var(--text-3) !important;
+    font-size: var(--fs-tiny) !important;
+  }
+  .viewmap__cell--scene {
+    grid-column: 1 / -1;
+    border-style: dashed;
+    border-color: var(--accent-ui);
+    background: var(--accent-softer);
+  }
+  .viewmap__cell--scene::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: calc(-1 * var(--sp-3));
+    width: 2px;
+    height: var(--sp-3);
+    background: var(--border-strong);
+  }
+  .viewmap__tag {
+    position: absolute;
+    top: -0.72em;
+    right: var(--sp-3);
+    font-size: var(--fs-tiny);
+    line-height: 1.5;
+    padding: 0 0.55rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    background: var(--surface-2);
+    color: var(--text-2);
+  }
+  @media (max-width: 640px) {
+    .viewmap { grid-template-columns: 1fr; }
+  }
+  /* 学习目标与知识地图的排版问题已由共享样式 assets/css/site.css 统一修复
+     （.objectives li 改为块级 + 绝对定位序号；.kmap 固定 4 列），本章无需覆盖。 */
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">跳到正文</a>
+
+<div class="progress-bar" aria-hidden="true"><div class="progress-bar__fill" id="progress-fill"></div></div>
+
+<header class="topbar" id="topbar-root"></header>
+
+<div class="wrap">
+  <div class="layout">
+    <aside class="sidebar" id="sidebar-root" aria-label="章节目录"></aside>
+
+    <main class="main" id="main">
+      <div class="main__inner">
+
+        <!-- ================================================================
+             1. overview —— 章首：hero + 学习目标 + 知识地图
+             ================================================================ -->
+        <section class="section" id="overview" data-title="本章导览">
+          <div class="hero">
+            <span class="hero__eyebrow">第 2 章 · 软件架构</span>
+            <h1>架构：需求与程序之间的蓝图</h1>
+            <p class="hero__lead">
+              架构决定系统由哪些组件组成、组件怎么合作、部署到几台机器上，
+              也因此决定了性能、可用性、可修改性这些<b>非功能性质量</b>。
+              本章只有 13 页课件，但每一个标题背后都是简答题和选择题的常见考点——
+              我们把它展开成「定义 → 质量 → 视图 → 决策 → 文档」五段可答题的结构。
+            </p>
+            <div class="hero__meta">
+              <span class="chip chip--accent"><svg class="icon" aria-hidden="true"><use href="#i-target"></use></svg>考试重点</span>
+              <span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-clock"></use></svg>约 30 分钟</span>
+              <span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-grid"></use></svg>高频简答 + 选择</span>
+              <span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg>架构视图必考</span>
+            </div>
+            <div class="hero__actions">
+              <a class="btn btn--primary" href="#concepts">
+                <svg class="icon" aria-hidden="true"><use href="#i-play"></use></svg>开始阅读
+              </a>
+              <a class="btn" href="#quiz">
+                <svg class="icon" aria-hidden="true"><use href="#i-target"></use></svg>直接自测
+              </a>
+              <a class="btn" href="#slides">
+                <svg class="icon" aria-hidden="true"><use href="#i-print-doc"></use></svg>查看课件原图
+              </a>
+            </div>
+          </div>
+
+          <h2 class="section-title" style="margin-top:var(--sp-5)">
+            <svg class="icon" aria-hidden="true"><use href="#i-target"></use></svg>学习目标
+          </h2>
+          <p class="section-lead">读完后应能做到以下几点，而不是「看过一遍」。</p>
+          <ol class="objectives">
+            <li><span>能用一句话给出软件架构的定义，说清它处在「需求」与「程序」之间的什么位置，以及为什么它主要负责<b>非功能性质量</b>。</span></li>
+            <li><span>能列举至少 8 个质量属性，并对性能、可用性、可修改性、安全性、可测试性各说出一种典型架构手段及其代价。</span></li>
+            <li><span>能从逻辑、开发、进程、物理四个视图描述同一个系统，并说明「场景（+1）」为什么不是第五个并列视图。</span></li>
+            <li><span>能区分<b>参考架构、架构模式、设计模式</b>三者的粒度与复用方式，并说出直接套用参考架构的风险。</span></li>
+            <li><span>能针对一个具体场景写出含「背景—决策—备选—后果」的架构决策，并说明架构文档应该记录哪些内容。</span></li>
+          </ol>
+
+          <h2 class="section-title" style="margin-top:var(--sp-6)">
+            <svg class="icon" aria-hidden="true"><use href="#i-network"></use></svg>知识地图
+          </h2>
+          <p class="section-lead">把本章压缩成四列：它是什么、它管什么、怎么看、谁负责。</p>
+          <div class="kmap">
+            <div class="kmap__col">
+              <p class="kmap__title">是什么</p>
+              <ul class="kmap__list">
+                <li>实现的抽象蓝图</li>
+                <li>需求与程序的桥</li>
+                <li>组件分解（静态）</li>
+                <li>交互与部署（动态）</li>
+              </ul>
+            </div>
+            <div class="kmap__col">
+              <p class="kmap__title">管什么</p>
+              <ul class="kmap__list">
+                <li>非功能性质量为主</li>
+                <li>安全性、并发性</li>
+                <li>性能、可用性</li>
+                <li>可修改性、可测试性</li>
+              </ul>
+            </div>
+            <div class="kmap__col">
+              <p class="kmap__title">怎么看</p>
+              <ul class="kmap__list">
+                <li>4+1 视图</li>
+                <li>黑盒／白盒</li>
+                <li>静态／动态</li>
+                <li>利益相关者角度</li>
+              </ul>
+            </div>
+            <div class="kmap__col">
+              <p class="kmap__title">谁负责</p>
+              <ul class="kmap__list">
+                <li>架构师协调三方</li>
+                <li>技术与沟通能力</li>
+                <li>架构决策与取舍</li>
+                <li>文档与原型验证</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================================
+             2. concepts —— 核心概念：概念卡
+             ================================================================ -->
+        <section class="section" id="concepts" data-title="核心概念">
+          <div class="section-head">
+            <span class="section-head__num">02</span>
+            <h2 class="section-title">核心概念</h2>
+            <a class="section-anchor" href="#concepts" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">先把 10 个术语的边界钉死。简答题写不准，多半是术语混了。</p>
+
+          <div class="grid">
+            <div class="concept">
+              <p class="concept__term">软件架构 <span class="concept__en">Software Architecture</span></p>
+              <p class="concept__body">
+                对系统的<b>结构的作用</b>和<b>系统的行为</b>进行建模，是系统设计阶段的初步结果，
+                负责连接系统的<b>需求</b>与技术上的<b>解决方案</b>，主要承担系统的<b>非功能性质量</b>。
+              </p>
+              <div class="concept__tags">
+                <span class="chip chip--accent">定义</span>
+                <span class="chip">高频简答</span>
+              </div>
+            </div>
+
+            <div class="concept">
+              <p class="concept__term">组件 <span class="concept__en">Component</span></p>
+              <p class="concept__body">
+                系统分解后得到的物理组成部分。设计要求组件<b>高内聚</b>、组件之间<b>低耦合</b>，
+                并且只通过<b>接口</b>合作，从而可以独立开发、替换与复用。
+              </p>
+              <div class="concept__tags">
+                <span class="chip">结构</span>
+                <span class="chip">高内聚低耦合</span>
+              </div>
+            </div>
+
+            <div class="concept">
+              <p class="concept__term">架构关注点 <span class="concept__en">Architectural Concern</span></p>
+              <p class="concept__body">
+                架构需要回答的问题集合：系统怎么分解、组件怎么交互、部署到哪、遵循什么策略。
+                关注点是<b>横切</b>的——同一个关注点会同时牵动多个组件，所以必须在架构层统一决策。
+              </p>
+              <div class="concept__tags">
+                <span class="chip">横切</span>
+              </div>
+            </div>
+
+            <div class="concept">
+              <p class="concept__term">质量属性 <span class="concept__en">Quality Attribute</span></p>
+              <p class="concept__body">
+                衡量系统「好不好用」而非「能不能用」的属性。课件分为两类：
+                <b>非功能性质量</b>（性能、可用性、可修改性……）与<b>功能性质量</b>（保障性、安全性、并行性/并发性）。
+              </p>
+              <div class="concept__tags">
+                <span class="chip chip--accent">考试重点</span>
+                <span class="chip chip--warn">分类易错</span>
+              </div>
+            </div>
+
+            <div class="concept">
+              <p class="concept__term">架构视图 <span class="concept__en">Architectural View</span></p>
+              <p class="concept__body">
+                从某一类利益相关者关心的问题出发，对架构做的<b>一个侧面</b>的描述。
+                经典做法是 4+1：逻辑视图、开发视图、进程视图、物理视图，再加一个把四者串起来的<b>场景</b>。
+              </p>
+              <div class="concept__tags">
+                <span class="chip">4+1</span>
+                <span class="chip">必考</span>
+              </div>
+            </div>
+
+            <div class="concept">
+              <p class="concept__term">参考架构 <span class="concept__en">Reference Architecture</span></p>
+              <p class="concept__body">
+                为完成一定业务目标而应用的软件架构的<b>部分内容</b>，包含<b>可以复用</b>的部分：
+                既可以包含各种结构（架构）模式，也可以包含业务组件。
+              </p>
+              <div class="concept__tags">
+                <span class="chip">复用</span>
+                <span class="chip">含业务</span>
+              </div>
+            </div>
+
+            <div class="concept">
+              <p class="concept__term">架构模式 <span class="concept__en">Architectural Pattern</span></p>
+              <p class="concept__body">
+                软件结构的<b>模板</b>：把所关注的系统按一定策略分解为<b>可扩展的子系统</b>，
+                并规定这些子系统之间的合作方式；但<b>不涉及解决具体业务领域问题</b>的部分。
+              </p>
+              <div class="concept__tags">
+                <span class="chip">模板</span>
+                <span class="chip">子系统级</span>
+              </div>
+            </div>
+
+            <div class="concept">
+              <p class="concept__term">设计模式 <span class="concept__en">Design Pattern</span></p>
+              <p class="concept__body">
+                体现系统中<b>可扩展的类</b>所承担的<b>特殊作用</b>，通过它们的<b>合作</b>解决相关问题。
+                粒度在类/对象级，比架构模式更细。
+              </p>
+              <div class="concept__tags">
+                <span class="chip">类/对象级</span>
+                <span class="chip">第 3–4 章</span>
+              </div>
+            </div>
+
+            <div class="concept">
+              <p class="concept__term">架构决策 <span class="concept__en">Architectural Decision</span></p>
+              <p class="concept__body">
+                影响系统整体结构、难以事后更改的那类决定。判据是<b>代价</b>：
+                改起来越贵、波及面越广，就越属于架构决策，必须留下理由与备选方案。
+              </p>
+              <div class="concept__tags">
+                <span class="chip chip--accent">重点</span>
+                <span class="chip">记录理由</span>
+              </div>
+            </div>
+
+            <div class="concept">
+              <p class="concept__term">架构原型 <span class="concept__en">Prototype</span></p>
+              <p class="concept__body">
+                用最小成本验证架构设想的产物，课件列出三种：
+                <b>水平原型</b>（广而浅）、<b>垂直原型</b>（窄而深）、<b>可行性原型</b>（专攻技术风险）。
+              </p>
+              <div class="concept__tags">
+                <span class="chip">验证</span>
+                <span class="chip chip--warn">易混</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="callout callout--tip" style="margin-top:var(--sp-5)">
+            <span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-bulb"></use></svg></span>
+            <div class="callout__body">
+              <p><span class="callout__title">答题技巧</span>
+              凡是问「架构的作用」「为什么需要架构」，都按<b>「定义 + 作用 + 代价」</b>三段写：
+              定义（蓝图 / 需求与程序的桥）→ 作用（降低复杂度、规定结构与实施流程、承载非功能性质量、支持复用与分工）
+              → 代价（前期投入、可能过度设计、架构错了返工成本极高）。这样写比堆要点更容易拿分。</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================================
+             3. detail —— 展开讲解
+             ================================================================ -->
+        <section class="section" id="detail" data-title="架构详解">
+          <div class="section-head">
+            <span class="section-head__num">03</span>
+            <h2 class="section-title">架构详解</h2>
+            <a class="section-anchor" href="#detail" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">按课件的 2.1 → 2.5 顺序展开，每一段都补上「为什么」和「代价」。</p>
+
+          <div class="prose">
+            <h3>3.1 架构的位置：需求与程序之间的蓝图</h3>
+            <p>
+              课件用一张图概括了架构的位置：<b>需求在上、程序在下、架构在中间</b>。
+              上层是「要什么」（功能需求与质量要求），下层是「怎么写」（具体代码与实现细节），
+              架构负责把前者翻译成后者的<b>约束条件</b>——它不写代码，但规定了代码必须长成什么样。
+            </p>
+
+            <div class="track">
+              <div class="track__step">
+                <span class="track__dot">01</span>
+                <div class="track__body">
+                  <p class="track__title">需求</p>
+                  <p class="track__desc">功能需求 + 质量要求（性能指标、可用性目标、安全合规、交付节奏）。
+                  这一层用的是<b>业务语言</b>，还没有任何技术选择。</p>
+                </div>
+              </div>
+              <div class="track__step track__step--now">
+                <span class="track__dot">02</span>
+                <div class="track__body">
+                  <p class="track__title">架构</p>
+                  <p class="track__desc">把需求翻译成结构：组件怎么划分、接口怎么定义、交互怎么组织、部署到哪。
+                  这一层用的是<b>结构与约束语言</b>，是设计阶段的初步结果。</p>
+                </div>
+              </div>
+              <div class="track__step">
+                <span class="track__dot">03</span>
+                <div class="track__body">
+                  <p class="track__title">程序</p>
+                  <p class="track__desc">在架构规定的框架内编写代码。这一层用的是<b>实现语言</b>（类、方法、SQL）。
+                  架构错了，这一层写得再好也救不回来。</p>
+                </div>
+              </div>
+            </div>
+
+            <p>
+              课件给架构的定性是「<b>抽象化实现系统的蓝图</b>」，作用有两条：
+              <b>降低复杂度</b>（把一个大问题切成若干可分别处理的小问题）、
+              <b>规定系统的结构和实施流程</b>（让多人可以并行工作而不互相踩踏）。
+              同时它强调架构是<b>高层次对编程的规定</b>，并且「发现合适架构的过程是<b>循环往复</b>的」——
+              这句话很重要：架构不是一次成型，而是随着对需求和技术理解加深而迭代。
+            </p>
+
+            <div class="callout callout--info">
+              <span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-info"></use></svg></span>
+              <div class="callout__body">
+                <p><span class="callout__title">理解要点</span>
+                「架构是蓝图」这个比喻要落到两个可考的点上：
+                ① 蓝图<b>不含</b>每一块砖怎么砌（不含实现细节）；
+                ② 蓝图<b>一旦画错</b>，改的是整栋楼（架构决策的返工成本最高）。
+                这两点分别对应「抽象层次高」和「决策重量大」。</p>
+              </div>
+            </div>
+
+            <h3>3.2 系统架构到底包含什么</h3>
+            <p>课件把「系统架构包括」的内容列成四条，考试常以多选或简答出现，需要能背出并解释：</p>
+            <ol>
+              <li><b>把系统分解成物理上的组成部分（组件）</b>——这是<b>静态</b>的，涉及结构。</li>
+              <li><b>分布式系统中每个组件分配到计算机（部署）</b>——决定进程边界、网络调用与故障域。</li>
+              <li><b>描述所有组件动态的相互作用</b>——这是<b>动态</b>的，涉及行为与协作流程。</li>
+              <li><b>描述架构的策略，即架构的静态和动态的功能</b>——规定系统按什么原则运转。</li>
+            </ol>
+            <p>
+              课件特意点明两句话，都是判断/辨析题的题眼：
+              <b>「分解是静态的，涉及结构；相互作用是动态的」</b>；
+              <b>「系统的功能以结构为基础，不能与之分离」</b>。
+              后者直接否定了「先随便定结构、功能以后再补」的幻想——
+              结构不支持的功能，后期很难靠编码硬补出来（例如没有预留扩展点的单体系统要支持多租户）。
+            </p>
+            <p>
+              到了设计阶段，架构的要求落成一句硬指标：
+              <b>必须划分组件，组件通过接口合作，组件具有高内聚性、相互间低耦合性</b>。
+              内聚回答「一个组件内部的东西是否相关」，耦合回答「两个组件之间的依赖是否可替换」。
+              架构层面的耦合往往是<b>部署耦合</b>（必须一起上线）和<b>数据耦合</b>（共享同一张表），
+              比类之间的耦合更难拆。
+            </p>
+
+            <h3>3.3 为什么说架构主要负责非功能性质量</h3>
+            <p>
+              课件有一句非常关键的判断：<b>「架构和功能是完全不同的概念，功能在架构下运行」</b>。
+              功能回答「系统能做什么」，架构回答「系统以什么结构、在什么约束下做这些事」。
+              两个团队可以实现出功能完全相同、但质量天差地别的系统，差别就在架构。
+            </p>
+            <p>
+              更准确地说，<b>功能由需求决定，而功能能否达到预期的质量水平由架构决定</b>。
+              同一句「用户下单」的需求，在单体事务里是几行代码，
+              在分布式架构里就要处理幂等、补偿、最终一致——功能没变，架构变了，质量属性也跟着变。
+              所以架构评审的重点通常不是「功能对不对」（那是需求评审和测试的事），
+              而是「<b>这个结构能不能支撑目标质量，代价是什么</b>」。
+            </p>
+
+            <div class="callout callout--warn">
+              <span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg></span>
+              <div class="callout__body">
+                <p><span class="callout__title">注意课件的分类口径</span>
+                课件把 <b>安全性</b>、<b>保障性</b>、<b>并行性/并发性</b> 归在「<b>功能性质量</b>」下面，
+                这与很多教材把安全性视为非功能属性的习惯不同。<b>答题时按课件口径写</b>，
+                若题目要求展开，可以补一句「通行教材亦常将安全性视为非功能属性，分类口径因教材而异」，
+                既不失分又显专业。</p>
+              </div>
+            </div>
+
+            <h3>3.4 质量属性逐条：手段与代价</h3>
+            <p>
+              质量属性不是形容词，而是<b>可以用场景描述、可以被度量的目标</b>。
+              下面五个是简答题最常要求展开的，每个都按「定义 → 典型架构手段 → 代价」记。
+            </p>
+
+            <div class="grid grid--2">
+              <div class="card">
+                <h4 class="card__title">
+                  <svg class="icon" aria-hidden="true"><use href="#i-clock"></use></svg>
+                  性能 Performance
+                </h4>
+                <div class="card__body">
+                  <p class="muted"><b>定义：</b>单位时间内完成的工作量，或单次请求的响应时间（吞吐量 / 延迟）。</p>
+                  <p class="muted"><b>手段：</b>缓存、异步与消息队列、并发与线程池、读写分离、CDN、批量合并请求。</p>
+                  <p class="muted"><b>代价：</b>缓存带来一致性问题和失效策略复杂度；异步带来最终一致与排障困难；
+                  并发带来竞态与死锁风险。</p>
+                </div>
+              </div>
+
+              <div class="card">
+                <h4 class="card__title">
+                  <svg class="icon" aria-hidden="true"><use href="#i-refresh"></use></svg>
+                  可用性 Availability
+                </h4>
+                <div class="card__body">
+                  <p class="muted"><b>定义：</b>系统在需要时可正常提供服务的时间比例（如 99.9%）。</p>
+                  <p class="muted"><b>手段：</b>冗余与集群、健康检查与心跳、故障转移与自动重启、限流降级、多机房部署。</p>
+                  <p class="muted"><b>代价：</b>冗余直接抬高成本；多副本带来数据同步与一致性难题；
+                  故障转移引入「脑裂」与切换窗口。</p>
+                </div>
+              </div>
+
+              <div class="card">
+                <h4 class="card__title">
+                  <svg class="icon" aria-hidden="true"><use href="#i-blocks"></use></svg>
+                  可修改性 Modifiability
+                </h4>
+                <div class="card__body">
+                  <p class="muted"><b>定义：</b>以可接受的成本与风险对系统做变更的能力，覆盖可扩展性、可维护性、可移植性。</p>
+                  <p class="muted"><b>手段：</b>清晰的分层与模块边界、面向接口编程、依赖倒置、配置外置、插件化扩展点。</p>
+                  <p class="muted"><b>代价：</b>抽象层增加间接调用与理解成本；预留扩展点可能永远用不上（过度设计）。</p>
+                </div>
+              </div>
+
+              <div class="card">
+                <h4 class="card__title">
+                  <svg class="icon" aria-hidden="true"><use href="#i-stop"></use></svg>
+                  安全性 Security
+                </h4>
+                <div class="card__body">
+                  <p class="muted"><b>定义：</b>系统抵抗未授权访问、数据泄露与恶意输入的能力（机密性、完整性、可用性）。</p>
+                  <p class="muted"><b>手段：</b>认证与授权分离、统一网关与入口校验、最小权限、传输与存储加密、审计日志。</p>
+                  <p class="muted"><b>代价：</b>加密与校验带来性能开销；多层校验增加运维复杂度；权限模型过细会拖慢业务迭代。</p>
+                </div>
+              </div>
+
+              <div class="card">
+                <h4 class="card__title">
+                  <svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg>
+                  可测试性 Testability
+                </h4>
+                <div class="card__body">
+                  <p class="muted"><b>定义：</b>通过测试发现缺陷、验证质量的容易程度。</p>
+                  <p class="muted"><b>手段：</b>组件可独立启动、依赖可注入（依赖倒置）、接口契约清晰、可观测性（日志/指标/链路追踪）。</p>
+                  <p class="muted"><b>代价：</b>为可测试而拆分接口会增加类型与样板代码；
+                  可观测性埋点有运行时开销。</p>
+                </div>
+              </div>
+
+              <div class="card">
+                <h4 class="card__title">
+                  <svg class="icon" aria-hidden="true"><use href="#i-eye"></use></svg>
+                  可理解性 / 可维护性 / 复用性
+                </h4>
+                <div class="card__body">
+                  <p class="muted"><b>定义：</b>可理解性=读懂的难易；可维护性=修改与修复的综合成本；复用性=资产被再次使用的程度。</p>
+                  <p class="muted"><b>手段：</b>一致的命名与分层约定、文档与视图、稳定的组件接口、去业务化的通用组件。</p>
+                  <p class="muted"><b>代价：</b>为复用而抽象会让组件脱离具体场景，反而增加接入成本（复用不是免费的）。</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="callout callout--tip">
+              <span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-bulb"></use></svg></span>
+              <div class="callout__body">
+                <p><span class="callout__title">答题技巧</span>
+                质量属性之间是<b>互相拉扯</b>的：提高安全性要加密（伤性能），提高可用性要冗余（伤成本与一致性），
+                提高可修改性要多加抽象层（伤性能与可理解性）。所以题目问「如何提高某质量属性」时，
+                <b>只答手段会丢分，必须补一句代价与权衡</b>——这正是架构工作的本质。</p>
+              </div>
+            </div>
+
+            <h3>3.5 观察架构的角度与 4+1 视图</h3>
+            <p>
+              课件 2.4.3 列了六个观察角度：<b>各利益相关者的角度</b>、<b>分析系统所处的环境（黑盒观点）</b>、
+              <b>分析系统的逻辑模型（白盒观点）</b>、<b>系统开发进程</b>、
+              <b>业务系统的组建和系统管理员方案的建设</b>、<b>确定各种方案的依据文档</b>。
+              这六条其实就是「不同人关心不同侧面」的朴素表达，而工业界把它标准化成了<b>4+1 视图</b>。
+            </p>
+            <p>
+              为什么必须分视图？因为一张图放不下所有关注点：给运维看的部署拓扑和给程序员看的模块依赖，
+              画在同一张图里只会两边都看不懂。<b>视图是同一份架构在不同关注点下的投影</b>，不是四份不同的架构。
+            </p>
+
+            <div class="viewmap" role="img" aria-label="4+1 架构视图示意：逻辑视图、开发视图、进程视图、物理视图，以及串联四者的场景视图">
+              <div class="viewmap__cell">
+                <span class="viewmap__tag">静态 · 结构</span>
+                <h4><svg class="icon" aria-hidden="true"><use href="#i-layers"></use></svg>逻辑视图 Logical</h4>
+                <p>系统提供哪些功能、由哪些<b>类与对象</b>协作实现，关注职责划分与依赖关系。</p>
+                <p class="viewmap__who">读者：设计人员 / 需求方　典型图：类图、对象图</p>
+              </div>
+              <div class="viewmap__cell">
+                <span class="viewmap__tag">静态 · 结构</span>
+                <h4><svg class="icon" aria-hidden="true"><use href="#i-blocks"></use></svg>开发视图 Development</h4>
+                <p>代码怎么组织成<b>模块、包、构件</b>，如何编译、构建、分配给团队，关注可复用与可分工。</p>
+                <p class="viewmap__who">读者：程序员 / 构建负责人　典型图：包图、构件图</p>
+              </div>
+              <div class="viewmap__cell">
+                <span class="viewmap__tag">动态 · 行为</span>
+                <h4><svg class="icon" aria-hidden="true"><use href="#i-network"></use></svg>进程视图 Process</h4>
+                <p>运行期有哪些<b>进程、线程</b>，如何并发、同步、通信，关注吞吐、性能与容错。</p>
+                <p class="viewmap__who">读者：系统集成人员　典型图：活动图、时序图、状态图</p>
+              </div>
+              <div class="viewmap__cell">
+                <span class="viewmap__tag">动态 · 行为</span>
+                <h4><svg class="icon" aria-hidden="true"><use href="#i-grid"></use></svg>物理视图 Physical</h4>
+                <p>软件<b>部署</b>到哪些硬件节点、网络如何连接，关注拓扑、可用性与伸缩。</p>
+                <p class="viewmap__who">读者：系统工程师 / 运维　典型图：部署图</p>
+              </div>
+              <div class="viewmap__cell viewmap__cell--scene">
+                <span class="viewmap__tag">+1 · 串联与验证</span>
+                <h4><svg class="icon" aria-hidden="true"><use href="#i-target"></use></svg>场景 / 用例 Scenarios</h4>
+                <p>用若干<b>关键用例</b>把四个视图串起来，并检验它们是否自洽：
+                一个「考试提交」场景，会在逻辑视图里走哪些对象、开发视图里跨哪些模块、
+                进程视图里经过哪些线程、物理视图里落到哪些机器。</p>
+                <p class="viewmap__who">读者：全部利益相关者　作用：发现视图之间的矛盾，也是架构评审的抓手</p>
+              </div>
+            </div>
+
+            <p>
+              所以「+1」不是第五个并列视图，而是<b>验证与驱动</b>：场景从需求中来，用来检验四个视图；
+              反过来，四个视图的取舍又由关键场景的优先级决定。回答「4+1 中 +1 是什么、有什么用」，
+              这两层意思都要写到。
+            </p>
+
+            <div class="callout callout--danger">
+              <span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-stop"></use></svg></span>
+              <div class="callout__body">
+                <p><span class="callout__title">常见错误</span>
+                把 4+1 视图理解成「画五张图就完事」。视图的价值在<b>一致性</b>：
+                逻辑视图里有一个「订单服务」，进程视图里就应有对应的进程/线程，
+                物理视图里就应有承载它的节点。任何一处对不上，都是架构的漏洞。</p>
+              </div>
+            </div>
+
+            <h3>3.6 参考架构、架构模式、设计模式：三个粒度</h3>
+            <p>
+              课件 2.3 把三者放在一起讲，核心是<b>粒度与是否含业务</b>：
+            </p>
+            <ul>
+              <li><b>参考架构</b>——「包含可以复用的部分」，是为完成一定业务目标而应用的架构的<b>部分内容</b>。
+                它可以包含各种结构模式和<b>业务组件</b>，因此范围最广。</li>
+              <li><b>架构模式</b>——与参考架构一样是软件结构的<b>模板</b>，但<b>不包含解决具体业务领域问题的部分</b>。
+                它的目标是把系统按一定策略分解为<b>可扩展的子系统</b>，并规定子系统之间的合作。</li>
+              <li><b>设计模式</b>——粒度最细，体现系统中<b>可扩展的类</b>的特殊作用，通过类的<b>合作</b>解决相关问题。</li>
+            </ul>
+            <p>课件对三者关系的总结值得逐句记住：</p>
+            <ul>
+              <li>三者<b>都可以包含组件</b>；</li>
+              <li>参考架构可以包含各种结构模式和业务组件；</li>
+              <li>以参考架构为基础的系统<b>不需要进行全部系统设计</b>，组件可以复用，具有一定扩展性；</li>
+              <li>参考架构的<b>缺点</b>：不一定完全适用，可能不完全符合要求；</li>
+              <li>架构模式可以包含多个设计模式；<b>参考架构内容更广泛</b>，可以包含不同架构模式，还可以包括独立开发的部分。</li>
+            </ul>
+            <p>
+              用一句话概括层级关系：<b>参考架构 ⊃ 架构模式 ⊃ 设计模式</b>（范围），
+              而<b>复用粒度</b>正好相反：参考架构复用整套结构与业务组件，架构模式复用子系统划分策略，
+              设计模式只复用几个类的协作方式。
+            </p>
+
+            <h3>3.7 架构风格概览（第 5 章展开）</h3>
+            <p>
+              架构模式落到「系统整体长什么样」，就是我们常说的架构风格。这里只建立索引，
+              每种风格的详细原理、优缺点与选型在第 5 章。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>架构风格</th><th>一句话</th><th>主要提升</th><th>主要代价</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>分层架构</td><td>按抽象层次纵向切分，上层依赖下层</td><td>可修改性、可理解性</td><td>请求逐层穿透，性能损耗</td></tr>
+                  <tr><td>MVC</td><td>模型、视图、控制器分离，视图可多套</td><td>可修改性、可复用性</td><td>控制器易膨胀，简单页面过度设计</td></tr>
+                  <tr><td>管道-过滤器</td><td>数据流经一串过滤器逐步加工</td><td>复用性、可组合性</td><td>不适合交互式、难以共享状态</td></tr>
+                  <tr><td>事件驱动</td><td>组件通过事件异步通知，彼此不直接调用</td><td>可扩展性、松耦合</td><td>流程难追踪、最终一致</td></tr>
+                  <tr><td>微服务</td><td>按业务能力拆成独立部署的小服务</td><td>可扩展性、独立交付</td><td>分布式复杂度、运维与一致性成本</td></tr>
+                  <tr><td>仓库 / 黑板</td><td>组件围绕共享数据存储协作</td><td>数据一致性、可扩展</td><td>中心存储成为瓶颈与单点</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="muted tiny">
+              记忆要点：<b>没有最好的风格，只有与质量目标最匹配的风格</b>。
+              选型时先写清「本次最重要的两个质量属性是什么」，再看哪种风格的代价可以接受。
+            </p>
+
+            <h3>3.8 架构工作过程：分析任务 → 结构设计任务 → 原型</h3>
+            <p>
+              课件 2.4 先给了一个前提：系统按实时性分为<b>硬实时系统、软实时系统、非实时系统</b>。
+              类型不同，架构的取舍完全不同——硬实时系统宁可牺牲吞吐也要保证最坏响应时间有上界，
+              非实时系统则可以为了吞吐做批处理。
+            </p>
+            <h4>分析任务（2.4.1）</h4>
+            <ol>
+              <li>明确系统的<b>目的和主要任务</b>；</li>
+              <li>系统应用流程符合客户的<b>组织结构和流程结构</b>（系统要适配业务，而不是让业务迁就系统）；</li>
+              <li>组织系统接口，可联系<b>外部系统、使用者</b>；</li>
+              <li>解决系统接口与外部环境交流上的<b>技术问题</b>；</li>
+              <li>在<b>逻辑层</b>上确定系统的结构和流程。</li>
+            </ol>
+            <h4>结构设计任务（2.4.2）</h4>
+            <p>先看整体：<b>整体系统的硬件架构</b>；分布式系统要决定<b>不同功能分配到不同计算机</b>，并回答四个问题：</p>
+            <ul>
+              <li>软件在每台单机上的<b>层次结构（静态）</b>；</li>
+              <li>系统整体架构策略，即系统的工作流程<b>（动态）</b>；</li>
+              <li><b>如何测试</b>；</li>
+              <li><b>得到什么</b>（准备的范围）。</li>
+            </ul>
+            <p>单机软件则从「系统整体方案」推导到「单机软件设计」，要处理三件事：</p>
+            <ul>
+              <li>计算机的<b>外部接口</b>；</li>
+              <li>系统划分为组件、结构组织，即<b>接口及组件间的静态关系</b>；</li>
+              <li>对流程进行建模和转化（工作内容），注意组件的功能和协作流程，即<b>组件间的动态关系</b>。</li>
+            </ul>
+            <p>
+              注意这里又出现一次「静态 / 动态」二分：<b>组件与接口是静态的，流程与协作是动态的</b>。
+              这条主线贯穿全章，也是 4+1 视图中「结构视图 vs 行为视图」的来源。
+            </p>
+            <h4>原型（2.4.4）</h4>
+            <p>
+              架构不能只靠纸面推演，风险点要用<b>原型</b>验证。三种原型的区别见「横向对比」一节的表格：
+              水平原型求「广」，垂直原型求「深」，可行性原型求「稳」。
+            </p>
+
+            <h3>3.9 架构师：协调者与技术决策者</h3>
+            <p>
+              课件 2.5 用一句话定义了架构师的处境：
+              <b>协调委托人、管理人员和开发团队，引导程序员，维持团队纪律</b>，
+              并要求<b>分析能力、设计能力、沟通能力、方案评估能力</b>。
+              落到具体能力上分三块：
+            </p>
+            <ul>
+              <li><b>技术能力</b>——懂结构、懂模式、懂质量属性的实现手段，能判断技术方案的可行性；</li>
+              <li><b>沟通能力</b>——把技术取舍翻译成业务语言给委托人听，把架构约束讲清楚给开发团队听；</li>
+              <li><b>构造软件架构过程中的决定</b>——也就是<b>架构决策</b>：在信息不完备、资源有限的情况下做出选择，并为选择负责。</li>
+            </ul>
+            <p>
+              这三块里最容易考的是「为什么架构师需要沟通能力」。答案不是「因为要开会」，
+              而是因为架构的<b>约束要被执行</b>：如果开发团队不理解某个约束的由来，就会在进度压力下绕过它，
+              架构最终名存实亡。架构师的影响力来自<b>被理解的决策</b>，而不是职位。
+            </p>
+
+            <h4>架构决策案例解析：在线考试系统的提交链路</h4>
+            <p>
+              下面用一个贴近本课程场景的例子，演示「架构决策」该怎么想、怎么写。
+              案例背景：某高校在线考试系统，期末周同一时段约 3000 人在线答题，
+              考试结束前 5 分钟出现<b>集中提交</b>；现有系统是单体 Web 应用 + 单库，团队 4 人。
+            </p>
+            <p>
+              <b>问题定位：</b>这不是功能问题（提交功能本身是好的），而是<b>非功能性质量</b>问题——
+              峰值吞吐不足、响应时间超标，且一旦提交失败会直接影响成绩，<b>可用性</b>要求也随之升高。
+              这正是课件说的「架构主要负责系统的非功能性质量」。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>备选方案</th><th>峰值吞吐</th><th>运维复杂度</th><th>交付速度</th><th>故障影响面</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>A. 保持单体，只做垂直扩容</td><td>低（受单库写入限制）</td><td>最低</td><td>最快</td><td>全站</td></tr>
+                  <tr><td>B. 单体 + 消息队列，提交异步化</td><td>高（削峰填谷）</td><td>中（多一个中间件）</td><td>较快</td><td>全站（但有重试兜底）</td></tr>
+                  <tr><td>C. 拆微服务，提交单独成服务</td><td>高</td><td>高（注册、网关、链路追踪）</td><td>慢</td><td>仅提交服务</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              <b>决策：</b>选 B。理由是：峰值只是<b>短时尖峰</b>（5 分钟），用队列削峰即可，
+              不需要为尖峰长期承担微服务的运维成本；团队 4 人，方案 C 的复杂度会吃掉全部交付能力；
+              方案 A 无法解决单库写入瓶颈。
+              <b>后果：</b>提交接口改为「先落库、再异步判分」，用户立即看到「已提交」，
+              判分结果稍后刷新；需要补上<b>幂等</b>（同一份答卷重复提交不重复计分）和
+              <b>补偿</b>（消息丢失时的对账任务）两处设计，并接受「判分结果有秒级延迟」这一质量让步。
+            </p>
+            <div class="callout callout--tip">
+              <span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-bulb"></use></svg></span>
+              <div class="callout__body">
+                <p><span class="callout__title">决策记录模板（可直接背）</span>
+                <b>背景</b>（什么质量属性不达标、量化指标）→ <b>决策</b>（选了什么）→
+                <b>备选与放弃理由</b>（为什么不是另外两个）→ <b>后果</b>（得到什么质量、付出什么代价、
+                新增哪些设计约束）→ <b>验证方式</b>（压测指标、观察周期）。
+                能写出这五段，架构决策题基本满分。</p>
+              </div>
+            </div>
+
+            <h3>3.10 架构文档：写什么、为什么写</h3>
+            <p>
+              课件 2.4.3 的最后一条观察角度是「<b>确定各种方案的依据文档</b>」——
+              架构方案必须留下依据，否则下一次变更时没人知道当初为什么这么定。
+              架构文档不是「把图贴在一起」，它要能让<b>不同读者各取所需</b>。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>文档内容</th><th>回答什么问题</th><th>主要读者</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>视图（逻辑/开发/进程/物理）</td><td>系统长什么样、怎么分工、怎么部署</td><td>开发、运维、集成</td></tr>
+                  <tr><td>关键场景与质量属性目标</td><td>为什么是这个结构、达标标准是什么</td><td>全部利益相关者</td></tr>
+                  <tr><td>架构决策记录（ADR）</td><td>当初为什么这样选、放弃过什么</td><td>后续维护者、评审者</td></tr>
+                  <tr><td>接口契约与约束</td><td>组件之间怎么调用、什么不能做</td><td>开发团队</td></tr>
+                  <tr><td>部署与运行视图</td><td>装在哪、怎么扩、怎么监控</td><td>运维、系统管理员</td></tr>
+                  <tr><td>术语表与参考架构引用</td><td>名词是否一致、复用了哪些既有结构</td><td>新成员、外部评审</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>架构文档最常见的三个失败模式，也常被拿来出判断题：</p>
+            <ul>
+              <li><b>只画图不写理由</b>——图能说明「是什么」，说明不了「为什么」，变更时无从判断能不能改；</li>
+              <li><b>文档与代码脱节</b>——文档写完就冻结，半年后成为误导；应把关键约束写进代码结构与自动化检查；</li>
+              <li><b>一份文档给所有人看</b>——不分读者，结果业务方看不懂、开发方嫌不够细。应按视图与关注点分开组织。</li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- ================================================================
+             4. compare —— 对比表
+             ================================================================ -->
+        <section class="section" id="compare" data-title="横向对比">
+          <div class="section-head">
+            <span class="section-head__num">04</span>
+            <h2 class="section-title">横向对比</h2>
+            <a class="section-anchor" href="#compare" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">本章的选择题几乎都出在「两个概念长得像」的地方，下面五张表按考点排列。</p>
+
+          <h3>4.1 架构 vs 设计（最容易被问「有什么区别」）</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>对比维度</th><th>架构（Architecture）</th><th>设计（Design）</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>抽象层次</td><td>高层，规定「结构与约束」</td><td>逐层细化，规定「类与算法」</td></tr>
+                <tr><td>关注范围</td><td>全局：组件划分、交互、部署、技术选型</td><td>局部：模块内部、类职责、接口签名</td></tr>
+                <tr><td>主要目标</td><td>承载<b>非功能性质量</b></td><td>实现<b>功能</b>并保证局部质量</td></tr>
+                <tr><td>决策数量</td><td>少而重，每个都影响全局</td><td>多而轻，多数可局部修改</td></tr>
+                <tr><td>变更成本</td><td>极高，越晚改越贵</td><td>较低，重构可控</td></tr>
+                <tr><td>时间位置</td><td>设计阶段的<b>初步结果</b>，需求之后、详细设计之前</td><td>架构确定后持续进行，贯穿开发全程</td></tr>
+                <tr><td>典型产出</td><td>架构视图、架构决策记录、部署方案</td><td>类图、时序图、接口定义、设计模式应用</td></tr>
+                <tr><td>可逆性</td><td>基本不可逆，或代价不可接受</td><td>可通过重构逐步调整</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="muted tiny">
+            一句话记忆：<b>架构决定「能不能改」，设计决定「改起来顺不顺」</b>。
+            判断一个决定属不属于架构决策，看它改起来贵不贵、波及面广不广。
+          </p>
+
+          <h3>4.2 4+1 视图对比</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>视图</th><th>关注点</th><th>静态/动态</th><th>主要读者</th><th>典型 UML 图</th><th>支撑的质量属性</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>逻辑视图</td><td>功能由哪些类/对象协作实现</td><td>静态为主</td><td>设计人员、需求方</td><td>类图、对象图</td><td>功能、可理解性、可复用性</td></tr>
+                <tr><td>开发视图</td><td>代码如何组织为模块/包/构件</td><td>静态</td><td>程序员、构建负责人</td><td>包图、构件图</td><td>可修改性、可维护性、复用性</td></tr>
+                <tr><td>进程视图</td><td>进程/线程、并发、同步、通信</td><td>动态</td><td>系统集成人员</td><td>活动图、时序图、状态图</td><td>性能、吞吐、可用性</td></tr>
+                <tr><td>物理视图</td><td>软件到硬件节点的部署与网络</td><td>动态（运行期）</td><td>系统工程师、运维</td><td>部署图</td><td>可用性、可伸缩性、安全性</td></tr>
+                <tr><td>场景（+1）</td><td>关键用例串联并验证四个视图</td><td>—</td><td>全部利益相关者</td><td>用例图、时序图</td><td>全部（用于验证）</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="muted tiny">
+            注意：进程视图与物理视图常被混淆。<b>进程视图问「跑起来有几个执行体」，物理视图问「这些执行体装在哪台机器上」</b>。
+          </p>
+
+          <h3>4.3 参考架构 vs 架构模式 vs 设计模式</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>对比维度</th><th>参考架构</th><th>架构模式</th><th>设计模式</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>粒度</td><td>整套系统或大部分结构</td><td>子系统级</td><td>类 / 对象级</td></tr>
+                <tr><td>是否含业务</td><td><b>含</b>业务组件</td><td>不含业务领域问题</td><td>不含业务领域问题</td></tr>
+                <tr><td>是否模板</td><td>含可复用部分，不完全是模板</td><td>是软件结构的模板</td><td>是类协作的模板</td></tr>
+                <tr><td>复用方式</td><td>整套结构 + 组件复用，可省去全部系统设计</td><td>复用子系统划分与合作策略</td><td>复用若干类的协作方式</td></tr>
+                <tr><td>包含关系</td><td>可包含多种架构模式与业务组件</td><td>可包含多个设计模式</td><td>被架构模式包含</td></tr>
+                <tr><td>主要风险</td><td>不一定完全适用，可能不符合要求</td><td>照搬导致子系统划分与业务不匹配</td><td>模式滥用，为模式而模式</td></tr>
+                <tr><td>典型例子</td><td>某行业电商中台参考架构</td><td>分层、MVC、管道-过滤器、微服务</td><td>单例、观察者、策略、工厂方法</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>4.4 质量属性：非功能性 vs 功能性（按课件口径）</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>类别</th><th>包含属性</th><th>回答的问题</th><th>由谁主要决定</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>非功能性质量</td>
+                  <td>可管理性、可更改性/可扩展能力、可操纵性、简易性、移植性、性能、规模的可伸缩性、稳定性、可测试性、组件的独立性、可用性、可理解性、可维护性、复用性</td>
+                  <td>系统「好不好用、好不好改、扛不扛得住」</td>
+                  <td><b>架构</b>（首要）</td>
+                </tr>
+                <tr>
+                  <td>功能性质量</td>
+                  <td>保障性、安全性、并行性/并发性</td>
+                  <td>系统在「功能正确」之上是否可靠、安全、可并发</td>
+                  <td>架构 + 详细设计共同决定</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="muted tiny">
+            再次提醒：把<b>安全性</b>归入功能性质量是本课件的口径，与部分教材不同；考试按课件写。
+          </p>
+
+          <h3>4.5 三种架构原型对比</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>原型类型</th><th>覆盖方式</th><th>主要目的</th><th>典型产物</th><th>不适用的情况</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>水平原型</td><td><b>广而浅</b>：横跨多个功能，每个只做表面</td><td>验证整体结构、界面流程、用户可接受度</td><td>可点击的界面骨架、导航流程</td><td>需要验证性能或算法可行性时</td></tr>
+                <tr><td>垂直原型</td><td><b>窄而深</b>：选一个功能，从界面到存储完整实现</td><td>验证某条链路的技术方案是否可行</td><td>一条端到端可运行的切片</td><td>需要看整体轮廓与工作量时</td></tr>
+                <tr><td>可行性原型</td><td>只针对<b>高风险技术点</b>做最小验证</td><td>回答「这条路走不走得通」，控制技术风险</td><td>技术验证报告、丢弃型代码</td><td>风险已明确、只是工作量估算时</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>4.6 黑盒观点 vs 白盒观点</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>对比维度</th><th>黑盒观点（系统所处的环境）</th><th>白盒观点（系统的逻辑模型）</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>看什么</td><td>系统对外表现：接口、输入输出、与外部系统的交互</td><td>系统内部：组件、层次、职责与协作</td></tr>
+                <tr><td>对应视图</td><td>物理视图、场景（部分）</td><td>逻辑视图、开发视图、进程视图</td></tr>
+                <tr><td>主要读者</td><td>客户、委托方、外部系统对接方</td><td>开发团队、架构评审者</td></tr>
+                <tr><td>回答的问题</td><td>「系统边界在哪、和谁交互」</td><td>「内部怎么分、怎么协作」</td></tr>
+                <tr><td>典型风险</td><td>忽略外部依赖的约束（如对方接口限流）</td><td>陷入细节，看不到整体</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ================================================================
+             5. pitfalls —— 易错点
+             ================================================================ -->
+        <section class="section" id="pitfalls" data-title="易错点">
+          <div class="section-head">
+            <span class="section-head__num">05</span>
+            <h2 class="section-title">易错点</h2>
+            <a class="section-anchor" href="#pitfalls" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">下面 7 条都来自真实的失分场景，不是正文的复述。</p>
+
+          <ul class="pitfalls">
+            <li><strong>把「架构」简单等同于「高层设计」或「技术选型」。</strong>
+              架构的核心职责是<b>建模结构的作用与系统的行为</b>，并承载<b>非功能性质量</b>；
+              选了什么框架只是其中一个决策，不等于架构本身。答题时要落到「组件划分 + 交互 + 部署 + 策略」四件事上。</li>
+            <li><strong>认为架构可以脱离功能单独设计。</strong>
+              课件明确说「系统的功能以结构为基础，不能与之分离」。脱离功能谈结构，得到的只是一张好看的图；
+              反过来，结构不支持的功能后期很难靠编码补出来。</li>
+            <li><strong>把「安全性」当非功能性质量写。</strong>
+              本课程课件把<b>保障性、安全性、并行性/并发性</b>列在<b>功能性质量</b>下。
+              按课件口径作答；若需要展开，再补一句「通行教材亦有不同分类口径」，避免被判错。</li>
+            <li><strong>混淆架构模式与设计模式的粒度。</strong>
+              架构模式管<b>子系统</b>的分解与合作，设计模式管<b>类/对象</b>的协作。
+              说「观察者模式是一种架构模式」是错的；说「分层是一种设计模式」也不准确——它属于架构模式/架构风格。</li>
+            <li><strong>把参考架构当「标准答案」直接套用。</strong>
+              课件点明其缺点：<b>不一定完全适用，可能不完全符合要求</b>。
+              参考架构省掉的是「全部系统设计」，不是「判断适配性」——套用前必须逐条核对质量属性与业务约束。</li>
+            <li><strong>把 4+1 的「+1」当成第五个并列视图。</strong>
+              场景的作用是<b>串联与验证</b>四个视图：它从需求中来，用来检验视图是否自洽，并驱动架构取舍。
+              说「五个视图地位完全并列」是错的。</li>
+            <li><strong>把水平原型和垂直原型记反。</strong>
+              记忆法：<b>水平＝地平线，看得远但看得浅</b>（多功能、浅实现）；
+              <b>垂直＝打井，范围窄但到底</b>（单功能、端到端）。
+              可行性原型则是专攻技术风险的第三种，只验证「走不走得通」。</li>
+          </ul>
+        </section>
+
+        <!-- ================================================================
+             6. quiz —— 自测
+             ================================================================ -->
+        <section class="section" id="quiz" data-title="本章自测">
+          <div class="section-head">
+            <span class="section-head__num">06</span>
+            <h2 class="section-title">本章自测</h2>
+            <a class="section-anchor" href="#quiz" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">17 题：单选 8、多选 4、判断 5。每题都带解析，错题请回读对应小节。</p>
+
+          <div class="quiz" id="quiz-root"></div>
+        </section>
+
+        <!-- ================================================================
+             7. cards —— 记忆卡片
+             ================================================================ -->
+        <section class="section" id="cards" data-title="记忆卡片">
+          <div class="section-head">
+            <span class="section-head__num">07</span>
+            <h2 class="section-title">记忆卡片</h2>
+            <a class="section-anchor" href="#cards" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">22 张卡片，覆盖定义、质量属性、视图、三者关系、角色与文档。点击翻面，可标记已掌握。</p>
+
+          <div class="flash" id="cards-root"></div>
+        </section>
+
+        <!-- ================================================================
+             8. slides —— 课件原图
+             ================================================================ -->
+        <section class="section" id="slides" data-title="课件原图">
+          <div class="section-head">
+            <span class="section-head__num">08</span>
+            <h2 class="section-title">课件原图</h2>
+            <a class="section-anchor" href="#slides" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">
+            本章课件共 13 页，已全部导出。建议对照 2.1–2.5 的标题顺序看，
+            特别注意第 2 页「架构与功能的区别」和第 5 页质量属性清单的<b>原始分类</b>。
+          </p>
+
+          <div class="slides"
+               data-slides-dir="slides"
+               data-count="13"
+               data-prefix="slide"
+               data-ext="jpg"
+               data-pad="3"
+               data-start="1"
+               data-title="第 2 章 · 软件架构 课件原图"></div>
+        </section>
+
+        <!-- ================================================================
+             9. summary —— 本章小结（追加小节，放在 slides 之后、pager 之前）
+             ================================================================ -->
+        <section class="section" id="summary" data-title="本章小结">
+          <div class="section-head">
+            <span class="section-head__num">09</span>
+            <h2 class="section-title">本章小结与自测清单</h2>
+            <a class="section-anchor" href="#summary" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">合上书，先在心里过一遍这五句话，再逐条打勾。</p>
+
+          <div class="prose">
+            <h3>五句话记住本章</h3>
+            <ol>
+              <li>架构是<b>需求与程序之间的蓝图</b>，规定结构与实施流程，主要承担<b>非功能性质量</b>。</li>
+              <li>系统架构 = <b>组件分解（静态）+ 相互作用（动态）+ 部署 + 策略</b>，组件要高内聚、低耦合、通过接口合作。</li>
+              <li>质量属性要按「<b>定义 → 架构手段 → 代价</b>」记，任何手段都不是免费的。</li>
+              <li>用 <b>4+1 视图</b>分侧面描述同一份架构，场景（+1）负责串联与验证。</li>
+              <li><b>参考架构 ⊃ 架构模式 ⊃ 设计模式</b>（范围）；架构师的核心产出是<b>有理由的架构决策</b>与<b>可追溯的架构文档</b>。</li>
+            </ol>
+
+            <h3>自测清单</h3>
+            <p>能不看笔记完成下列各项，本章即可进入下一章。</p>
+            <ul>
+              <li>不看笔记写出架构的定义，并说明它「连接需求与技术方案」的含义。</li>
+              <li>默写系统架构包含的四项内容，并指出哪两项属于静态、哪两项属于动态。</li>
+              <li>列出至少 10 个质量属性，并按课件的两类口径分类（含安全性归入哪一类）。</li>
+              <li>为性能、可用性、可修改性各说出两种架构手段和一种代价。</li>
+              <li>画出 4+1 视图示意图，为每个视图写出关注点、读者与一种典型 UML 图。</li>
+              <li>说明「场景」为什么不是第五个并列视图。</li>
+              <li>用一句话区分参考架构、架构模式、设计模式，并说出参考架构的主要缺点。</li>
+              <li>说出水平原型、垂直原型、可行性原型各自适合验证什么。</li>
+              <li>写出架构师的三项能力，并解释「为什么架构师需要沟通能力」。</li>
+              <li>按「背景—决策—备选—后果—验证」五段，复述在线考试系统的提交链路决策。</li>
+            </ul>
+
+            <div class="callout callout--info">
+              <span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-info"></use></svg></span>
+              <div class="callout__body">
+                <p><span class="callout__title">与后续章节的衔接</span>
+                本章的「架构模式」只是索引：<b>第 3 章</b>讲模式的定义与描述要素，
+                <b>第 4 章</b>展开 23 种设计模式，<b>第 5 章</b>系统讲分层、MVC、管道-过滤器、事件驱动、微服务等架构模式。
+                复习时把本章当作「目录」用：先记框架，再往里填细节。</p>
+              </div>
+            </div>
+            <p class="muted tiny">
+              需要回到总览？<a href="../../index.html">返回课程首页</a>，或使用页面底部的「上一章 / 下一章」。
+            </p>
+          </div>
+        </section>
+
+        <nav class="pager" id="pager-root" aria-label="章节导航"></nav>
+
+      </div><!-- /.main__inner -->
+    </main>
+  </div><!-- /.layout -->
+</div><!-- /.wrap -->
+
+<footer class="footer" id="footer-root"></footer>
+
+<script type="application/json" id="quiz-data">
+[
+  {
+    "type": "single",
+    "stem": "按本课程课件的表述，软件架构的主要职责是？",
+    "options": [
+      "规定系统全部功能的实现细节",
+      "对结构的作用和系统的行为建模，主要负责系统的非功能性质量",
+      "替代需求分析，直接给出技术方案",
+      "确定每个类的具体算法与数据结构"
+    ],
+    "answer": 1,
+    "explain": "课件原话：架构是对结构的作用和系统的行为进行建模，主要负责系统的非功能性质量。A 混淆了架构与详细设计；C 错在架构不能替代需求，它是需求与解决方案之间的桥；D 是详细设计/编码层面的工作。"
+  },
+  {
+    "type": "single",
+    "stem": "「架构是抽象化实现系统的蓝图」，这句话所强调的两个作用是？",
+    "options": [
+      "提高 CPU 利用率与减少代码量",
+      "降低复杂度、规定系统的结构和实施流程",
+      "替代需求文档、替代测试计划",
+      "决定编程语言版本、决定数据库品牌"
+    ],
+    "answer": 1,
+    "explain": "课件把蓝图的作用明确为「降低复杂度」和「规定系统的结构和实施流程」。其余选项要么是运行期指标，要么属于工具选型，都不是架构蓝图的定义性作用。"
+  },
+  {
+    "type": "single",
+    "stem": "关于系统架构中的「分解」与「相互作用」，下列说法正确的是？",
+    "options": [
+      "分解是动态的，相互作用是静态的",
+      "分解是静态的、涉及结构；相互作用是动态的",
+      "两者都是静态的，都属于结构",
+      "两者都是动态的，都属于行为"
+    ],
+    "answer": 1,
+    "explain": "课件明确：分解是静态的，涉及结构；相互作用是动态的。这条二分贯穿全章，也是 4+1 视图中结构视图与行为视图分野的来源。"
+  },
+  {
+    "type": "single",
+    "stem": "下列哪一项被本课程课件列在「功能性质量」之下，而不是非功能性质量？",
+    "options": [
+      "可维护性",
+      "可移植性",
+      "可测试性",
+      "并行性/并发性"
+    ],
+    "answer": 3,
+    "explain": "课件的功能性质量包括保障性、安全性和并行性/并发性；可维护性、可移植性、可测试性都属于非功能性质量。注意这与部分教材的分类口径不同，考试按课件作答。"
+  },
+  {
+    "type": "single",
+    "stem": "课件指出参考架构的主要缺点是？",
+    "options": [
+      "无法复用任何组件",
+      "不一定完全适用，可能不完全符合要求",
+      "不能包含架构模式",
+      "必须重新进行全部系统设计"
+    ],
+    "answer": 1,
+    "explain": "参考架构的优点是组件可复用、具有一定扩展性、不需要进行全部系统设计；缺点是「不一定完全适用，可能不完全符合要求」。A、C、D 都与课件表述相反。"
+  },
+  {
+    "type": "single",
+    "stem": "在 4+1 视图中，用于串联并验证其余四个视图的是？",
+    "options": [
+      "逻辑视图",
+      "进程视图",
+      "场景（用例）",
+      "物理视图"
+    ],
+    "answer": 2,
+    "explain": "「+1」指场景/用例，它不是第五个并列视图，而是从需求出发串联四个视图、检验其一致性的手段，也是架构评审的抓手。"
+  },
+  {
+    "type": "single",
+    "stem": "要描述「系统由哪些模块和包组成、如何编译构建、如何分配给团队」，应使用哪个视图？",
+    "options": [
+      "逻辑视图",
+      "开发视图",
+      "进程视图",
+      "物理视图"
+    ],
+    "answer": 1,
+    "explain": "开发视图关注代码组织为模块/包/构件，以及构建与团队分工，主要读者是程序员；逻辑视图关注功能由哪些类协作实现；进程视图关注运行期进程与并发；物理视图关注部署到哪些节点。"
+  },
+  {
+    "type": "single",
+    "stem": "关于水平原型，下列说法正确的是？",
+    "options": [
+      "只实现一个功能的完整纵切，从界面一直到存储",
+      "横跨多个功能但每处都做得较浅，用于验证整体结构与流程",
+      "只用于验证某个高风险算法是否可行",
+      "就是最终交付系统的第一个版本"
+    ],
+    "answer": 1,
+    "explain": "水平原型是「广而浅」，用于看整体结构、界面流程与用户可接受度；A 是垂直原型（窄而深）；C 是可行性原型；D 错误，原型通常是丢弃型或用于验证而非直接交付。"
+  },
+  {
+    "type": "multiple",
+    "stem": "按课件，系统架构通常包括哪些内容（多选）？",
+    "options": [
+      "把系统分解成物理上的组成部分（组件）",
+      "分布式系统中每个组件分配到计算机（部署）",
+      "描述所有组件动态的相互作用",
+      "描述架构的策略，即架构的静态和动态的功能",
+      "规定每个类的具体实现代码"
+    ],
+    "answer": [0, 1, 2, 3],
+    "explain": "前四项正是课件列出的系统架构四项内容。E 属于编码/详细设计层面，不是架构的内容——架构规定约束，不规定每个类的代码怎么写。"
+  },
+  {
+    "type": "multiple",
+    "stem": "关于参考架构、架构模式与设计模式的关系，正确的有（多选）：",
+    "options": [
+      "三者都可以包含组件",
+      "参考架构可以包含各种结构模式和业务组件",
+      "架构模式不包含解决业务领域问题的部分",
+      "架构模式可以包含多个设计模式",
+      "设计模式的粒度比架构模式更大"
+    ],
+    "answer": [0, 1, 2, 3],
+    "explain": "A、B、C、D 均与课件一致。E 说反了：设计模式作用于类/对象级，粒度比子系统级的架构模式更细、更小。"
+  },
+  {
+    "type": "multiple",
+    "stem": "课件 2.4.3 列出的「观察软件架构的角度」包括（多选）：",
+    "options": [
+      "各利益相关者的角度",
+      "分析系统所处的环境（黑盒观点）",
+      "分析系统的逻辑模型（白盒观点）",
+      "系统开发进程",
+      "只从数据库表结构的角度"
+    ],
+    "answer": [0, 1, 2, 3],
+    "explain": "课件列出的角度还有「业务系统的组建和系统管理员方案的建设」与「确定各种方案的依据文档」。E 是单一实现细节视角，既不是课件所列角度，也不足以描述架构。"
+  },
+  {
+    "type": "multiple",
+    "stem": "关于质量属性与架构的关系，下列说法正确的有（多选）：",
+    "options": [
+      "缓存、异步与并发可以改善性能，但会增加一致性与排障的复杂度",
+      "可用性常通过冗余、健康检查与故障转移实现，代价是成本与数据同步问题",
+      "可修改性依赖清晰的模块边界与低耦合，代价是抽象层带来的间接性",
+      "可测试性只取决于测试人员的水平，与架构无关"
+    ],
+    "answer": [0, 1, 2],
+    "explain": "D 错误：可测试性受架构直接影响——组件能否独立启动、依赖能否注入、接口契约是否清晰、是否有可观测性，都取决于架构。质量属性的手段总伴随代价，这是架构权衡的核心。"
+  },
+  {
+    "type": "boolean",
+    "stem": "课件认为「架构和功能是完全不同的概念，功能在架构下运行」。",
+    "answer": true,
+    "explain": "这是课件引言中的原话。功能回答「系统能做什么」，架构回答「系统以什么结构、在什么约束下做」，两者概念不同，但功能必须在架构提供的结构之上运行。"
+  },
+  {
+    "type": "boolean",
+    "stem": "因为功能由需求决定，所以系统的功能可以脱离结构单独存在，架构不影响功能能否实现。",
+    "answer": false,
+    "explain": "课件明确「系统的功能以结构为基础，不能与之分离」。结构不支持的功能，后期很难靠编码补出来，例如没有预留扩展点的系统要支持多租户。"
+  },
+  {
+    "type": "boolean",
+    "stem": "在 4+1 视图中，五个视图地位完全并列、彼此独立，画完五张图就完成了架构描述。",
+    "answer": false,
+    "explain": "「+1」的场景不是并列的第五个视图，而是串联与验证其余四个视图的手段。视图的价值在于相互一致：同一组件应在逻辑、进程、物理视图中都能对应上，对不上就是架构漏洞。"
+  },
+  {
+    "type": "boolean",
+    "stem": "架构设计要求组件具有高内聚性，组件之间保持低耦合性，并且通过接口合作。",
+    "answer": true,
+    "explain": "这是课件 2.1 的原话。高内聚保证组件内部职责相关，低耦合保证组件可独立替换与复用，通过接口合作则让依赖面向抽象而非实现。"
+  },
+  {
+    "type": "boolean",
+    "stem": "架构师只要技术能力过硬就够了，沟通能力属于项目管理人员的职责。",
+    "answer": false,
+    "explain": "课件把架构师的能力分为技术能力、沟通能力和构造架构过程中的决定。沟通能力不是软性加分项：架构约束要被开发团队理解才会被执行，否则会在进度压力下被绕过，架构名存实亡。"
+  }
+]
+</script>
+
+<script type="application/json" id="cards-data">
+[
+  {
+    "front": "软件架构的定义（课件口径）？",
+    "back": "对<b>结构的作用</b>和<b>系统的行为</b>进行建模，是系统设计阶段的<b>初步结果</b>，连接系统的需求与技术解决方案，主要负责系统的<b>非功能性质量</b>。",
+    "tag": "定义"
+  },
+  {
+    "front": "「架构是蓝图」这句话的两个作用？",
+    "back": "① <b>降低复杂度</b>；② <b>规定系统的结构和实施流程</b>。它是对实现的高层次规定，且找到合适架构的过程<b>循环往复</b>。",
+    "tag": "定义"
+  },
+  {
+    "front": "系统架构包括哪四项内容？",
+    "back": "① 分解为物理组件；② 组件<b>部署</b>到计算机；③ 组件<b>动态相互作用</b>；④ 架构的<b>策略</b>（静态与动态功能）。",
+    "tag": "结构"
+  },
+  {
+    "front": "架构中的「静态」与「动态」分别指什么？",
+    "back": "<b>分解是静态的</b>，涉及结构（组件、接口、层次）；<b>相互作用是动态的</b>，涉及行为与协作流程。",
+    "tag": "辨析"
+  },
+  {
+    "front": "架构对组件的三条设计要求？",
+    "back": "必须划分组件；组件<b>通过接口合作</b>；组件<b>高内聚</b>、相互间<b>低耦合</b>。",
+    "tag": "结构"
+  },
+  {
+    "front": "架构与功能的关系（一句话）？",
+    "back": "架构和功能是<b>完全不同的概念</b>，<b>功能在架构下运行</b>；系统的功能<b>以结构为基础</b>，不能与结构分离。",
+    "tag": "辨析"
+  },
+  {
+    "front": "课件的非功能性质量列举（至少 8 个）？",
+    "back": "可管理性、可更改性/可扩展性、可操纵性、简易性、移植性、<b>性能</b>、规模的可伸缩性、稳定性、<b>可测试性</b>、组件的独立性、<b>可用性</b>、可理解性、<b>可维护性</b>、复用性。",
+    "tag": "质量属性"
+  },
+  {
+    "front": "课件的功能性质量包含哪三项？",
+    "back": "<b>保障性</b>、<b>安全性</b>、<b>并行性/并发性</b>。注意：安全性在此口径下属功能性质量。",
+    "tag": "质量属性"
+  },
+  {
+    "front": "提高性能的三种架构手段及其代价？",
+    "back": "缓存（一致性/失效复杂）、异步与消息队列（最终一致、排障难）、并发与线程池（竞态、死锁）。",
+    "tag": "质量属性"
+  },
+  {
+    "front": "提高可用性的典型手段与代价？",
+    "back": "手段：冗余与集群、健康检查、故障转移、限流降级、多机房。<br>代价：成本上升、数据同步与一致性难题、切换窗口。",
+    "tag": "质量属性"
+  },
+  {
+    "front": "提高可修改性的典型手段？",
+    "back": "清晰的分层与模块边界、面向接口编程、依赖倒置、配置外置、插件化扩展点。代价是抽象带来的间接性与理解成本。",
+    "tag": "质量属性"
+  },
+  {
+    "front": "可测试性为什么与架构有关？",
+    "back": "因为组件能否<b>独立启动</b>、依赖能否<b>注入</b>、接口契约是否清晰、是否具备<b>可观测性</b>，都由架构决定，而不是测试人员水平决定的。",
+    "tag": "质量属性"
+  },
+  {
+    "front": "4+1 视图的五个部分？",
+    "back": "<b>逻辑视图</b>（类协作）、<b>开发视图</b>（模块/包/构建）、<b>进程视图</b>（进程线程并发）、<b>物理视图</b>（部署拓扑），加 <b>场景/用例（+1）</b>。",
+    "tag": "视图"
+  },
+  {
+    "front": "逻辑视图关注什么？谁看？",
+    "back": "关注功能由哪些<b>类与对象</b>协作实现、职责如何划分；主要读者是设计人员与需求方，典型图是类图/对象图。",
+    "tag": "视图"
+  },
+  {
+    "front": "进程视图与物理视图的关键区别？",
+    "back": "<b>进程视图问「跑起来有几个执行体、怎么并发通信」；物理视图问「这些执行体装在哪台机器、网络怎么连」</b>。",
+    "tag": "视图"
+  },
+  {
+    "front": "为什么「场景」不是第五个并列视图？",
+    "back": "它起<b>串联与验证</b>作用：从需求中来，检验四个视图是否自洽，并驱动架构取舍，是架构评审的抓手。",
+    "tag": "视图"
+  },
+  {
+    "front": "课件的六种观察架构的角度？",
+    "back": "利益相关者角度、<b>黑盒</b>（系统所处环境）、<b>白盒</b>（逻辑模型）、系统开发进程、业务系统组建与管理员方案、确定方案的<b>依据文档</b>。",
+    "tag": "视图"
+  },
+  {
+    "front": "参考架构的定义与缺点？",
+    "back": "为完成一定业务目标而应用的架构的<b>部分内容</b>，包含<b>可复用</b>部分（可含架构模式与业务组件）。缺点：<b>不一定完全适用，可能不完全符合要求</b>。",
+    "tag": "三者关系"
+  },
+  {
+    "front": "架构模式的定义与目标？",
+    "back": "软件结构的<b>模板</b>，不含业务领域问题；目标是把系统按策略分解为<b>可扩展的子系统</b>并规定其合作。",
+    "tag": "三者关系"
+  },
+  {
+    "front": "参考架构 / 架构模式 / 设计模式的粒度关系？",
+    "back": "<b>参考架构 ⊃ 架构模式 ⊃ 设计模式</b>（范围由大到小）；复用粒度则由整系统 → 子系统 → 类逐级变细。",
+    "tag": "三者关系"
+  },
+  {
+    "front": "三种架构原型各自适合验证什么？",
+    "back": "<b>水平</b>：广而浅，验整体结构与流程；<b>垂直</b>：窄而深，验一条端到端链路；<b>可行性</b>：专攻高风险技术点，验「走不走得通」。",
+    "tag": "原型"
+  },
+  {
+    "front": "架构师的三项能力？为什么需要沟通能力？",
+    "back": "<b>技术能力、沟通能力、构造架构过程中的决定</b>。沟通不是软技能：架构<b>约束要被理解才会被执行</b>，否则会被绕过。",
+    "tag": "角色"
+  }
+]
+</script>
+
+<!-- 脚本顺序不可调整：先清单，后引擎 -->
+<script src="../../data/chapters.js"></script>
+<script src="../../assets/js/site.js"></script>
+</body>
+</html>

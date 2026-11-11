@@ -1,0 +1,2245 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page="chapter" data-chapter="ch5">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="第 5 章 架构模式：分层、管道-过滤器、插件、Broker、SOA、MVC 及黑板、C/S、P2P、微服务、事件驱动、仓储、CQRS 的原理、优缺点、对比与选型。">
+<meta name="color-scheme" content="light dark">
+<title>第 5 章 架构模式 · 软件设计与体系架构</title>
+<link rel="stylesheet" href="../../assets/css/site.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%237a4040'/%3E%3Cpath d='M6 8h12M6 12h12M6 16h7' stroke='%23fff' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+  /* ===== 本章局部样式：只服务于「结构示意图」，全部使用站点主题变量，随深浅色自动切换 ===== */
+  .arch { margin: var(--sp-5) 0; padding: var(--sp-4); border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2); }
+  .arch__title { margin: 0 0 var(--sp-3); font-size: var(--fs-small); font-weight: 700; color: var(--text-2); }
+  .arch__cap { margin: var(--sp-3) 0 0; font-size: var(--fs-tiny); color: var(--text-3); text-align: center; line-height: 1.6; }
+  .arch__stack { display: grid; gap: 0.4rem; }
+  .arch__layer { display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; padding: 0.5rem 0.85rem; border: 1px solid color-mix(in srgb, var(--accent-ui) 32%, var(--border)); border-radius: var(--radius-sm); background: color-mix(in srgb, var(--accent-ui) 7%, var(--surface)); }
+  .arch__layer b { font-size: var(--fs-small); }
+  .arch__layer em { margin-left: auto; font-style: normal; font-size: var(--fs-tiny); color: var(--text-3); }
+  .arch__flow { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0.3rem; }
+  .arch__node { padding: 0.45rem 0.7rem; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); font-size: var(--fs-small); line-height: 1.45; text-align: center; }
+  .arch__node--accent { border-color: var(--accent-ui); background: var(--accent-soft); }
+  .arch__node small { display: block; font-size: var(--fs-tiny); color: var(--text-3); }
+  .arch__link { color: var(--accent-ui); font-weight: 700; font-size: var(--fs-small); white-space: nowrap; }
+  .arch__note { margin: var(--sp-3) 0 0; font-size: var(--fs-tiny); color: var(--text-2); line-height: 1.7; }
+  .arch__col { display: grid; gap: 0.45rem; }
+  .arch__hub { display: grid; gap: 0.6rem; grid-template-columns: 1fr 1.5fr 1fr; align-items: center; }
+  .arch__slots { display: grid; gap: 0.35rem; }
+  .arch__slot { padding: 0.35rem 0.6rem; border: 1px dashed var(--border-strong); border-radius: var(--radius-sm); font-size: var(--fs-tiny); color: var(--text-2); background: var(--surface); }
+  .arch__kernel { padding: 0.85rem 0.7rem; border: 1px solid var(--accent-ui); border-radius: var(--radius); background: var(--accent-soft); text-align: center; font-size: var(--fs-small); font-weight: 700; line-height: 1.6; }
+  .arch__kernel span { display: block; font-weight: 500; font-size: var(--fs-tiny); color: var(--text-2); }
+  .arch__grid2 { display: grid; gap: var(--sp-3); grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); }
+  @media (max-width: 640px) { .arch__hub { grid-template-columns: 1fr; } }
+</style>
+<script>
+  /* 主题初始化：必须内联在 <head> 中，避免刷新时闪白 */
+  (function () {
+    try {
+      var t = JSON.parse(localStorage.getItem('sda.theme'));
+      if (t !== 'dark' && t !== 'light') {
+        t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      document.documentElement.setAttribute('data-theme', t);
+    } catch (e) {
+      document.documentElement.setAttribute('data-theme', 'light');
+    }
+  })();
+</script>
+</head>
+<body>
+<a class="skip-link" href="#main">跳到正文</a>
+
+<div class="progress-bar" aria-hidden="true"><div class="progress-bar__fill" id="progress-fill"></div></div>
+
+<header class="topbar" id="topbar-root"></header>
+
+<div class="wrap">
+  <div class="layout">
+    <aside class="sidebar" id="sidebar-root" aria-label="章节目录"></aside>
+
+    <main class="main" id="main">
+      <div class="main__inner">
+
+        <section class="section" id="overview" data-title="本章导览">
+          <div class="hero">
+            <span class="hero__eyebrow">第 5 章 · 架构模式</span>
+            <h1>架构模式：从分层、MVC 到微服务的选型地图</h1>
+            <p class="hero__lead">
+              架构模式是「系统级」的复用经验：它规定了构件怎么分、连接件怎么连、约束是什么。
+              本章按系统软件、分布式软件、交互软件三族，把课件里的分层、管道-过滤器、插件、Broker、SOA、MVC
+              连同黑板、C/S、P2P、PAC、微服务、事件驱动等模式一次讲清，并落到「电商系统该选什么」的选型题上。
+            </p>
+            <div class="hero__meta">
+              <span class="chip chip--accent"><svg class="icon" aria-hidden="true"><use href="#i-target"></use></svg>考试重点</span>
+              <span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-clock"></use></svg>约 60 分钟</span>
+              <span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-print-doc"></use></svg>课件 82 页</span>
+              <span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg>简答 + 对比 + 选型设计</span>
+            </div>
+            <div class="hero__actions">
+              <a class="btn btn--primary" href="#concepts">
+                <svg class="icon" aria-hidden="true"><use href="#i-play"></use></svg>开始阅读
+              </a>
+              <a class="btn" href="#compare">
+                <svg class="icon" aria-hidden="true"><use href="#i-list"></use></svg>看对比总表
+              </a>
+              <a class="btn" href="#quiz">
+                <svg class="icon" aria-hidden="true"><use href="#i-target"></use></svg>直接自测
+              </a>
+            </div>
+          </div>
+
+          <h2 class="section-title" style="margin-top:var(--sp-5)">
+            <svg class="icon" aria-hidden="true"><use href="#i-target"></use></svg>学习目标
+          </h2>
+          <p class="section-lead">读完后应能做到以下几点，每一条都可以自我检验。</p>
+          <ol class="objectives">
+            <li>能给出架构模式的定义，并说清它与「架构风格」「设计模式」「框架」三者的层次差别。</li>
+            <li>能画出分层、管道-过滤器、插件、Broker、SOA、MVC 六种模式的结构图，指出各自的构件、连接件与约束。</li>
+            <li>能对每种模式列出至少 3 条优点与 3 条代价，并把它们映射到性能、可修改性、可伸缩性、可用性等质量属性上。</li>
+            <li>能根据业务场景（如电商系统）在多种模式之间做选型，并用「变化点 + 质量属性 + 成本」三段式说明理由。</li>
+            <li>能识别常见误用：把 Broker 当成 Mediator、把 SOA 等同于微服务、认为分层越细越好、把插件当成普通功能扩展。</li>
+          </ol>
+
+          <h2 class="section-title" style="margin-top:var(--sp-6)">
+            <svg class="icon" aria-hidden="true"><use href="#i-network"></use></svg>知识地图
+          </h2>
+          <p class="section-lead">把整章压缩成四个维度，先建立整体印象，再进入细节。</p>
+          <div class="kmap">
+            <div class="kmap__col">
+              <p class="kmap__title">问题</p>
+              <ul class="kmap__list">
+                <li>复杂系统超出人脑理解</li>
+                <li>一处变化波及全身</li>
+                <li>质量属性互相冲突</li>
+                <li>分布、异构与第三方扩展</li>
+              </ul>
+            </div>
+            <div class="kmap__col">
+              <p class="kmap__title">构件</p>
+              <ul class="kmap__list">
+                <li>构件：层 / 过滤器 / 服务 / 插件</li>
+                <li>连接件：过程调用 / 管道 / 事件</li>
+                <li>约束：调用方向、可见性</li>
+                <li>扩展点：接口与契约</li>
+              </ul>
+            </div>
+            <div class="kmap__col">
+              <p class="kmap__title">质量属性</p>
+              <ul class="kmap__list">
+                <li>可修改性 / 可扩展性</li>
+                <li>性能 / 可伸缩性</li>
+                <li>可用性 / 容错</li>
+                <li>可测试性 / 互操作性</li>
+              </ul>
+            </div>
+            <div class="kmap__col">
+              <p class="kmap__title">代价</p>
+              <ul class="kmap__list">
+                <li>间接层带来调用开销</li>
+                <li>分布式带来一致性问题</li>
+                <li>抽象泄漏、调试变难</li>
+                <li>学习、运维与治理成本</li>
+              </ul>
+            </div>
+          </div>
+
+          <h3 style="margin-top:var(--sp-6)">三族架构模式：本章的目录骨架</h3>
+          <p class="section-lead">
+            课件把典型架构模式按「面向什么系统」分成三族。先记住族，再记族里的模式，考试时不容易漏。
+          </p>
+          <div class="grid">
+            <div class="card">
+              <h4 class="card__title">
+                <svg class="icon" aria-hidden="true"><use href="#i-layers"></use></svg>
+                系统软件族
+              </h4>
+              <div class="card__body">
+                <p class="muted">关注「一个进程内如何组织代码与数据流」。</p>
+                <p>
+                  <a href="#p-layered">分层</a> ·
+                  <a href="#p-pipe">管道-过滤器</a> ·
+                  <a href="#p-blackboard">黑板</a>
+                </p>
+                <p class="muted tiny">典型：操作系统、编译器、协议栈、批处理与数据分析。</p>
+              </div>
+            </div>
+            <div class="card">
+              <h4 class="card__title">
+                <svg class="icon" aria-hidden="true"><use href="#i-network"></use></svg>
+                分布式软件族
+              </h4>
+              <div class="card__body">
+                <p class="muted">关注「跨进程、跨机器如何定位、通信与协作」。</p>
+                <p>
+                  <a href="#p-broker">Broker</a> ·
+                  <a href="#p-cs">客户/服务器</a> ·
+                  <a href="#p-p2p">点对点</a> ·
+                  <a href="#p-soa">SOA</a> ·
+                  <a href="#p-msa">微服务</a>
+                </p>
+                <p class="muted tiny">典型：CORBA、DNS、企业应用集成、互联网后端。</p>
+              </div>
+            </div>
+            <div class="card">
+              <h4 class="card__title">
+                <svg class="icon" aria-hidden="true"><use href="#i-eye"></use></svg>
+                交互软件族
+              </h4>
+              <div class="card__body">
+                <p class="muted">关注「用户界面与业务数据如何分离、如何响应变化」。</p>
+                <p>
+                  <a href="#p-mvc">MVC</a> ·
+                  <a href="#p-pac">PAC</a> ·
+                  <a href="#p-mvp">MVP</a> ·
+                  <a href="#p-mvvm">MVVM</a> ·
+                  <a href="#p-eda">事件驱动</a> ·
+                  <a href="#p-pubsub">发布-订阅</a>
+                </p>
+                <p class="muted tiny">典型：桌面 GUI、Web 前端、移动端、实时通知。</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="callout callout--info" style="margin-top:var(--sp-5)">
+            <span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-info"></use></svg></span>
+            <div class="callout__body">
+              <p><span class="callout__title">与第 2 章、第 4 章的关系</span>
+              第 2 章讲「架构是什么、用哪些视图描述」——本章的模式正是填进这些视图里的结构方案；
+              第 3、4 章讲「类与对象级」的设计模式——本章的 MVC 内部就用到了观察者、组合、策略三个设计模式。
+              三者的关系是：<b>架构模式管系统骨架，设计模式管骨架里的关节</b>。</p>
+            </div>
+          </div>
+
+          <h3 style="margin-top:var(--sp-6)">题型与考点分布</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>题型</th><th>常见问法</th><th>答题抓手</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>简答</td><td>简述分层/管道-过滤器/MVC 的结构与优缺点</td><td>构件 + 连接件 + 约束 + 3 优点 3 缺点</td></tr>
+                <tr><td>对比</td><td>Broker 与 Mediator、SOA 与微服务、MVC 与 MVP</td><td>至少 3 个维度：耦合、拓扑、层次、代价</td></tr>
+                <tr><td>选型设计</td><td>给定业务（如电商、编译器、IDE）选架构并说明理由</td><td>变化点 → 质量属性 → 模式 → 代价与缓解</td></tr>
+                <tr><td>判断/选择</td><td>「分层越细越好」「微服务一定优于单体」等</td><td>抓住每种模式的适用边界与代价</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="section" id="concepts" data-title="核心概念">
+          <div class="section-head">
+            <span class="section-head__num">02</span>
+            <h2 class="section-title">核心概念</h2>
+            <a class="section-anchor" href="#concepts" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">先统一术语，再逐张过模式卡；模式卡统一用「问题—方案—角色—优点—代价—场景—相关」七行，便于横向比较。</p>
+
+          <div class="grid">
+            <div class="concept">
+              <p class="concept__term">架构模式 <span class="concept__en">Architectural Pattern</span></p>
+              <p class="concept__body">
+                描述软件系统<b>基本的组织结构</b>：一组预定义的子系统、它们的职责、以及组织它们之间的规则。
+                它回答的是「系统由哪些大块组成、块之间怎么连、连的时候受什么约束」。
+              </p>
+              <div class="concept__tags">
+                <span class="chip chip--accent">系统级</span>
+                <span class="chip">可复用经验</span>
+              </div>
+            </div>
+
+            <div class="concept">
+              <p class="concept__term">构件与连接件 <span class="concept__en">Component &amp; Connector</span></p>
+              <p class="concept__body">
+                描述架构模式的两个基本词汇。<b>构件</b>是计算或存储的单元（层、过滤器、服务、插件、模型）；
+                <b>连接件</b>是构件之间的交互机制（过程调用、管道、事件总线、RPC、协议）。同一个构件换一种连接件，架构就变了。
+              </p>
+              <div class="concept__tags">
+                <span class="chip">描述语言</span>
+                <span class="chip">易考</span>
+              </div>
+            </div>
+
+            <div class="concept">
+              <p class="concept__term">架构风格 / 架构模式 / 设计模式 <span class="concept__en">Style / Pattern</span></p>
+              <p class="concept__body">
+                三者是<b>不同粒度</b>：架构风格是最抽象的结构族（如「分层」「数据流」）；
+                架构模式是风格的具体化（如「严格分层」「管道-过滤器」）；设计模式是类/对象级的协作方案（如观察者、策略）。
+                层级越高，影响面越大，改动成本也越高。
+              </p>
+              <div class="concept__tags">
+                <span class="chip chip--warn">易混淆</span>
+                <span class="chip">层次</span>
+              </div>
+            </div>
+
+            <div class="concept">
+              <p class="concept__term">关注点分离 <span class="concept__en">Separation of Concerns</span></p>
+              <p class="concept__body">
+                把系统中不同的关注点（界面、业务、数据、通信、扩展）放进不同的构件，使每一部分只对一个变化原因负责。
+                本章几乎所有模式——分层、MVC、SOA、插件——本质都是它的不同实现方式。
+              </p>
+              <div class="concept__tags">
+                <span class="chip chip--accent">第一性原理</span>
+              </div>
+            </div>
+
+            <div class="concept">
+              <p class="concept__term">质量属性权衡 <span class="concept__en">Quality Trade-off</span></p>
+              <p class="concept__body">
+                模式不是「只有好处」：分层提升可修改性却牺牲性能，微服务提升可伸缩性却带来分布式复杂度，
+                事件驱动提升解耦却牺牲可调试性。<b>选型 = 在冲突的质量属性之间做取舍</b>，而不是找「最好的模式」。
+              </p>
+              <div class="concept__tags">
+                <span class="chip chip--accent">选型依据</span>
+              </div>
+            </div>
+
+            <div class="concept">
+              <p class="concept__term">架构视图 <span class="concept__en">Architectural View</span></p>
+              <p class="concept__body">
+                从某个视角对系统做的简化描述。课件复习了逻辑（功能）、开发（程序包）、运行（进程线程）、物理（部署）、
+                数据（持久化）五类视图。<b>同一种模式在不同视图里呈现不同</b>：分层在逻辑视图是层，在开发视图是包依赖。
+              </p>
+              <div class="concept__tags">
+                <span class="chip">承第 2 章</span>
+              </div>
+            </div>
+
+            <div class="concept">
+              <p class="concept__term">模式的三族分类 <span class="concept__en">Three Families</span></p>
+              <p class="concept__body">
+                课件按系统类型分族：<b>系统软件</b>（分层、管道-过滤器、黑板）、<b>分布式软件</b>（Broker、C/S、P2P）、
+                <b>交互软件</b>（MVC、PAC）。分类不是绝对的：SOA 与微服务属于分布式族的现代形态，事件驱动横跨交互与分布式。
+              </p>
+              <div class="concept__tags">
+                <span class="chip">记忆框架</span>
+              </div>
+            </div>
+
+            <div class="concept">
+              <p class="concept__term">选型三问 <span class="concept__en">Three Questions</span></p>
+              <p class="concept__body">
+                面对场景先问三句：<b>① 变化点在哪</b>（界面变、算法变、部署规模变？）；
+                <b>② 哪个质量属性是硬约束</b>（性能、可用性、可扩展？）；
+                <b>③ 团队与运维能不能承担这个代价</b>（分布式、插件治理、多版本）。
+                三问的答案基本能锁定候选模式。
+              </p>
+              <div class="concept__tags">
+                <span class="chip chip--accent">答题模板</span>
+              </div>
+            </div>
+          </div>
+
+          <h3 style="margin-top:var(--sp-6)">模式卡：课件六大模式</h3>
+          <p class="section-lead">这六种是课件正文逐一展开的模式，简答题与选型题的高频考点。</p>
+
+          <div class="pattern" id="p-layered">
+            <div class="pattern__head">
+              <h4 class="pattern__name">分层架构</h4>
+              <span class="pattern__en">Layered Architecture</span>
+              <span class="pattern__type">架构型</span>
+            </div>
+            <div class="pattern__body">
+              <dl class="pattern__rows">
+                <div class="pattern__row"><dt>上下文/问题</dt><dd>系统功能庞杂、抽象层次混杂；希望把复杂系统切成可理解、可替换、可并行开发的块，并支持标准化与复用。</dd></div>
+                <div class="pattern__row"><dt>解决方案</dt><dd>按抽象程度把系统划成层次结构，每层向上提供服务、向下使用服务；层间只经接口与协议调用，下层不知道上层。</dd></div>
+                <div class="pattern__row"><dt>参与角色</dt><dd>层（Layer）、层接口、层内构件、协议/过程调用连接件、抽象准则（分层规则）。</dd></div>
+                <div class="pattern__row"><dt>优点</dt><dd>分解复杂、易于理解；层稳定可标准化；变更影响局部；接口稳定支持并行开发与替换；支持复用。</dd></div>
+                <div class="pattern__row"><dt>代价</dt><dd>层次划分依赖经验、没有唯一解；跨层数据逐层传递使性能下降；多层调用难调试；性能压力下可能被迫合并层，破坏逻辑独立性。</dd></div>
+                <div class="pattern__row"><dt>适用场景</dt><dd>协议栈（OSI/TCP-IP）、操作系统（Windows NT）、企业应用（表现层/业务层/持久化层）、各类框架。</dd></div>
+                <div class="pattern__row"><dt>相关模式</dt><dd>微内核（内核 + 可插拔层）、管道-过滤器（顺序处理链）、MVC（交互系统里的三层变体）。</dd></div>
+              </dl>
+            </div>
+          </div>
+
+          <div class="pattern" id="p-pipe">
+            <div class="pattern__head">
+              <h4 class="pattern__name">管道-过滤器</h4>
+              <span class="pattern__en">Pipes and Filters</span>
+              <span class="pattern__type">架构型</span>
+            </div>
+            <div class="pattern__body">
+              <dl class="pattern__rows">
+                <div class="pattern__row"><dt>上下文/问题</dt><dd>面向数据流的系统：加工过程不应是一个整体，需要易于扩展、尽量并行、单个步骤可复用。</dd></div>
+                <div class="pattern__row"><dt>解决方案</dt><dd>按处理阶段把任务拆成单一职责的过滤器，过滤器只读输入、变换、写输出；过滤器之间用管道连接并缓存数据。</dd></div>
+                <div class="pattern__row"><dt>参与角色</dt><dd>过滤器（输入端口/输出端口）、管道（连接件，被动传输与缓存）、数据源与数据汇、管道数据类型定义。</dd></div>
+                <div class="pattern__row"><dt>优点</dt><dd>简单（整体行为 = 各过滤器行为的组合）；可重用（过滤器不知道上下游）；易维护扩展（增删换过滤器）；天然支持并发与流水线。</dd></div>
+                <div class="pattern__row"><dt>代价</dt><dd>批处理模型不适合交互式应用；每个过滤器都要做完整的输入→输出转换，批量转换开销大；两条相关数据流之间通信困难；有名管道增加解析/反馈成本。</dd></div>
+                <div class="pattern__row"><dt>适用场景</dt><dd>UNIX shell 管道、编译器（词法→语法→语义→中间代码→优化→目标代码）、图像/信号处理、ETL 与日志处理。</dd></div>
+                <div class="pattern__row"><dt>相关模式</dt><dd>分层（同样是顺序抽象，但连接件是调用而非数据流）、黑板（共享数据 vs 流式传递）、事件驱动（推送 vs 拉取）。</dd></div>
+              </dl>
+            </div>
+          </div>
+
+          <div class="pattern" id="p-plugin">
+            <div class="pattern__head">
+              <h4 class="pattern__name">插件 / 微内核</h4>
+              <span class="pattern__en">Plugin / Microkernel</span>
+              <span class="pattern__type">架构型</span>
+            </div>
+            <div class="pattern__body">
+              <dl class="pattern__rows">
+                <div class="pattern__row"><dt>上下文/问题</dt><dd>软件要长期稳定，又需要第三方或后续团队扩展功能；现有代码不允许修改，同时要灵活，符合开闭原则。</dd></div>
+                <div class="pattern__row"><dt>解决方案</dt><dd>核心（宿主）只定义扩展点（接口/契约），插件实现接口并由插件管理者在运行时加载、注册、实例化；没有插件时系统仍可正常运行。</dd></div>
+                <div class="pattern__row"><dt>参与角色</dt><dd>应用（宿主 host）、插件管理者、插件接口（扩展点）、具体插件（plug-in）、契约（contract）。</dd></div>
+                <div class="pattern__row"><dt>优点</dt><dd>关注点分离（每个插件职责单一）；便于第三方扩展；核心保持精简；支持多版本并存；插件可独立测试。</dd></div>
+                <div class="pattern__row"><dt>代价</dt><dd>初始加载与运行期管理开销随插件增多而上升；扩展必须通过接口，插件与接口强依赖；接口一旦发布难改；需处理隔离、安全与版本兼容。</dd></div>
+                <div class="pattern__row"><dt>适用场景</dt><dd>IDE（Eclipse）、浏览器扩展、Office 插件、构建工具、微内核操作系统、规则可配置的业务系统。</dd></div>
+                <div class="pattern__row"><dt>相关模式</dt><dd>装饰/策略（对象级替换，没有公开的运行时扩展接口）、分层（微内核常与分层组合）、SOA（服务注册与发现）。</dd></div>
+              </dl>
+            </div>
+          </div>
+
+          <div class="pattern" id="p-broker">
+            <div class="pattern__head">
+              <h4 class="pattern__name">经纪人模式</h4>
+              <span class="pattern__en">Broker</span>
+              <span class="pattern__type">架构型</span>
+            </div>
+            <div class="pattern__body">
+              <dl class="pattern__rows">
+                <div class="pattern__row"><dt>上下文/问题</dt><dd>大型系统必须能「长大」：单机很快到极限，组件要分布到多台机器，架构要适应性能变化；组件间需要解耦又要通信，且平台/语言可能异构。</dd></div>
+                <div class="pattern__row"><dt>解决方案</dt><dd>客户—客户端代理—Broker—服务端代理—服务器。服务在 Broker 登记；客户按逻辑名称请求服务，Broker 定位并转发；代理负责序列化与反序列化。</dd></div>
+                <div class="pattern__row"><dt>参与角色</dt><dd>Client、Client-side Proxy、Broker、Server-side Proxy、Server。</dd></div>
+                <div class="pattern__row"><dt>优点</dt><dd>通信与功能分离；接口不变即可更换服务实现；客户不知道服务器物理地址（位置透明）；平台与语言独立；可把大型系统分布到多台机器。</dd></div>
+                <div class="pattern__row"><dt>代价</dt><dd>Broker 是中心查询点，容错性差、可能成为瓶颈；间接调用增加通信开销；代理依赖 Broker，更换 Broker 需重新适配；调试、安全与治理复杂。</dd></div>
+                <div class="pattern__row"><dt>适用场景</dt><dd>CORBA、Internet/DNS、RPC 与消息中间件、服务注册与发现。</dd></div>
+                <div class="pattern__row"><dt>相关模式</dt><dd>Mediator（同进程、1:n 转发）、SOA（Broker 隐藏物理地址，SOA 公开服务契约）、微服务（注册中心是 Broker 思想的延续）。</dd></div>
+              </dl>
+            </div>
+          </div>
+
+          <div class="pattern" id="p-soa">
+            <div class="pattern__head">
+              <h4 class="pattern__name">面向服务的架构</h4>
+              <span class="pattern__en">Service-Oriented Architecture</span>
+              <span class="pattern__type">架构型</span>
+            </div>
+            <div class="pattern__body">
+              <dl class="pattern__rows">
+                <div class="pattern__row"><dt>上下文/问题</dt><dd>业务流程一旦调整就引起系统大改，系统难维护、成本剧增；遗留系统要集成，跨组织要对接。</dd></div>
+                <div class="pattern__row"><dt>解决方案</dt><dd>以服务为中心：把业务流程直接构建为服务组合，每个应用场景对应一个服务；服务通过契约暴露、可注册发现、可编排；层次为业务流程→应用服务→基本服务。</dd></div>
+                <div class="pattern__row"><dt>参与角色</dt><dd>服务提供者、服务消费者、服务注册中心（服务目录）、服务契约/接口、服务总线与编排。</dd></div>
+                <div class="pattern__row"><dt>优点</dt><dd>按业务流程组织，服务与接口一目了然；分解应用服务与基本服务，降低复杂性；可复用；接口不变时实现可动态更换；遗留系统可封装接入。</dd></div>
+                <div class="pattern__row"><dt>代价</dt><dd>服务划分过细会让结构复杂；多层服务间通信增加额外开销；对网络速率要求高；业务流程必须明确定义并做好文档与治理。</dd></div>
+                <div class="pattern__row"><dt>适用场景</dt><dd>企业应用集成（EAI）、遗留系统封装、B2B 流程对接、银行/电信等复杂 C/S 系统。</dd></div>
+                <div class="pattern__row"><dt>相关模式</dt><dd>Broker（SOA 的通信基础设施）、微服务（SOA 的轻量化、去中心化演进）、分层（服务层次划分）。</dd></div>
+              </dl>
+            </div>
+          </div>
+
+          <div class="pattern" id="p-mvc">
+            <div class="pattern__head">
+              <h4 class="pattern__name">模型-视图-控制器</h4>
+              <span class="pattern__en">Model-View-Controller</span>
+              <span class="pattern__type">架构型</span>
+            </div>
+            <div class="pattern__body">
+              <dl class="pattern__rows">
+                <div class="pattern__row"><dt>上下文/问题</dt><dd>用户界面经常变，但不应牵动其余程序；同一份信息要以多种形式展示；数据一变，所有展示要同步更新。</dd></div>
+                <div class="pattern__row"><dt>解决方案</dt><dd>把交互系统拆成模型（数据与加工）、视图（表示逻辑）、控制器（用户输入）三部分；视图订阅模型，控制器解释输入并调用模型，模型变化后通知视图。</dd></div>
+                <div class="pattern__row"><dt>参与角色</dt><dd>Model（核心功能，封装数据与加工）、View（展示模型数据，含控制元素）、Controller（接收并解释输入、控制模型与视图状态）。</dd></div>
+                <div class="pattern__row"><dt>优点</dt><dd>模型与界面分别设计；改界面不动模型；模型可单独测试；同一应用可配多套界面。</dd></div>
+                <div class="pattern__row"><dt>代价</dt><dd>频繁更新时通知开销影响性能；小应用拆成多个类反而增加实现开销；控制器容易膨胀成「上帝类」。</dd></div>
+                <div class="pattern__row"><dt>适用场景</dt><dd>交互式软件：桌面 GUI、Web 应用、移动端界面层。</dd></div>
+                <div class="pattern__row"><dt>相关模式</dt><dd>观察者（模型通知视图）、组合（视图树）、策略（视图/控制器可替换）、MVP/MVVM（MVC 的演进）。</dd></div>
+              </dl>
+            </div>
+          </div>
+
+          <h3 style="margin-top:var(--sp-6)">模式卡：课件点名的其他经典模式</h3>
+          <p class="section-lead">课件第 2 页把黑板、客户/服务器、点对点、PAC 与上面六种并列列出，考试同样可能考到，不能漏。</p>
+
+          <div class="pattern" id="p-blackboard">
+            <div class="pattern__head">
+              <h4 class="pattern__name">黑板模式</h4>
+              <span class="pattern__en">Blackboard</span>
+              <span class="pattern__type">架构型</span>
+            </div>
+            <div class="pattern__body">
+              <dl class="pattern__rows">
+                <div class="pattern__row"><dt>上下文/问题</dt><dd>问题没有确定的求解算法，需要多个知识源协作、逐步逼近答案；解空间大、过程不确定（识别、规划、约束求解）。</dd></div>
+                <div class="pattern__row"><dt>解决方案</dt><dd>一块共享数据结构（黑板）+ 若干独立知识源（KS）+ 控制器；控制器根据黑板当前状态决定激活哪个知识源，知识源读黑板、写黑板。</dd></div>
+                <div class="pattern__row"><dt>参与角色</dt><dd>黑板（共享数据与状态）、知识源（独立求解器）、控制器（调度策略）、触发条件。</dd></div>
+                <div class="pattern__row"><dt>优点</dt><dd>适合非确定性与启发式问题；知识源可独立开发、替换、扩展；支持增量求解；数据与算法解耦。</dd></div>
+                <div class="pattern__row"><dt>代价</dt><dd>控制策略难设计；黑板访问需要同步与一致性控制；没有显式调用链，性能与可调试性差；知识源之间存在隐式依赖。</dd></div>
+                <div class="pattern__row"><dt>适用场景</dt><dd>语音/图像识别、信号处理、编译器优化、专家系统、约束求解。</dd></div>
+                <div class="pattern__row"><dt>相关模式</dt><dd>仓储（共享数据但无调度）、管道-过滤器（流式传递 vs 共享黑板）、事件驱动（黑板变化触发知识源）。</dd></div>
+              </dl>
+            </div>
+          </div>
+
+          <div class="pattern" id="p-cs">
+            <div class="pattern__head">
+              <h4 class="pattern__name">客户/服务器</h4>
+              <span class="pattern__en">Client/Server</span>
+              <span class="pattern__type">架构型</span>
+            </div>
+            <div class="pattern__body">
+              <dl class="pattern__rows">
+                <div class="pattern__row"><dt>上下文/问题</dt><dd>多个客户端要共享集中的数据与服务，需要统一的安全与数据管理，客户端又希望尽量轻。</dd></div>
+                <div class="pattern__row"><dt>解决方案</dt><dd>服务器集中提供数据与服务，客户端发起请求、服务器响应；可二层（客户直连数据库）或三层（客户—应用服务器—数据库）。</dd></div>
+                <div class="pattern__row"><dt>参与角色</dt><dd>客户端、服务器、请求-响应协议、中间件（三层架构中的应用服务器）。</dd></div>
+                <div class="pattern__row"><dt>优点</dt><dd>数据与安全集中管理；客户端轻；成熟、易理解；服务可被多客户端复用。</dd></div>
+                <div class="pattern__row"><dt>代价</dt><dd>服务器是瓶颈与单点；客户端与服务器经协议耦合，版本升级要两端配合；规模扩展主要靠升级服务器。</dd></div>
+                <div class="pattern__row"><dt>适用场景</dt><dd>数据库服务器、Web 应用、文件服务器、企业内网信息系统。</dd></div>
+                <div class="pattern__row"><dt>相关模式</dt><dd>Broker（在 C/S 上加位置透明与代理）、P2P（去中心化）、三层架构（C/S 的纵向分层）。</dd></div>
+              </dl>
+            </div>
+          </div>
+
+          <div class="pattern" id="p-p2p">
+            <div class="pattern__head">
+              <h4 class="pattern__name">点对点</h4>
+              <span class="pattern__en">Peer-to-Peer</span>
+              <span class="pattern__type">架构型</span>
+            </div>
+            <div class="pattern__body">
+              <dl class="pattern__rows">
+                <div class="pattern__row"><dt>上下文/问题</dt><dd>要避免中心服务器的单点与瓶颈，让节点既消费也贡献资源；系统需大规模可扩展、低成本。</dd></div>
+                <div class="pattern__row"><dt>解决方案</dt><dd>节点对等，每个节点既是客户又是服务器；在物理网络之上构建覆盖网络（overlay）负责寻址与路由；可用纯 P2P 或带超级节点的混合模式。</dd></div>
+                <div class="pattern__row"><dt>参与角色</dt><dd>对等节点、覆盖网络、索引/路由机制（如 DHT）、超级节点（混合模式）。</dd></div>
+                <div class="pattern__row"><dt>优点</dt><dd>可扩展、无单点瓶颈；资源利用率高；天然容错；部署成本低。</dd></div>
+                <div class="pattern__row"><dt>代价</dt><dd>一致性与信任难保证；节点异构、随时上下线；查找与路由开销大；管理与审计困难。</dd></div>
+                <div class="pattern__row"><dt>适用场景</dt><dd>BitTorrent、区块链、即时通信、边缘资源共享。</dd></div>
+                <div class="pattern__row"><dt>相关模式</dt><dd>C/S（集中 vs 对等）、Broker（中心索引 vs 分布式哈希）、微服务（服务网格是「去中心化通信」的另一种形态）。</dd></div>
+              </dl>
+            </div>
+          </div>
+
+          <div class="pattern" id="p-pac">
+            <div class="pattern__head">
+              <h4 class="pattern__name">显示-抽象-控制</h4>
+              <span class="pattern__en">Presentation-Abstraction-Control</span>
+              <span class="pattern__type">架构型</span>
+            </div>
+            <div class="pattern__body">
+              <dl class="pattern__rows">
+                <div class="pattern__row"><dt>上下文/问题</dt><dd>交互系统既有层次结构（窗口套窗口），又有多个并发的交互任务；MVC 对这种层次化、多代理的界面支持不足。</dd></div>
+                <div class="pattern__row"><dt>解决方案</dt><dd>把系统组织成若干「代理」的层次结构，每个代理内部再分表示（显示）、抽象（数据与功能）、控制（协调）三部分；父子代理通过控制层协作。</dd></div>
+                <div class="pattern__row"><dt>参与角色</dt><dd>代理（agent）、表示、抽象、控制。</dd></div>
+                <div class="pattern__row"><dt>优点</dt><dd>支持层次化交互与多任务并发；关注点分离比 MVC 更细；适合复杂 GUI。</dd></div>
+                <div class="pattern__row"><dt>代价</dt><dd>代理数量多、结构复杂；控制流分散难理解；实现与调试成本高。</dd></div>
+                <div class="pattern__row"><dt>适用场景</dt><dd>复杂桌面应用、CAD、多媒体交互系统。</dd></div>
+                <div class="pattern__row"><dt>相关模式</dt><dd>MVC（PAC 是它的层次化扩展）、分层、MVP。</dd></div>
+              </dl>
+            </div>
+          </div>
+
+          <h3 style="margin-top:var(--sp-6)">模式卡：现代演进与常用补充</h3>
+          <p class="section-lead">这些模式在课件里以「演进方向 / 相关模式」出现，是选型题与论述题的加分项。</p>
+
+          <div class="pattern" id="p-msa">
+            <div class="pattern__head">
+              <h4 class="pattern__name">微服务架构</h4>
+              <span class="pattern__en">Microservices</span>
+              <span class="pattern__type">架构型</span>
+            </div>
+            <div class="pattern__body">
+              <dl class="pattern__rows">
+                <div class="pattern__row"><dt>上下文/问题</dt><dd>单体应用难以独立部署与按需扩展；多个团队并行开发互相阻塞；不同模块技术诉求不同；需要快速迭代与故障隔离。</dd></div>
+                <div class="pattern__row"><dt>解决方案</dt><dd>按业务能力拆成小型自治服务，独立部署、独立数据存储、轻量通信（HTTP/RPC/消息），去中心化治理 + 自动化部署与监控。</dd></div>
+                <div class="pattern__row"><dt>参与角色</dt><dd>微服务、API 网关、注册中心、配置中心、服务网格、CI/CD 流水线。</dd></div>
+                <div class="pattern__row"><dt>优点</dt><dd>独立部署与伸缩；团队自治；技术异构；故障隔离；服务粒度细、迭代快。</dd></div>
+                <div class="pattern__row"><dt>代价</dt><dd>分布式复杂性（网络、事务、一致性）；运维监控成本高；数据一致性难；服务边界难划；端到端测试难。</dd></div>
+                <div class="pattern__row"><dt>适用场景</dt><dd>互联网大规模业务、多团队协作、频繁发布、模块伸缩需求差异大的系统。</dd></div>
+                <div class="pattern__row"><dt>相关模式</dt><dd>SOA（继承服务化、去掉中心总线）、Broker（注册发现）、事件驱动（最终一致性）。</dd></div>
+              </dl>
+            </div>
+          </div>
+
+          <div class="pattern" id="p-eda">
+            <div class="pattern__head">
+              <h4 class="pattern__name">事件驱动 / 隐式调用</h4>
+              <span class="pattern__en">Event-Driven / Implicit Invocation</span>
+              <span class="pattern__type">架构型</span>
+            </div>
+            <div class="pattern__body">
+              <dl class="pattern__rows">
+                <div class="pattern__row"><dt>上下文/问题</dt><dd>构件需要在不知道对方身份的情况下响应变化；希望松耦合、易扩展，并支持异步与并发。</dd></div>
+                <div class="pattern__row"><dt>解决方案</dt><dd>构件发布事件而不指定接收者；其他构件注册兴趣，事件发生时被「隐式调用」；由事件总线/分发器负责匹配与投递。</dd></div>
+                <div class="pattern__row"><dt>参与角色</dt><dd>事件生产者、事件、事件总线/分发器、事件消费者、订阅注册表。</dd></div>
+                <div class="pattern__row"><dt>优点</dt><dd>强解耦；易扩展（加订阅者不改发布者）；支持异步与并发；适合系统演化与集成。</dd></div>
+                <div class="pattern__row"><dt>代价</dt><dd>控制流隐式、调用链难追踪；事件顺序、幂等、丢失需专门处理；系统整体行为难预测；错误处理复杂。</dd></div>
+                <div class="pattern__row"><dt>适用场景</dt><dd>GUI 事件、消息中间件、微服务集成、EDA、物联网。</dd></div>
+                <div class="pattern__row"><dt>相关模式</dt><dd>观察者（设计模式版）、发布-订阅（带代理的架构版）、MVC（模型通知视图）。</dd></div>
+              </dl>
+            </div>
+          </div>
+
+          <div class="pattern" id="p-pubsub">
+            <div class="pattern__head">
+              <h4 class="pattern__name">发布-订阅</h4>
+              <span class="pattern__en">Publish-Subscribe</span>
+              <span class="pattern__type">架构型</span>
+            </div>
+            <div class="pattern__body">
+              <dl class="pattern__rows">
+                <div class="pattern__row"><dt>上下文/问题</dt><dd>多对多通信，发布者不应知道订阅者是谁；消息需要按主题过滤、可异步、可持久化。</dd></div>
+                <div class="pattern__row"><dt>解决方案</dt><dd>发布者向主题/频道发消息，订阅者按主题订阅，由消息代理路由；代理负责缓冲、持久化、重试与分发。</dd></div>
+                <div class="pattern__row"><dt>参与角色</dt><dd>Publisher、Subscriber、Topic/Channel、Message Broker。</dd></div>
+                <div class="pattern__row"><dt>优点</dt><dd>空间解耦（互不相识）、时间解耦（异步）、同步解耦（不必同时在线）；可扩展、可广播、可过滤。</dd></div>
+                <div class="pattern__row"><dt>代价</dt><dd>代理的运维与可用性成本；消息顺序、重复、一致性难保证；调试与追踪困难；订阅关系管理复杂。</dd></div>
+                <div class="pattern__row"><dt>适用场景</dt><dd>Kafka/RabbitMQ 类消息系统、IoT 数据采集、通知与日志、微服务事件集成。</dd></div>
+                <div class="pattern__row"><dt>相关模式</dt><dd>观察者（进程内、直接持有引用）、事件驱动（更宽泛的架构风格）、Broker（代理即 Broker 的演化）。</dd></div>
+              </dl>
+            </div>
+          </div>
+
+          <div class="pattern" id="p-mvp">
+            <div class="pattern__head">
+              <h4 class="pattern__name">模型-视图-呈现器</h4>
+              <span class="pattern__en">Model-View-Presenter</span>
+              <span class="pattern__type">架构型</span>
+            </div>
+            <div class="pattern__body">
+              <dl class="pattern__rows">
+                <div class="pattern__row"><dt>上下文/问题</dt><dd>MVC 中视图仍依赖模型（观察者），UI 逻辑难以单元测试；Web 场景下视图无法直接观察模型变化。</dd></div>
+                <div class="pattern__row"><dt>解决方案</dt><dd>引入 Presenter：它持有 View 接口与 Model，承担全部展示逻辑；View 变成被动视图，只渲染并提供事件回调。</dd></div>
+                <div class="pattern__row"><dt>参与角色</dt><dd>Model、View（接口，被动）、Presenter。</dd></div>
+                <div class="pattern__row"><dt>优点</dt><dd>View 完全被动、易于 mock 与测试；Presenter 与具体视图解耦；适合 Web 与移动端。</dd></div>
+                <div class="pattern__row"><dt>代价</dt><dd>Presenter 容易膨胀；接口数量多；视图更新要手动同步，样板代码多。</dd></div>
+                <div class="pattern__row"><dt>适用场景</dt><dd>Android、GWT、WinForms 等界面技术受限、需要高可测试性的场景。</dd></div>
+                <div class="pattern__row"><dt>相关模式</dt><dd>MVC（前身）、MVVM（进一步用数据绑定消除样板）。</dd></div>
+              </dl>
+            </div>
+          </div>
+
+          <div class="pattern" id="p-mvvm">
+            <div class="pattern__head">
+              <h4 class="pattern__name">模型-视图-视图模型</h4>
+              <span class="pattern__en">Model-View-ViewModel</span>
+              <span class="pattern__type">架构型</span>
+            </div>
+            <div class="pattern__body">
+              <dl class="pattern__rows">
+                <div class="pattern__row"><dt>上下文/问题</dt><dd>希望消除 MVP 里大量手写的视图同步代码，让 UI 与状态自动保持一致，同时保持 UI 逻辑可测试。</dd></div>
+                <div class="pattern__row"><dt>解决方案</dt><dd>ViewModel 暴露数据与命令，View 通过数据绑定声明式地与之同步；ViewModel 不引用 View，便于测试。</dd></div>
+                <div class="pattern__row"><dt>参与角色</dt><dd>Model、View、ViewModel、绑定引擎（框架提供）。</dd></div>
+                <div class="pattern__row"><dt>优点</dt><dd>双向绑定减少样板代码；ViewModel 可单测；前后端分离与响应式 UI 友好。</dd></div>
+                <div class="pattern__row"><dt>代价</dt><dd>绑定出错难调试；大型项目绑定开销与内存占用；过度绑定会降低可读性与性能。</dd></div>
+                <div class="pattern__row"><dt>适用场景</dt><dd>WPF、Vue/React（响应式思想）、Android DataBinding。</dd></div>
+                <div class="pattern__row"><dt>相关模式</dt><dd>MVP、MVC、观察者（绑定即观察者的一种实现）。</dd></div>
+              </dl>
+            </div>
+          </div>
+
+          <div class="pattern" id="p-interpreter">
+            <div class="pattern__head">
+              <h4 class="pattern__name">解释器 / 虚拟机</h4>
+              <span class="pattern__en">Interpreter / Virtual Machine</span>
+              <span class="pattern__type">架构型</span>
+            </div>
+            <div class="pattern__body">
+              <dl class="pattern__rows">
+                <div class="pattern__row"><dt>上下文/问题</dt><dd>需要在运行时解释执行自定义语言、规则或脚本；行为要可配置、可移植，不能每次改动都重新编译宿主程序。</dd></div>
+                <div class="pattern__row"><dt>解决方案</dt><dd>定义语言语法并实现解释引擎：把程序表示成抽象语法树或字节码，由解释器/虚拟机执行；OO 中的解释器模式是其类级映射。</dd></div>
+                <div class="pattern__row"><dt>参与角色</dt><dd>解释器/执行引擎、AST 或字节码、上下文（环境）、指令/规则对象。</dd></div>
+                <div class="pattern__row"><dt>优点</dt><dd>行为可在运行时改变；可移植；规则外置便于业务人员维护；适合 DSL。</dd></div>
+                <div class="pattern__row"><dt>代价</dt><dd>解释执行性能低于编译执行；语言与引擎的设计维护成本高；调试、安全沙箱复杂。</dd></div>
+                <div class="pattern__row"><dt>适用场景</dt><dd>规则引擎、SQL、正则表达式、脚本引擎、JVM 类虚拟机。</dd></div>
+                <div class="pattern__row"><dt>相关模式</dt><dd>插件（扩展点）、分层（虚拟机栈式分层）、管道-过滤器（编译阶段流水线）。</dd></div>
+              </dl>
+            </div>
+          </div>
+
+          <div class="pattern" id="p-repo">
+            <div class="pattern__head">
+              <h4 class="pattern__name">仓储模式</h4>
+              <span class="pattern__en">Repository</span>
+              <span class="pattern__type">架构型</span>
+            </div>
+            <div class="pattern__body">
+              <dl class="pattern__rows">
+                <div class="pattern__row"><dt>上下文/问题</dt><dd>领域逻辑直接拼 SQL 访问数据库，导致业务依赖具体存储、难以测试、查询逻辑散落各处。</dd></div>
+                <div class="pattern__row"><dt>解决方案</dt><dd>在领域层与数据映射层之间提供「类似集合」的抽象，封装查询与存储，隔离数据库技术细节。</dd></div>
+                <div class="pattern__row"><dt>参与角色</dt><dd>Repository 接口、Repository 实现（DAO/ORM）、领域对象、数据映射器。</dd></div>
+                <div class="pattern__row"><dt>优点</dt><dd>领域层不依赖数据库；存储可替换；可用内存实现做单元测试；查询逻辑集中。</dd></div>
+                <div class="pattern__row"><dt>代价</dt><dd>抽象容易泄漏（复杂查询与性能优化难）；过度封装；事务边界管理复杂。</dd></div>
+                <div class="pattern__row"><dt>适用场景</dt><dd>DDD 领域模型、企业应用、分层架构中的持久化层。</dd></div>
+                <div class="pattern__row"><dt>相关模式</dt><dd>分层（仓储位于持久化层）、DAO、CQRS（读写模型分离）。</dd></div>
+              </dl>
+            </div>
+          </div>
+
+          <div class="pattern" id="p-cqrs">
+            <div class="pattern__head">
+              <h4 class="pattern__name">命令查询职责分离</h4>
+              <span class="pattern__en">CQRS</span>
+              <span class="pattern__type">架构型</span>
+            </div>
+            <div class="pattern__body">
+              <dl class="pattern__rows">
+                <div class="pattern__row"><dt>上下文/问题</dt><dd>读写负载差异大、模型诉求不同：写要强一致与校验，读要高并发与复杂查询，同一模型两头受气。</dd></div>
+                <div class="pattern__row"><dt>解决方案</dt><dd>把命令（写）与查询（读）分离成不同的模型与服务，可独立扩展与优化；常用事件同步读模型，配合事件溯源。</dd></div>
+                <div class="pattern__row"><dt>参与角色</dt><dd>Command、Command Handler、写模型、Query、读模型、同步机制。</dd></div>
+                <div class="pattern__row"><dt>优点</dt><dd>读写独立优化与扩展；模型各自简化；适合高并发与复杂报表查询。</dd></div>
+                <div class="pattern__row"><dt>代价</dt><dd>最终一致性；同步机制与重复代码；整体复杂度上升；简单 CRUD 场景得不偿失。</dd></div>
+                <div class="pattern__row"><dt>适用场景</dt><dd>高并发交易系统、报表与看板、事件溯源系统。</dd></div>
+                <div class="pattern__row"><dt>相关模式</dt><dd>事件驱动、微服务、仓储。</dd></div>
+              </dl>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="detail" data-title="结构与实现">
+          <div class="section-head">
+            <span class="section-head__num">03</span>
+            <h2 class="section-title">结构与实现</h2>
+            <a class="section-anchor" href="#detail" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">
+            这一节按课件的六个小节顺序展开：先给结构示意图，再讲参与者与动态行为，最后落到「怎么实现」和「代价从哪来」。
+            读图时始终盯住两件事：<b>构件是什么</b>、<b>连接件是什么</b>。
+          </p>
+
+          <div class="prose">
+            <h3>一、分层架构：把「抽象层次」变成可依赖的边界</h3>
+            <p>
+              分层模式把系统组织成层次结构，各层之间是<b>客户/服务器</b>关系：上层是客户，下层是服务器。
+              每一层内部高度内聚、抽象程度一致，并通过接口隐藏实现。连接件是<b>协议与过程调用</b>。
+              最关键的约束只有两条：<b>上层可以使用下层的服务，下层不能使用上层</b>；<b>每层只对相邻层可见</b>。
+            </p>
+
+            <div class="arch">
+              <p class="arch__title">结构示意图 1 · 分层架构（严格分层与层桥接）</p>
+              <div class="arch__stack">
+                <div class="arch__layer"><b>应用层</b> 面向特定应用问题<em>只调用功能层</em></div>
+                <div class="arch__layer"><b>功能层</b> 通用业务功能，可被多个应用复用<em>只调用核心层</em></div>
+                <div class="arch__layer"><b>核心层</b> 最一般、最稳定的基础能力<em>只调用系统层</em></div>
+                <div class="arch__layer"><b>系统层</b> 操作系统 / 硬件抽象<em>最底层</em></div>
+              </div>
+              <p class="arch__note">
+                <b>严格分层</b>：第 n 层只依赖第 n−1 层，只为上一层提供服务，通过接口使用服务——实现简单、替换容易，但请求要逐层穿越。
+                <b>层桥接（松弛分层）</b>：允许某层直接调用下方所有层，减少穿越开销，代价是层与层之间出现「短路」，抽象边界被削弱。
+                课件举的 Windows NT 就是<b>非严格分层</b>：内核与 I/O 管理需要直接访问硬件。
+              </p>
+            </div>
+
+            <h4>参与者与职责</h4>
+            <ul>
+              <li><b>层（Layer）</b>：一组抽象级别一致的构件，对外只暴露接口。</li>
+              <li><b>层接口</b>：定义该层向上提供的服务，是替换实现时唯一需要保持稳定的东西。</li>
+              <li><b>协议 / 过程调用</b>：连接件，规定层间交互的格式与顺序。</li>
+              <li><b>分层规则</b>：约束调用方向与可见性，是「模式」区别于「随便分几个包」的关键。</li>
+            </ul>
+
+            <h4>实现要点（课件「分层系统的实现」五步）</h4>
+            <ol>
+              <li>为分层定义抽象准则，确定抽象层次；</li>
+              <li>给每一层命名，明确它的任务与对外提供的服务；</li>
+              <li>为每层定义接口，独立实现各层；</li>
+              <li>确定相邻层的通信方式，尽量降低相邻层耦合；</li>
+              <li>设计错误处理策略（异常在哪层转换、在哪层终止）。</li>
+            </ol>
+
+            <figure class="code" data-lang="java" data-file="LayeredOrderService.java">
+<pre><code>// 核心层：只定义能力，不关心谁来用
+interface InventoryCore {
+    boolean reserve(String sku, int qty);
+}
+
+// 功能层：组合核心层能力，向上提供业务功能
+class OrderFunction {
+    private final InventoryCore inventory;          // 依赖的是接口，不是实现
+
+    OrderFunction(InventoryCore inventory) {
+        this.inventory = inventory;
+    }
+
+    boolean placeOrder(String sku, int qty) {
+        if (!inventory.reserve(sku, qty)) {          // 只调用相邻的下层
+            return false;
+        }
+        // ... 生成订单、记录日志
+        return true;
+    }
+}
+
+// 应用层：只负责编排与展示，不写业务规则
+class OrderApp {
+    private final OrderFunction orderFunction;
+
+    OrderApp(OrderFunction orderFunction) {
+        this.orderFunction = orderFunction;
+    }
+
+    void onSubmit(String sku, int qty) {
+        System.out.println(orderFunction.placeOrder(sku, qty) ? "下单成功" : "库存不足");
+    }
+}</code></pre>
+            </figure>
+
+            <div class="callout callout--tip">
+              <span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-bulb"></use></svg></span>
+              <div class="callout__body">
+                <p><span class="callout__title">答题技巧</span>
+                简答「分层的优点」按「理解—变更—开发—复用」四条写：分解复杂易于理解；层稳定可标准化、变更影响局部；
+                接口确定后可并行开发与集成测试；标准接口允许不同实现，支持复用。
+                答「缺点」必须点出<b>性能</b>与<b>分层本身没有唯一正确答案</b>这两条，否则容易被判不完整。</p>
+              </div>
+            </div>
+
+            <h3>二、管道-过滤器：把数据处理变成一条流水线</h3>
+            <p>
+              面向数据流的系统里，如果整个加工过程写成一坨，就无法扩展、无法并行、无法复用单个步骤。
+              管道-过滤器把每个处理阶段做成一个<b>过滤器</b>（有输入端口和输出端口），过滤器之间用<b>管道</b>连接并缓存数据。
+              过滤器彼此独立：不共享状态、不知道上下游是谁，因此<b>最终结果与各过滤器的执行顺序无关</b>（只取决于连接拓扑）。
+            </p>
+
+            <div class="arch">
+              <p class="arch__title">结构示意图 2 · 管道-过滤器（线性管线与分叉拓扑）</p>
+              <div class="arch__flow">
+                <span class="arch__node arch__node--accent">数据源<small>source</small></span>
+                <span class="arch__link">→ 管道 →</span>
+                <span class="arch__node">过滤器 A<small>词法分析</small></span>
+                <span class="arch__link">→ 管道 →</span>
+                <span class="arch__node">过滤器 B<small>语法分析</small></span>
+                <span class="arch__link">→ 管道 →</span>
+                <span class="arch__node">过滤器 C<small>语义分析</small></span>
+                <span class="arch__link">→ 管道 →</span>
+                <span class="arch__node arch__node--accent">数据汇<small>sink</small></span>
+              </div>
+              <p class="arch__note">
+                拓扑可以分叉与汇合：同一份输入可以并行送给多个过滤器，多个过滤器的输出也可以汇入同一个下游。
+                三种常见变体：<b>管线（Pipelines）</b>把拓扑限制为线性序列；<b>有界管线（Bounded Pipes）</b>限制管道中能容纳的数据量；
+                <b>类型定义管道（Type Pipes）</b>明确规定相邻过滤器之间的数据类型。
+              </p>
+            </div>
+
+            <h4>过滤器做什么、管道做什么</h4>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>元素</th><th>职责</th><th>课件给出的三类加工</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>过滤器（构件）</td><td>读取输入、加工转换、写出输出；独立实体，无共享状态</td><td>提取部分数据 / 补充部分数据（计算、附加）/ 修改部分数据</td></tr>
+                  <tr><td>管道（连接件）</td><td>传输并缓存数据，是被动元素，体现数据流的实现</td><td>—</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h4>实现步骤（课件「管道和过滤器的实现」）</h4>
+            <ol>
+              <li>把系统任务分成几个独立的处理阶段；</li>
+              <li>定义每个管道传输的数据格式；</li>
+              <li>决定管道的连接方式（线性、分叉、汇合）；</li>
+              <li>设计和实现过滤器；</li>
+              <li>设计出错处理；</li>
+              <li>建立处理流水线。</li>
+            </ol>
+
+            <figure class="code" data-lang="java" data-file="Pipeline.java">
+<pre><code>import java.util.ArrayList;
+import java.util.List;
+
+/** 过滤器：只关心「输入 → 输出」，不知道上下游是谁 */
+interface Filter {
+    String process(String input);
+}
+
+/** 管道：把过滤器串起来，中间结果就是管道里的数据 */
+class Pipeline {
+    private final List&lt;Filter&gt; filters = new ArrayList&lt;&gt;();
+
+    Pipeline add(Filter f) {
+        filters.add(f);
+        return this;
+    }
+
+    String run(String input) {
+        String data = input;
+        for (Filter f : filters) {
+            data = f.process(data);       // 上一步输出 = 下一步输入
+        }
+        return data;
+    }
+}
+
+// 使用：cat file | grep xyz | sort | uniq 的 Java 版
+String out = new Pipeline()
+        .add(s -&gt; s.replaceAll("\\s+", " "))   // 规整空白
+        .add(s -&gt; s.toLowerCase())            // 统一大小写
+        .add(s -&gt; s.contains("xyz") ? s : "")  // 过滤
+        .run("Hello   XYZ  World");</code></pre>
+            </figure>
+
+            <div class="callout callout--warn">
+              <span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg></span>
+              <div class="callout__body">
+                <p><span class="callout__title">注意</span>
+                管道-过滤器的本质是<b>批处理</b>：每个过滤器都要完成「整批输入 → 整批输出」的转换，
+                所以它天然不适合交互式应用，也不擅长维持两条相互独立又有关联的数据流之间的通信。
+                课件还特别提到「有名管道」：通过命名管道传数据会增加解析或反馈工作，反而降低效率。</p>
+              </div>
+            </div>
+
+            <h3>三、插件架构：把「变化」做成可安装的部件</h3>
+            <p>
+              插件模式解决的是「软件要稳定，又必须让第三方持续扩展」的矛盾。做法是：<b>扩展点用接口表示</b>，
+              插件实现这些接口，由<b>插件管理者</b>在运行时加载、注册与实例化；即使一个插件都不装，宿主也能正常运行。
+              注意课件那句提醒——<b>插件不是简单的功能扩展</b>：它要求存在固定的、公开的、可在运行时扩展的接口。
+            </p>
+
+            <div class="arch">
+              <p class="arch__title">结构示意图 3 · 插件 / 微内核（核心 + 扩展点 + 插件）</p>
+              <div class="arch__hub">
+                <div class="arch__col">
+                  <div class="arch__slot">插件 A：图片导出</div>
+                  <div class="arch__slot">插件 B：语法检查</div>
+                  <div class="arch__slot">插件 C：第三方主题</div>
+                </div>
+                <div class="arch__kernel">
+                  插件管理者<br>Plugin Manager
+                  <span>按插件接口识别插件、按类型查找、负责实例化</span>
+                </div>
+                <div class="arch__col">
+                  <div class="arch__slot">扩展点：IExtension</div>
+                  <div class="arch__slot">扩展点：IViewer</div>
+                  <div class="arch__slot">扩展点：ICommand</div>
+                </div>
+              </div>
+              <p class="arch__note">
+                左侧是具体插件，中间是管理者，右侧是宿主定义的扩展点（接口）。三者合起来就是实现层面的
+                <b>宿主程序（host）+ 插件（plug-in）+ 契约（contract）</b>。
+                插件与具体应用解耦的关键在于：应用只认识接口，实例化与装配交给管理者。
+              </p>
+            </div>
+
+            <h4>参与者与职责</h4>
+            <ul>
+              <li><b>应用（宿主）</b>：功能可扩展的组件，定义扩展点并在合适时机调用插件。</li>
+              <li><b>插件管理者</b>：根据插件接口识别所有插件、找到指定类型插件、负责实例化与生命周期。</li>
+              <li><b>插件接口（扩展点）</b>：具体插件的抽象，也是宿主与插件之间唯一的契约。</li>
+              <li><b>具体插件</b>：接口的实现，不能独立运行，不依赖应用内部流程。</li>
+            </ul>
+
+            <figure class="code" data-lang="java" data-file="PluginHost.java">
+<pre><code>import java.util.ArrayList;
+import java.util.List;
+import java.util.ServiceLoader;
+
+/** 扩展点：宿主公开的契约 */
+interface ExportPlugin {
+    String name();
+    String export(String content);
+}
+
+/** 宿主：只依赖扩展点，不依赖任何具体插件 */
+class EditorHost {
+    private final List&lt;ExportPlugin&gt; plugins = new ArrayList&lt;&gt;();
+
+    // 运行时加载：没有插件时列表为空，宿主照常工作
+    void loadPlugins() {
+        ServiceLoader.load(ExportPlugin.class).forEach(plugins::add);
+    }
+
+    void exportAs(String format, String content) {
+        plugins.stream()
+               .filter(p -&gt; p.name().equalsIgnoreCase(format))
+               .findFirst()
+               .ifPresentOrElse(
+                   p -&gt; System.out.println(p.export(content)),
+                   () -&gt; System.out.println("未安装 " + format + " 插件"));
+    }
+}
+
+/** 具体插件：实现契约即可，不需要改宿主一行代码 */
+class PdfExportPlugin implements ExportPlugin {
+    public String name() { return "pdf"; }
+    public String export(String content) { return "PDF: " + content; }
+}</code></pre>
+            </figure>
+
+            <p>
+              课件的「动态行为」强调两点：<b>特定应用与插件实例解耦</b>、<b>插件管理者负责插件实例化</b>。
+              所以插件模式的实现难点不在接口定义，而在<b>发现机制</b>（扫描目录、读配置、ServiceLoader、OSGi）与
+              <b>隔离机制</b>（类加载器、权限、版本）。
+            </p>
+
+            <h3>四、Broker：让分布式调用对客户「位置透明」</h3>
+            <p>
+              大型系统必须能「成长」：单机很快到极限，组件要分布到多台计算机，架构要能适应性能变化，而且不能推倒重来。
+              但组件之间又不可能完全不依赖。Broker 的答案是：<b>把「找谁」这件事从客户代码里拿走，交给中间人</b>。
+              服务器把服务登记到 Broker，客户按逻辑名称请求服务，Broker 定位并转发；两端各有一个代理负责序列化与反序列化。
+            </p>
+
+            <div class="arch">
+              <p class="arch__title">结构示意图 4 · Broker（客户—客户端代理—经纪人—服务端代理—服务器）</p>
+              <div class="arch__flow">
+                <span class="arch__node">Client<small>客户</small></span>
+                <span class="arch__link">→</span>
+                <span class="arch__node">Client-side Proxy<small>序列化</small></span>
+                <span class="arch__link">→ 请求 →</span>
+                <span class="arch__node arch__node--accent">Broker<small>定位 / 转发 / 登记</small></span>
+                <span class="arch__link">→ 转发 →</span>
+                <span class="arch__node">Server-side Proxy<small>反序列化</small></span>
+                <span class="arch__link">→ 调用 →</span>
+                <span class="arch__node">Server<small>服务实现</small></span>
+              </div>
+              <p class="arch__note">
+                Broker 必须了解服务器，服务器提供的服务必须向它登记；客户则完全不需要知道服务器的物理位置。
+                角色不是静态的：同一个组件既可能是服务器，也可能是客户（例如服务 A 调用服务 B 时）。
+                <b>登记 → 查询 → 转发 → 调用 → 回传</b>，一次远程调用要走完这五步。
+              </p>
+            </div>
+
+            <h4>参与者与职责</h4>
+            <ul>
+              <li><b>Client</b>：实现需求，调用服务。</li>
+              <li><b>Client-side Proxy</b>：对客户而言代表服务器；接收请求、序列化、传给 Broker。</li>
+              <li><b>Broker</b>：负责客户与服务器之间的通信；管理服务提供者与服务之间的对应关系。</li>
+              <li><b>Server-side Proxy</b>：对服务器而言代表客户；把请求反序列化，生成服务方法调用信息。</li>
+              <li><b>Server</b>：提供服务的类或组件。</li>
+            </ul>
+
+            <h4>动态行为：一次调用要经过几步</h4>
+            <ol>
+              <li>服务器启动，把「逻辑服务名 → 实际地址」登记到 Broker；</li>
+              <li>客户调用本地代理，就像调用本地方法；</li>
+              <li>客户端代理把调用<b>序列化</b>成与平台无关的消息，发给 Broker；</li>
+              <li>Broker 按逻辑名查表，把消息转发给对应的服务端代理；</li>
+              <li>服务端代理<b>反序列化</b>并调用真正的服务器方法；</li>
+              <li>返回值沿原路反向传回（同样经过序列化与反序列化）。</li>
+            </ol>
+
+            <figure class="code" data-lang="java" data-file="BrokerClient.java">
+<pre><code>import java.util.HashMap;
+import java.util.Map;
+
+/** 服务端代理：客户在本地看到的「远程对象」 */
+interface OrderService {
+    String query(String orderId);
+}
+
+/** 客户端代理：把本地调用转成远程消息，客户感知不到网络 */
+class OrderServiceProxy implements OrderService {
+    private final Broker broker;
+
+    OrderServiceProxy(Broker broker) {
+        this.broker = broker;
+    }
+
+    public String query(String orderId) {
+        // 序列化请求 → 交给 Broker 定位并转发 → 反序列化响应
+        return broker.dispatch("order-service", "query", orderId);
+    }
+}
+
+/** 经纪人：维护「逻辑服务名 → 提供者」的映射 */
+class Broker {
+    private final Map&lt;String, String&gt; registry = new HashMap&lt;&gt;();
+
+    void register(String serviceName, String address) {
+        registry.put(serviceName, address);      // 服务启动时登记
+    }
+
+    String dispatch(String serviceName, String method, String arg) {
+        String address = registry.get(serviceName);   // 客户不知道 address
+        if (address == null) {
+            return "服务未登记：" + serviceName;
+        }
+        // 真实实现里这里是一次网络调用：序列化 → 传输 → 反序列化
+        return "调用 " + address + " 的 " + method + "(" + arg + ")";
+    }
+}</code></pre>
+            </figure>
+
+            <div class="callout callout--danger">
+              <span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-stop"></use></svg></span>
+              <div class="callout__body">
+                <p><span class="callout__title">代价的根源</span>
+                Broker 的四大缺点全部来自「多了一个中心 + 多了一跳」：
+                中心查询点的<b>容错性</b>差、可能成为<b>瓶颈</b>；间接调用增加<b>通信开销</b>；
+                代理依赖 Broker，<b>更换 Broker 必须重新适配</b>。所以 Broker 适合「位置透明比极致延迟更重要」的场景。</p>
+              </div>
+            </div>
+
+            <h3>五、SOA：以业务流程为线索组织服务</h3>
+            <p>
+              业务流程一改，系统就得大改——这是传统单体企业应用的顽疾。SOA 的思路是：
+              <b>把一个业务流程直接构建为一个计算机系统</b>，把应用场景分配给服务组件，
+              服务的边界与业务流程对齐，于是流程调整时只需要重组服务。
+              服务的层次是：<b>业务流程 → 应用服务（应用场景）→ 基本服务</b>。
+            </p>
+
+            <div class="arch">
+              <p class="arch__title">结构示意图 5 · SOA 的服务层次与角色协作</p>
+              <div class="arch__stack">
+                <div class="arch__layer"><b>业务流程层</b> 下单→支付→发货→售后<em>编排</em></div>
+                <div class="arch__layer"><b>应用服务层</b> 订单服务 / 支付服务 / 物流服务<em>一个应用场景一个服务</em></div>
+                <div class="arch__layer"><b>基本服务层</b> 用户、库存、账户、通知<em>可复用</em></div>
+              </div>
+              <p class="arch__note">
+                横向看角色协作：<b>服务提供者</b>发布服务契约到<b>服务注册中心（服务目录）</b>，
+                <b>服务消费者</b>查目录、绑定契约、发起调用。契约（接口）是唯一稳定的东西，实现可以动态更换。
+              </p>
+            </div>
+
+            <h4>课件对服务提出的九条要求</h4>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>要求</th><th>含义</th><th>为什么重要</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>分布式 distribution</td><td>服务可部署在不同节点</td><td>支持伸缩与故障隔离</td></tr>
+                  <tr><td>完整性 component appearance</td><td>对外表现为一个完整组件</td><td>屏蔽内部实现</td></tr>
+                  <tr><td>无状态 stateless</td><td>服务调用不依赖上次调用的会话状态</td><td>便于负载均衡与伸缩</td></tr>
+                  <tr><td>松耦合 loosely coupled</td><td>服务之间只依赖契约</td><td>实现可独立演化</td></tr>
+                  <tr><td>互换性 exchangeability</td><td>同契约的实现可以互相替换</td><td>支持升级与多供应商</td></tr>
+                  <tr><td>位置透明 location transparency</td><td>调用者不知道服务在哪台机器</td><td>部署变化不影响客户</td></tr>
+                  <tr><td>平台独立 platform independence</td><td>不绑定语言与操作系统</td><td>异构系统集成</td></tr>
+                  <tr><td>接口 interface</td><td>通过明确定义的接口暴露能力</td><td>契约优先</td></tr>
+                  <tr><td>服务目录 service directory</td><td>服务可注册、可发现</td><td>动态绑定</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <figure class="code" data-lang="java" data-file="OrderServiceContract.java">
+<pre><code>/**
+ * SOA 的契约优先：先定接口（契约），实现可以换。
+ * 真实系统里契约可能是 WSDL、OpenAPI 文档或 IDL。
+ */
+interface OrderServiceContract {
+    /** 无状态：所有上下文都由参数传入，不依赖服务端会话 */
+    OrderResult createOrder(String userId, String sku, int qty);
+}
+
+/** 实现 A：自建订单系统 */
+class SelfHostedOrderService implements OrderServiceContract {
+    public OrderResult createOrder(String userId, String sku, int qty) {
+        return new OrderResult("OK", "SELF-" + sku);
+    }
+}
+
+/** 实现 B：把遗留系统封装成服务（课件：遗留系统通过封装接入 SOA） */
+class LegacyOrderAdapter implements OrderServiceContract {
+    private final LegacyOrderSystem legacy = new LegacyOrderSystem();
+
+    public OrderResult createOrder(String userId, String sku, int qty) {
+        String code = legacy.oldCreateOrder(userId, sku, qty);   // 适配旧接口
+        return new OrderResult("OK", code);
+    }
+}</code></pre>
+            </figure>
+
+            <h3>六、MVC：交互系统的三段式分工</h3>
+            <p>
+              界面经常变，但业务不该跟着变；同一份数据要用不同形式展示；数据一改，所有展示都要同步。
+              MVC 把交互系统拆成三块：<b>模型</b>管数据与加工，<b>视图</b>管表示，<b>控制器</b>管输入解释。
+              课件把它称作「交互系统的重要事项」，本质是关注点分离在界面层的落地。
+            </p>
+
+            <div class="arch">
+              <p class="arch__title">结构示意图 6 · MVC 的组件交互与依赖方向</p>
+              <div class="arch__flow">
+                <span class="arch__node">用户<small>user</small></span>
+                <span class="arch__link">→ 事件 →</span>
+                <span class="arch__node arch__node--accent">Controller<small>解释输入、调用模型</small></span>
+                <span class="arch__link">→ 调用 →</span>
+                <span class="arch__node arch__node--accent">Model<small>业务数据与加工</small></span>
+              </div>
+              <div class="arch__flow" style="margin-top:.5rem">
+                <span class="arch__node">Model<small>状态变化</small></span>
+                <span class="arch__link">→ 通知 / 视图回拉 →</span>
+                <span class="arch__node">View<small>展示模型数据</small></span>
+                <span class="arch__link">← 选择 / 更新 ←</span>
+                <span class="arch__node arch__node--accent">Controller<small>控制视图状态</small></span>
+              </div>
+              <p class="arch__note">
+                依赖方向的关键：<b>View 依赖 Model</b>（读数据、订阅变化），<b>Controller 依赖 Model 与 View</b>，
+                而 <b>Model 不依赖 View 与 Controller</b>。这正是「改界面不用改业务」的结构性保证。
+                模型通知视图有两种风格：<b>被动模式</b>由控制器在数据改动后通知视图；<b>主动模式</b>由模型自己广播（推或拉）。
+              </p>
+            </div>
+
+            <h4>三个角色的职责边界</h4>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>角色</th><th>职责</th><th>不该做什么</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>模型 Model</td><td>执行业务流程；存储所有业务数据；封装数据加工；状态变化时通知视图</td><td>不处理输入输出；不考虑视图与控制器的实现</td></tr>
+                  <tr><td>视图 View</td><td>展示模型中的数据；包含交互控制元素</td><td>不解释事件，一律转交控制器</td></tr>
+                  <tr><td>控制器 Controller</td><td>接收用户输入；把事件与数据翻译成模型方法调用；控制模型状态与视图状态</td><td>不写业务规则；不直接操作数据库</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h4>MVC 内部其实藏着三个设计模式</h4>
+            <ul>
+              <li><b>观察者</b>：模型状态变化 → 通知所有视图刷新（MVC 的「主动模式」就是观察者）。</li>
+              <li><b>组合</b>：视图本身是一棵树（窗口、面板、控件），对整棵树的刷新可以统一处理。</li>
+              <li><b>策略</b>：视图与控制器的行为可以替换（同一模型配不同视图/控制器，如只读视图、编辑视图）。</li>
+            </ul>
+
+            <figure class="code" data-lang="java" data-file="MvcSkeleton.java">
+<pre><code>import java.util.ArrayList;
+import java.util.List;
+
+/** 模型：业务数据 + 加工 + 通知，不认识视图 */
+class CartModel {
+    interface Listener { void onChanged(CartModel m); }
+
+    private final List&lt;Listener&gt; listeners = new ArrayList&lt;&gt;();
+    private int count;
+
+    void addListener(Listener l) { listeners.add(l); }
+
+    void addItem() {
+        count++;                                  // 业务规则在模型里
+        listeners.forEach(l -&gt; l.onChanged(this)); // 主动模式：模型广播
+    }
+
+    int getCount() { return count; }
+}
+
+/** 视图：只负责展示，不解释事件 */
+class CartView {
+    void render(CartModel m) {
+        System.out.println("购物车：" + m.getCount() + " 件");
+    }
+}
+
+/** 控制器：把输入翻译成模型调用，并控制视图 */
+class CartController {
+    private final CartModel model;
+    private final CartView view;
+
+    CartController(CartModel model, CartView view) {
+        this.model = model;
+        this.view = view;
+        model.addListener(view::render);          // 视图订阅模型（观察者）
+    }
+
+    void onAddButtonClick() {
+        model.addItem();                          // 不写业务规则，只转发
+    }
+}</code></pre>
+            </figure>
+
+            <div class="callout callout--info">
+              <span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-info"></use></svg></span>
+              <div class="callout__body">
+                <p><span class="callout__title">MVC 的两种通知风格</span>
+                被动模式：模型完全被动，控制器在修改数据后主动通知视图刷新，实现简单、时序可控，但控制器要知道所有视图。
+                主动模式：模型维护观察者列表，状态一变就广播，视图自动更新，扩展新视图无需改控制器，代价是通知链隐式、可能影响性能。</p>
+              </div>
+            </div>
+
+            <h3>结构示意图 7 · 三种「顺序处理」模式的对比</h3>
+            <div class="arch">
+              <p class="arch__title">分层 vs 管道-过滤器 vs 事件驱动：数据与控制在哪儿流动</p>
+              <div class="arch__grid2">
+                <div class="arch__col">
+                  <div class="arch__node arch__node--accent">分层<small>控制逐层下降</small></div>
+                  <div class="arch__slot">调用方向：上层 → 下层</div>
+                  <div class="arch__slot">数据：以参数/返回值传递</div>
+                  <div class="arch__slot">耦合：依赖接口，相邻层可见</div>
+                </div>
+                <div class="arch__col">
+                  <div class="arch__node arch__node--accent">管道-过滤器<small>数据单向流动</small></div>
+                  <div class="arch__slot">驱动：数据到达即处理</div>
+                  <div class="arch__slot">数据：经管道传递并可缓存</div>
+                  <div class="arch__slot">耦合：过滤器互不相识</div>
+                </div>
+                <div class="arch__col">
+                  <div class="arch__node arch__node--accent">事件驱动<small>事件触发隐式调用</small></div>
+                  <div class="arch__slot">驱动：事件发生即分发</div>
+                  <div class="arch__slot">数据：随事件或回查获取</div>
+                  <div class="arch__slot">耦合：发布者不知道订阅者</div>
+                </div>
+              </div>
+              <p class="arch__cap">三者的共同点是「分而治之」，区别在于<b>谁驱动、数据怎么走、彼此是否相识</b>。</p>
+            </div>
+
+            <h3>结构示意图 8 · 架构模式全景图（按三族归位）</h3>
+            <div class="arch">
+              <p class="arch__title">本章模式在「系统 / 分布式 / 交互」三族中的位置</p>
+              <div class="arch__grid2">
+                <div class="arch__col">
+                  <div class="arch__node arch__node--accent">系统软件族</div>
+                  <div class="arch__slot">分层：抽象层次 + 调用方向</div>
+                  <div class="arch__slot">管道-过滤器：数据流 + 独立加工步</div>
+                  <div class="arch__slot">黑板：共享数据 + 知识源调度</div>
+                </div>
+                <div class="arch__col">
+                  <div class="arch__node arch__node--accent">分布式软件族</div>
+                  <div class="arch__slot">Broker：位置透明 + 代理</div>
+                  <div class="arch__slot">C/S：集中服务 + 请求响应</div>
+                  <div class="arch__slot">P2P：去中心 + 覆盖网络</div>
+                  <div class="arch__slot">SOA / 微服务：服务化 + 契约</div>
+                </div>
+                <div class="arch__col">
+                  <div class="arch__node arch__node--accent">交互软件族</div>
+                  <div class="arch__slot">MVC / MVP / MVVM：界面三段式</div>
+                  <div class="arch__slot">PAC：层次化多代理界面</div>
+                  <div class="arch__slot">事件驱动 / 发布-订阅：隐式通知</div>
+                </div>
+              </div>
+              <p class="arch__note">
+                实际系统几乎都是<b>组合模式</b>：一个电商系统外层是 SOA/微服务，每个服务内部是分层，
+                服务之间用事件驱动解耦，后台管理界面用 MVC，报表用管道-过滤器，规则引擎用解释器 + 插件。
+                <b>答题时先定位族，再说组合，最后讲代价。</b>
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="compare" data-title="横向对比">
+          <div class="section-head">
+            <span class="section-head__num">04</span>
+            <h2 class="section-title">横向对比</h2>
+            <a class="section-anchor" href="#compare" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">
+            架构模式的选择题几乎都出在「两个模式长得像」的地方。下面八张表覆盖本章全部模式，
+            最后落到一道完整的选型案例上。
+          </p>
+
+          <h3>表 1 · 全部架构模式总表（模式 / 关注点 / 典型场景 / 质量属性权衡）</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>模式</th>
+                  <th>关注点</th>
+                  <th>典型场景</th>
+                  <th>质量属性权衡（得 ↔ 失）</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>分层 Layered</td>
+                  <td>抽象层次的划分与依赖方向</td>
+                  <td>协议栈、OS、企业应用三层/四层</td>
+                  <td>可修改性、可复用性、可测试性 ↑ ↔ 性能 ↓、分层无唯一解</td>
+                </tr>
+                <tr>
+                  <td>管道-过滤器 Pipes &amp; Filters</td>
+                  <td>数据流的阶段化与独立加工</td>
+                  <td>编译器、UNIX 管道、ETL、图像处理</td>
+                  <td>可复用性、可扩展性、并发性 ↑ ↔ 交互性差、批量转换开销</td>
+                </tr>
+                <tr>
+                  <td>黑板 Blackboard</td>
+                  <td>非确定性问题的多知识源协作</td>
+                  <td>语音/图像识别、专家系统、约束求解</td>
+                  <td>灵活性、可演化性 ↑ ↔ 控制策略难、性能与可调试性差</td>
+                </tr>
+                <tr>
+                  <td>插件 / 微内核 Plugin</td>
+                  <td>运行时扩展点与第三方扩展</td>
+                  <td>IDE、浏览器扩展、Office 插件</td>
+                  <td>可扩展性、可维护性 ↑ ↔ 加载与管理开销、接口强依赖</td>
+                </tr>
+                <tr>
+                  <td>Broker 经纪人</td>
+                  <td>分布式调用的位置透明与解耦</td>
+                  <td>CORBA、DNS、RPC、服务注册中心</td>
+                  <td>互操作性、可伸缩性 ↑ ↔ 中心瓶颈、通信开销、容错差</td>
+                </tr>
+                <tr>
+                  <td>客户/服务器 C/S</td>
+                  <td>集中数据与服务、请求响应</td>
+                  <td>数据库、Web 应用、文件服务</td>
+                  <td>集中管理、易理解 ↑ ↔ 服务器单点与瓶颈、协议耦合</td>
+                </tr>
+                <tr>
+                  <td>点对点 P2P</td>
+                  <td>去中心化的资源共享</td>
+                  <td>BitTorrent、区块链、即时通信</td>
+                  <td>可伸缩性、容错性 ↑ ↔ 一致性、信任、管理与审计难</td>
+                </tr>
+                <tr>
+                  <td>SOA 面向服务</td>
+                  <td>业务流程与服务契约</td>
+                  <td>企业应用集成、遗留系统封装、B2B</td>
+                  <td>可复用性、互操作性 ↑ ↔ 服务过细、通信开销、治理成本</td>
+                </tr>
+                <tr>
+                  <td>微服务 Microservices</td>
+                  <td>业务能力拆分与独立部署</td>
+                  <td>互联网大规模业务、多团队协作</td>
+                  <td>可伸缩性、可部署性、故障隔离 ↑ ↔ 分布式复杂性、一致性、运维成本</td>
+                </tr>
+                <tr>
+                  <td>MVC</td>
+                  <td>界面、业务、输入的分离</td>
+                  <td>桌面 GUI、Web 应用、移动端</td>
+                  <td>可修改性、可测试性 ↑ ↔ 通知开销、小应用过度设计</td>
+                </tr>
+                <tr>
+                  <td>MVP / MVVM</td>
+                  <td>可测试的展示逻辑与自动同步</td>
+                  <td>Android、WPF、Vue/React</td>
+                  <td>可测试性、开发效率 ↑ ↔ 样板代码 / 绑定调试难</td>
+                </tr>
+                <tr>
+                  <td>PAC</td>
+                  <td>层次化、多任务的交互结构</td>
+                  <td>复杂桌面应用、CAD</td>
+                  <td>结构清晰、并发交互 ↑ ↔ 代理多、控制流分散</td>
+                </tr>
+                <tr>
+                  <td>事件驱动 / 发布-订阅</td>
+                  <td>隐式调用与松耦合通知</td>
+                  <td>消息中间件、IoT、微服务集成</td>
+                  <td>解耦、可扩展性 ↑ ↔ 控制流隐式、顺序与一致性难</td>
+                </tr>
+                <tr>
+                  <td>解释器 / 虚拟机</td>
+                  <td>运行时可配置的行为</td>
+                  <td>规则引擎、SQL、脚本、JVM</td>
+                  <td>灵活性、可移植性 ↑ ↔ 执行性能、引擎维护成本</td>
+                </tr>
+                <tr>
+                  <td>仓储 Repository</td>
+                  <td>领域与存储技术的隔离</td>
+                  <td>DDD、企业应用持久化层</td>
+                  <td>可测试性、可替换性 ↑ ↔ 抽象泄漏、事务边界复杂</td>
+                </tr>
+                <tr>
+                  <td>CQRS</td>
+                  <td>读写模型的分离与独立扩展</td>
+                  <td>高并发交易、报表看板、事件溯源</td>
+                  <td>性能、可伸缩性 ↑ ↔ 最终一致性、复杂度上升</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>表 2 · 三种「数据/控制流」模式：分层 vs 管道-过滤器 vs 黑板</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>维度</th><th>分层</th><th>管道-过滤器</th><th>黑板</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>构件</td><td>层（层内多个构件）</td><td>过滤器</td><td>知识源</td></tr>
+                <tr><td>连接件</td><td>协议 / 过程调用</td><td>管道（数据流）</td><td>共享数据结构 + 控制器调度</td></tr>
+                <tr><td>数据流动</td><td>随调用逐层传递</td><td>单向流经管道</td><td>集中写入、集中读取</td></tr>
+                <tr><td>驱动方式</td><td>上层请求驱动</td><td>数据到达驱动</td><td>状态变化触发知识源</td></tr>
+                <tr><td>构件间关系</td><td>相邻层可见，上下有依赖</td><td>互不相识，无共享状态</td><td>通过黑板间接耦合</td></tr>
+                <tr><td>适用问题</td><td>可分层抽象的常规系统</td><td>确定的数据加工流水线</td><td>无确定算法的启发式问题</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>表 3 · 分布式四模式：C/S vs Broker vs P2P vs 微服务</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>维度</th><th>客户/服务器</th><th>Broker</th><th>点对点</th><th>微服务</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>拓扑</td><td>中心服务器 + 多客户</td><td>客户—代理—经纪人—代理—服务器</td><td>对等节点 + 覆盖网络</td><td>多服务 + 网关/注册中心</td></tr>
+                <tr><td>位置透明</td><td>无，客户要知道服务器地址</td><td>有，按逻辑名称寻址</td><td>有，按覆盖网络寻址</td><td>有，注册发现 + 网关</td></tr>
+                <tr><td>耦合方式</td><td>请求-响应协议</td><td>代理 + 序列化消息</td><td>节点协议</td><td>轻量 API / 消息</td></tr>
+                <tr><td>扩展方式</td><td>升级服务器（纵向）</td><td>增加服务器并登记</td><td>增加节点（横向）</td><td>按服务独立伸缩</td></tr>
+                <tr><td>主要风险</td><td>单点瓶颈</td><td>Broker 单点与通信开销</td><td>一致性与信任</td><td>分布式复杂度与运维</td></tr>
+                <tr><td>典型实例</td><td>数据库、Web 服务器</td><td>CORBA、DNS</td><td>BitTorrent</td><td>Kubernetes 上的服务集群</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>表 4 · SOA vs 微服务 vs Broker（最容易混的三者）</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>维度</th><th>Broker</th><th>SOA</th><th>微服务</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>本质</td><td>通信基础设施：隐藏服务物理地址</td><td>架构风格：以服务组织业务流程</td><td>架构风格：小型自治服务的组合</td></tr>
+                <tr><td>服务粒度</td><td>不关心，只负责转发</td><td>较粗（应用服务 + 基本服务）</td><td>较细（按业务能力拆分）</td></tr>
+                <tr><td>通信方式</td><td>代理 + 序列化，常为同步 RPC</td><td>企业服务总线、契约（WSDL 等）</td><td>HTTP/RPC + 消息，去中心化</td></tr>
+                <tr><td>治理</td><td>中心登记与转发</td><td>中心化总线与注册中心</td><td>去中心化，服务自治</td></tr>
+                <tr><td>数据</td><td>不涉及</td><td>常共享企业级数据</td><td>每服务独立数据库</td></tr>
+                <tr><td>关系</td><td colspan="3">Broker 是 SOA 与微服务的<b>通信底座</b>；SOA 到微服务是「去总线、细化粒度、独立数据」的演进。</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>表 5 · 交互四模式：MVC vs MVP vs MVVM vs PAC</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>维度</th><th>MVC</th><th>MVP</th><th>MVVM</th><th>PAC</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>中间角色</td><td>Controller（薄，解释输入）</td><td>Presenter（厚，含展示逻辑）</td><td>ViewModel（状态 + 命令）</td><td>每个代理内的 Control</td></tr>
+                <tr><td>视图与模型</td><td>视图直接读模型、订阅模型</td><td>视图与模型互不直接依赖</td><td>通过数据绑定间接同步</td><td>代理内部三段协作</td></tr>
+                <tr><td>视图主动性</td><td>主动（可观察模型）</td><td>被动（由 Presenter 驱动）</td><td>声明式绑定</td><td>层次化，父子代理协作</td></tr>
+                <tr><td>可测试性</td><td>中（模型可测，控制器难测）</td><td>高（View 可 mock）</td><td>高（ViewModel 可单测）</td><td>中</td></tr>
+                <tr><td>结构复杂度</td><td>低</td><td>中（接口多、样板多）</td><td>中（依赖绑定框架）</td><td>高（代理多）</td></tr>
+                <tr><td>典型场景</td><td>Web MVC 框架、桌面 GUI</td><td>Android、WinForms</td><td>WPF、Vue、React</td><td>CAD、复杂多窗口应用</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>表 6 · 通知机制三兄弟：观察者 vs 事件驱动 vs 发布-订阅</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>维度</th><th>观察者（设计模式）</th><th>事件驱动（架构）</th><th>发布-订阅（架构）</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>层次</td><td>对象级</td><td>系统级风格</td><td>系统级集成模式</td></tr>
+                <tr><td>双方关系</td><td>主题直接持有观察者引用</td><td>发布者不指定接收者</td><td>双方互不相识，经代理</td></tr>
+                <tr><td>是否有中间件</td><td>无</td><td>可有可无（事件总线）</td><td>必须有（消息代理）</td></tr>
+                <tr><td>同步性</td><td>通常同步</td><td>可同步可异步</td><td>通常异步、可持久化</td></tr>
+                <tr><td>典型实现</td><td><code>addListener</code></td><td>GUI 事件循环、EDA</td><td>Kafka、RabbitMQ</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>表 7 · 插件 vs 装饰 vs 策略（课件「类似模式」辨析）</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>维度</th><th>插件</th><th>装饰模式</th><th>策略模式</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>扩展时机</td><td>运行时，可动态装卸</td><td>运行时包装对象</td><td>运行时替换算法</td></tr>
+                <tr><td>扩展接口</td><td>有固定、公开的扩展点，供第三方实现</td><td>与被装饰者同一接口</td><td>统一的策略接口</td></tr>
+                <tr><td>粒度</td><td>架构级，可独立部署/分发</td><td>对象级</td><td>对象级</td></tr>
+                <tr><td>能否独立运行</td><td>不能，必须寄宿在宿主中</td><td>不能</td><td>不能</td></tr>
+                <tr><td>核心差别</td><td colspan="3">课件原话：装饰与策略<b>没有固定的、公开的、用于第三方在运行时扩展系统功能的接口</b>，因此不是插件。</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>表 8 · 仓储 vs 分层持久化 vs CQRS</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>维度</th><th>仓储 Repository</th><th>普通分层持久化</th><th>CQRS</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>抽象层次</td><td>领域对象的集合抽象</td><td>DAO / SQL 封装</td><td>读写模型分离</td></tr>
+                <tr><td>业务是否依赖存储</td><td>不依赖</td><td>常依赖具体 SQL 与表结构</td><td>写模型不依赖读模型</td></tr>
+                <tr><td>一致性</td><td>强一致（同一数据源）</td><td>强一致</td><td>最终一致</td></tr>
+                <tr><td>适用</td><td>DDD、复杂领域</td><td>简单 CRUD</td><td>读写负载差异大</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>选型实战：电商系统该选什么架构？</h3>
+          <p>
+            题目常这么出：「某电商系统包含商品、订单、支付、库存、物流、客服、后台报表，
+            要求支撑大促峰值、支持多团队并行开发、允许第三方商家接入、后台运营界面频繁调整。请给出架构方案并说明理由。」
+            下面按<b>变化点 → 质量属性 → 模式 → 代价与缓解</b>四步拆解。
+          </p>
+
+          <h4>第一步：识别变化点（决定哪些地方需要模式）</h4>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>变化点</th><th>变化频率</th><th>影响范围</th><th>对应模式</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>运营后台界面、活动页样式</td><td>极高</td><td>只影响展示层</td><td>MVC / MVVM</td></tr>
+                <tr><td>支付渠道、物流承运商、促销规则</td><td>高</td><td>局部可插拔</td><td>插件 / 策略 / 适配器</td></tr>
+                <tr><td>大促流量（读多写少、峰值数十倍）</td><td>周期性</td><td>容量与部署</td><td>微服务 + 缓存 + CQRS</td></tr>
+                <tr><td>第三方商家 / 外部系统接入</td><td>中</td><td>接口契约</td><td>SOA / 开放平台（服务契约）</td></tr>
+                <tr><td>业务域拆分与团队边界</td><td>低但影响大</td><td>系统骨架</td><td>微服务（按业务能力）</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h4>第二步：把质量属性排优先级</h4>
+          <ul>
+            <li><b>硬约束</b>：大促期间的高并发与可伸缩性、支付链路的可用性、下单接口的响应时间。</li>
+            <li><b>重要但可让步</b>：多团队并行开发效率（可用服务边界解决）、第三方接入的开放性。</li>
+            <li><b>可接受代价</b>：报表允许分钟级延迟（因此 CQRS 的最终一致可接受）；非核心链路允许降级。</li>
+          </ul>
+
+          <h4>第三步：组合方案（没有单一模式能覆盖全部）</h4>
+          <div class="arch">
+            <p class="arch__title">电商系统架构方案（分层 + 微服务 + 事件驱动 + 插件 + MVC）</p>
+            <div class="arch__stack">
+              <div class="arch__layer"><b>接入层</b> CDN / 网关 / BFF<em>MVC 的 Controller 在此解释请求</em></div>
+              <div class="arch__layer"><b>业务服务层</b> 商品 / 订单 / 支付 / 库存 / 物流<em>微服务，按业务能力拆分、独立数据库</em></div>
+              <div class="arch__layer"><b>集成层</b> 消息队列（订单事件、库存扣减、通知）<em>事件驱动 / 发布-订阅，最终一致</em></div>
+              <div class="arch__layer"><b>扩展层</b> 支付渠道插件 / 促销规则引擎<em>插件 + 解释器</em></div>
+              <div class="arch__layer"><b>数据层</b> 主库 + 读库 + 缓存 + 报表库<em>仓储 + CQRS</em></div>
+            </div>
+            <p class="arch__note">
+              每个微服务<b>内部</b>仍是分层（接口层—业务层—持久化层，仓储隔离数据库）；
+              服务<b>之间</b>用事件驱动解耦，避免下单时同步等待所有下游；
+              面向商家与外部系统的能力以<b>服务契约</b>暴露（SOA 思想），
+              运营后台用 <b>MVC/MVVM</b>，支付渠道与促销规则用<b>插件 + 解释器</b>做运行时扩展。
+            </p>
+          </div>
+
+          <h4>第四步：说明代价与缓解（这是拉开分差的部分）</h4>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>选用的模式</th><th>换来的好处</th><th>引入的代价</th><th>缓解手段</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>微服务</td><td>独立伸缩、故障隔离、团队自治</td><td>分布式事务与一致性、运维复杂</td><td>事件驱动 + 最终一致、Saga、服务网格与统一监控</td></tr>
+                <tr><td>事件驱动</td><td>削峰填谷、服务解耦</td><td>消息重复/丢失、调用链难追踪</td><td>幂等消费、消息持久化、全链路追踪</td></tr>
+                <tr><td>分层</td><td>服务内结构清晰、可测试</td><td>跨层调用开销</td><td>严格分层 + 只对关键路径做层桥接</td></tr>
+                <tr><td>插件 / 解释器</td><td>支付渠道、规则热扩展</td><td>加载开销、接口版本管理</td><td>契约版本化、插件沙箱与灰度</td></tr>
+                <tr><td>CQRS</td><td>读扩展、报表不拖累交易</td><td>最终一致、同步代码</td><td>只对报表与商品详情等读多场景使用</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="callout callout--tip">
+            <span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-bulb"></use></svg></span>
+            <div class="callout__body">
+              <p><span class="callout__title">选型题的答题模板</span>
+              ① 先声明「没有银弹，按变化点与质量属性选型」；② 列出 2–3 个变化点并各配一个模式；
+              ③ 画出组合结构（分层 + 服务 + 事件 + 插件）；④ 明确说出<b>代价与缓解</b>；
+              ⑤ 最后给一句「演进路径」：先单体分层，规模上来后再按业务边界拆服务。
+              只写「用微服务因为先进」一定扣分。</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="pitfalls" data-title="易错点">
+          <div class="section-head">
+            <span class="section-head__num">05</span>
+            <h2 class="section-title">易错点</h2>
+            <a class="section-anchor" href="#pitfalls" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">这些是学生答卷里真实出现过的错误，也是判断题最爱设的陷阱。</p>
+
+          <ul class="pitfalls">
+            <li><strong>把 Broker 与 Mediator 混为一谈。</strong>
+              Mediator 中的同事对象处在<b>同一个系统内</b>，通过中介者通信，是 1:n 转发；
+              Broker 负责在<b>分布式系统</b>中定位接收组件，是 1:1 的请求转发，还要处理序列化、位置透明与跨平台。
+              一句话记：Mediator 解决「对象太多互相引用」，Broker 解决「服务在哪儿、怎么跨机器调」。</li>
+            <li><strong>认为 SOA 就是微服务。</strong>
+              SOA 强调中心化的服务总线、较粗的服务粒度与契约治理；微服务强调去中心化、细粒度、独立数据库与自动化运维。
+              微服务是 SOA 的一种轻量化演进，但「服务化」不等于「微服务化」。答题时必须写出至少两点差别（治理方式、粒度/数据）。</li>
+            <li><strong>把「分层越细越好」当结论。</strong>
+              分层有明确代价：数据要逐层传递，性能下降；多层调用难调试；为了性能常被迫合并层，反而破坏逻辑独立性。
+              分层的难点恰恰是「找不到唯一正确的抽象层次」。</li>
+            <li><strong>以为插件就是「加了个功能」。</strong>
+              课件的原话是「插件不是简单的功能扩展」：必须有<b>固定的、公开的、可在运行时扩展</b>的接口（扩展点），
+              并且插件不能独立运行、不依赖应用内部流程。装饰器与策略模式虽然也能换行为，但没有这样的公开扩展点。</li>
+            <li><strong>说管道-过滤器适合交互式系统。</strong>
+              它本质是批处理：每个过滤器要做完整的「整批输入 → 整批输出」转换，因此不适合交互式应用，
+              也难以维持两条相关数据流之间的通信。需要交互应选 MVC/事件驱动。</li>
+            <li><strong>认为 MVC 里模型依赖视图。</strong>
+              依赖方向是单向的：View 依赖 Model，Controller 依赖 Model 与 View，<b>Model 不依赖任何视图</b>。
+              一旦模型里出现 <code>refreshView()</code>，MVC 的结构性优点就消失了。</li>
+            <li><strong>把观察者模式、事件驱动、发布-订阅当成同义词。</strong>
+              观察者是<b>对象级设计模式</b>，主题直接持有观察者引用；事件驱动是<b>架构风格</b>，发布者不指定接收者；
+              发布-订阅必须有<b>消息代理</b>，双方互不相识。层次、耦合方式、同步性三点都不同。</li>
+            <li><strong>只背优点，不答代价。</strong>
+              简答题按「定义 + 作用 + 代价」三段给分。每种模式至少准备两条代价：
+              分层的性能、管道-过滤器的交互性、插件的加载与接口依赖、Broker 的中心瓶颈、
+              SOA 的通信开销、MVC 的通知开销、微服务的分布式复杂度。</li>
+          </ul>
+        </section>
+
+        <section class="section" id="quiz" data-title="本章自测">
+          <div class="section-head">
+            <span class="section-head__num">06</span>
+            <h2 class="section-title">本章自测</h2>
+            <a class="section-anchor" href="#quiz" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">
+            22 道题覆盖本章全部模式：单选 11、多选 5、判断 6。题目数据来自本页底部
+            <code>&lt;script id="quiz-data"&gt;</code>，由 site.js 渲染判分，结果保存在本机。
+          </p>
+
+          <div class="quiz" id="quiz-root"></div>
+        </section>
+
+        <section class="section" id="cards" data-title="记忆卡片">
+          <div class="section-head">
+            <span class="section-head__num">07</span>
+            <h2 class="section-title">记忆卡片</h2>
+            <a class="section-anchor" href="#cards" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">点击卡片翻面；标记「已掌握」会记住进度，下次接着看。37 张卡片按「定义 / 结构 / 对比 / 代价 / 易错 / 选型」分类。</p>
+
+          <div class="flash" id="cards-root"></div>
+        </section>
+
+        <section class="section" id="slides" data-title="课件原图">
+          <div class="section-head">
+            <span class="section-head__num">08</span>
+            <h2 class="section-title">课件原图</h2>
+            <a class="section-anchor" href="#slides" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">
+            本章课件共 82 页，全部由 <code>tools/extract_slides.py</code> 从
+            <code>ch5.架构模式.pdf</code> 导出。重点页：第 13 页分层规则、第 28 页管道结构、
+            第 48 页 Broker 类图、第 61 页 SOA 类图、第 71 页 MVC 依赖关系、第 79 页 MVC 综合类图。
+          </p>
+
+          <div class="slides"
+               data-slides-dir="slides"
+               data-count="82"
+               data-prefix="slide"
+               data-ext="jpg"
+               data-pad="3"
+               data-start="1"
+               data-title="第 5 章 · 架构模式课件原图"></div>
+        </section>
+
+        <section class="section" id="videos" data-title="视频讲解">
+          <div class="section-head">
+            <span class="section-head__num">09</span>
+            <h2 class="section-title">视频讲解</h2>
+            <a class="section-anchor" href="#videos" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">
+            6 段架构模式讲解：分层、管道-过滤器、插件、Broker、MVC、SOA。每段都从「这个架构在解决什么质量问题」讲起，再落到构件与连接件。
+          </p>
+          <div class="videos" id="videos-root"></div>
+          <p class="muted tiny" style="margin-top:var(--sp-3)">共 6 段，均为 1080p 讲解视频；点封面播放，<kbd>Esc</kbd> 关闭。</p>
+        </section>
+
+        <section class="section" id="summary" data-title="本章小结">
+          <div class="section-head">
+            <span class="section-head__num">10</span>
+            <h2 class="section-title">本章小结</h2>
+            <a class="section-anchor" href="#summary" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">把整章压缩成一页，考前只看这一节也能抓住骨架。</p>
+
+          <div class="prose">
+            <h3>一句话记住每种模式</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>模式</th><th>一句话本质</th><th>一句话代价</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>分层</td><td>按抽象层次竖切，上层调用下层</td><td>逐层穿越，性能下降</td></tr>
+                  <tr><td>管道-过滤器</td><td>按处理阶段横切，数据经管道流动</td><td>批处理，不适合交互</td></tr>
+                  <tr><td>黑板</td><td>共享数据 + 知识源被调度</td><td>控制策略难，调试难</td></tr>
+                  <tr><td>插件 / 微内核</td><td>核心定扩展点，插件运行时装入</td><td>加载开销、接口强依赖</td></tr>
+                  <tr><td>Broker</td><td>经纪人按逻辑名定位并转发</td><td>中心瓶颈、通信开销</td></tr>
+                  <tr><td>C/S</td><td>集中服务，客户请求响应</td><td>服务器单点与瓶颈</td></tr>
+                  <tr><td>P2P</td><td>节点对等，覆盖网络寻址</td><td>一致性、信任、管理难</td></tr>
+                  <tr><td>SOA</td><td>按业务流程组织服务，契约优先</td><td>服务过细、通信开销、治理重</td></tr>
+                  <tr><td>微服务</td><td>业务能力拆成自治小服务</td><td>分布式复杂、运维成本高</td></tr>
+                  <tr><td>MVC</td><td>模型、视图、控制器三段分工</td><td>通知开销、小应用过度设计</td></tr>
+                  <tr><td>MVP / MVVM</td><td>展示逻辑抽出，View 被动或绑定</td><td>样板代码 / 绑定难调试</td></tr>
+                  <tr><td>PAC</td><td>代理层次结构，每层三段</td><td>代理多、控制流分散</td></tr>
+                  <tr><td>事件驱动 / 发布-订阅</td><td>发事件不指定接收者，隐式调用</td><td>控制流隐式、顺序与一致性难</td></tr>
+                  <tr><td>解释器 / 虚拟机</td><td>运行时解释执行，行为可配置</td><td>执行性能、引擎维护成本</td></tr>
+                  <tr><td>仓储</td><td>用集合式抽象隔离数据库</td><td>抽象泄漏、事务复杂</td></tr>
+                  <tr><td>CQRS</td><td>读写模型分离，各自优化</td><td>最终一致、复杂度上升</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>选型口诀</h3>
+            <div class="callout callout--tip">
+              <span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-bulb"></use></svg></span>
+              <div class="callout__body">
+                <p><span class="callout__title">三问定模式</span>
+                <b>问变化点</b>：界面变 → MVC/MVVM；算法或规则变 → 策略/插件/解释器；规模变 → 微服务/分层伸缩。
+                <b>问数据形态</b>：数据流式加工 → 管道-过滤器；共享状态协作 → 黑板/仓储；跨机器调用 → Broker/SOA/微服务。
+                <b>问代价承受力</b>：团队能运维分布式吗？能治理插件版本吗？能接受最终一致吗？答不上来就退回更简单的方案。</p>
+              </div>
+            </div>
+
+            <h3>自测清单（逐条打勾）</h3>
+            <ol class="objectives">
+              <li>能默写分层的两条核心规则（上层可用下层、下层不可用上层；只对相邻层可见），并说出严格分层与层桥接的差别。</li>
+              <li>能画出管道-过滤器的线性与分叉拓扑，并解释「结果与过滤器执行顺序无关」的原因。</li>
+              <li>能说出插件模式的四个参与者，并解释为什么「插件不是简单的功能扩展」。</li>
+              <li>能画出 Broker 的五角色结构，并按顺序描述一次远程调用的六个步骤。</li>
+              <li>能背出 SOA 对服务的九条要求中的至少六条，并区分 SOA 与微服务。</li>
+              <li>能画出 MVC 的依赖方向，并指出模型通知视图的被动模式与主动模式。</li>
+              <li>能说出 MVC 内部用到的三个设计模式（观察者、组合、策略）及其位置。</li>
+              <li>能对每种模式各说出两条代价，并把它们对应到具体的质量属性。</li>
+              <li>能在「电商系统选型」题中按「变化点 → 质量属性 → 模式 → 代价与缓解」四步作答。</li>
+              <li>能辨析 Broker vs Mediator、SOA vs 微服务、观察者 vs 事件驱动 vs 发布-订阅三组易混概念。</li>
+            </ol>
+          </div>
+        </section>
+
+        <nav class="pager" id="pager-root" aria-label="章节导航"></nav>
+
+      </div><!-- /.main__inner -->
+    </main>
+  </div><!-- /.layout -->
+</div><!-- /.wrap -->
+
+<footer class="footer" id="footer-root"></footer>
+
+<script type="application/json" id="quiz-data">
+[
+  {
+    "type": "single",
+    "tag": "分层",
+    "stem": "分层架构中，层与层之间的连接件主要是什么？",
+    "options": [
+      "共享内存与信号量",
+      "协议与过程调用",
+      "消息队列与事件总线",
+      "数据管道"
+    ],
+    "answer": 1,
+    "explain": "课件明确：层次之间的连接件是协议和过程调用，用以实现各层之间的交互。A 是黑板/共享数据类结构，C 是事件驱动，D 是管道-过滤器。"
+  },
+  {
+    "type": "single",
+    "tag": "分层",
+    "stem": "关于「严格分层」，下列说法正确的是？",
+    "options": [
+      "第 n 层可以调用它上方的第 n+1 层，以提升性能",
+      "第 n 层只依赖下方的第 n−1 层，且只为上一层提供服务",
+      "严格分层禁止使用接口，只允许直接调用实现类",
+      "严格分层要求每一层都必须部署在独立的物理机器上"
+    ],
+    "answer": 1,
+    "explain": "严格分层规定：第 n 层只依赖下方的第 n−1 层；一个层不依赖它的上层；只为上一层提供服务；通过接口使用服务。A 方向反了，C 恰恰要求通过接口，D 是物理部署问题，与分层规则无关。"
+  },
+  {
+    "type": "single",
+    "tag": "管道-过滤器",
+    "stem": "管道-过滤器架构中，管道（连接件）的主要职责是？",
+    "options": [
+      "对数据做提取、补充、修改等加工",
+      "传输并缓存数据，是被动元素",
+      "决定哪个过滤器先执行",
+      "负责过滤器的实例化与生命周期管理"
+    ],
+    "answer": 1,
+    "explain": "过滤器负责数据加工（提取、补充、修改），管道只负责传输与缓存数据，是被动元素，体现数据流的实现。C、D 分别混淆了「拓扑定义」与「插件管理者」的职责。"
+  },
+  {
+    "type": "single",
+    "tag": "管道-过滤器",
+    "stem": "下列系统中，最不适合采用管道-过滤器风格的是？",
+    "options": [
+      "UNIX 命令行 cat file | grep xyz | sort | uniq",
+      "编译器的词法、语法、语义分析与代码生成",
+      "图像处理中的滤波与格式转换流水线",
+      "需要即时响应用户拖拽的图形编辑器"
+    ],
+    "answer": 3,
+    "explain": "管道-过滤器本质是批处理：每个过滤器要做完整的「整批输入→整批输出」转换，不适合交互式应用。A、B、C 都是典型的确定性数据加工流水线。"
+  },
+  {
+    "type": "single",
+    "tag": "插件",
+    "stem": "插件架构模式中，负责在运行时识别、加载并实例化插件的角色是？",
+    "options": [
+      "应用（宿主）",
+      "插件接口",
+      "插件管理者",
+      "具体插件"
+    ],
+    "answer": 2,
+    "explain": "课件指出：插件管理者根据插件接口识别所有插件、找到指定类型插件，并负责插件实例化与使用，从而实现「特定应用与插件实例解耦」。"
+  },
+  {
+    "type": "single",
+    "tag": "Broker",
+    "stem": "Broker 模式中，客户端代理（Client-side Proxy）的核心职责是？",
+    "options": [
+      "管理服务提供者与服务之间的对应关系",
+      "对客户代表服务器：接收请求、序列化后传给 Broker",
+      "反序列化请求并生成服务方法调用信息",
+      "提供服务的具体业务实现"
+    ],
+    "answer": 1,
+    "explain": "客户端代理对客户而言代表服务器，负责接收请求、序列化并传给 Broker；A 是 Broker 的职责，C 是服务端代理的职责，D 是 Server 的职责。"
+  },
+  {
+    "type": "single",
+    "tag": "SOA",
+    "stem": "SOA 中服务的层次自上而下依次是？",
+    "options": [
+      "基本服务 → 应用服务 → 业务流程",
+      "业务流程 → 应用服务 → 基本服务",
+      "应用服务 → 业务流程 → 基本服务",
+      "业务流程 → 基本服务 → 应用服务"
+    ],
+    "answer": 1,
+    "explain": "课件「服务的层次」：业务流程 → 应用场景（应用服务）→ 基本服务。上层通过编排下层服务完成业务，基本服务最可复用。"
+  },
+  {
+    "type": "single",
+    "tag": "MVC",
+    "stem": "MVC 中，模型通知视图数据发生变化有两种风格，它们是？",
+    "options": [
+      "同步模式与异步模式",
+      "被动模式与主动模式",
+      "推模型与拉模型",
+      "单播模式与广播模式"
+    ],
+    "answer": 1,
+    "explain": "课件把「通知视图」分为被动模式（控制器通知视图数据的改动）与主动模式（模型自己广播，可用推或拉）。C 的推/拉是主动模式内部的两种实现方式，不是与被动模式并列的分类。"
+  },
+  {
+    "type": "single",
+    "tag": "MVC",
+    "stem": "MVC 的依赖方向，下列哪一项是正确且关键的？",
+    "options": [
+      "模型依赖视图，视图依赖控制器",
+      "视图依赖模型，模型不依赖视图",
+      "控制器不依赖模型，只依赖视图",
+      "三者两两双向依赖"
+    ],
+    "answer": 1,
+    "explain": "View 依赖 Model（读数据、订阅变化），Controller 依赖 Model 与 View，而 Model 不依赖 View 与 Controller。这正是「改界面不用改业务」的结构保证。"
+  },
+  {
+    "type": "single",
+    "tag": "黑板",
+    "stem": "黑板模式最典型的适用场景是？",
+    "options": [
+      "需要严格事务的银行转账",
+      "没有确定求解算法、需要多知识源协作逐步逼近答案的问题",
+      "界面需要频繁变更的 Web 应用",
+      "需要第三方运行时扩展功能的 IDE"
+    ],
+    "answer": 1,
+    "explain": "黑板适用于解空间大、过程不确定的启发式问题（语音识别、专家系统、约束求解）：一块共享黑板 + 若干独立知识源 + 控制器调度。A 属事务型系统，C 用 MVC，D 用插件。"
+  },
+  {
+    "type": "single",
+    "tag": "选型",
+    "stem": "某系统要求：不同支付渠道可随时接入或下线、渠道实现由第三方提供、宿主代码不允许改动。最应选用的架构模式是？",
+    "options": [
+      "分层架构",
+      "管道-过滤器",
+      "插件（微内核）架构",
+      "点对点架构"
+    ],
+    "answer": 2,
+    "explain": "「第三方实现 + 运行时装卸 + 不改宿主」正是插件模式的三要素：核心定义扩展点（接口），插件实现接口，插件管理者在运行时加载。分层解决抽象层次，管道解决数据加工，P2P 解决去中心化。"
+  },
+  {
+    "type": "multiple",
+    "tag": "分层",
+    "stem": "下列属于分层架构缺点的是（多选）：",
+    "options": [
+      "层次的划分不太容易，很难找到唯一正确的抽象方法",
+      "数据逐层传递，导致系统性能下降",
+      "多层结构难以调试，往往需要一系列跨层次调用",
+      "无法支持并行开发与替换实现"
+    ],
+    "answer": [
+      0,
+      1,
+      2
+    ],
+    "explain": "D 说反了：正因为层间通过稳定接口交互，分层才支持并行开发、集成测试与实现替换，这是分层的优点。"
+  },
+  {
+    "type": "multiple",
+    "tag": "管道-过滤器",
+    "stem": "关于管道-过滤器，下列说法正确的有（多选）：",
+    "options": [
+      "过滤器之间无需共享状态，也无需知道其他过滤器",
+      "最终输出结果与各过滤器的执行顺序无关",
+      "管线（Pipelines）把拓扑限制为过滤器的线性序列",
+      "有界管线（Bounded Pipes）用于明确规定相邻过滤器的数据类型"
+    ],
+    "answer": [
+      0,
+      1,
+      2
+    ],
+    "explain": "D 混淆了两个变体：有界管线限制的是管道中能容纳的数据量；明确规定相邻过滤器之间数据类型的是「类型定义管道（Type Pipes）」。"
+  },
+  {
+    "type": "multiple",
+    "tag": "Broker",
+    "stem": "Broker 模式的优点包括（多选）：",
+    "options": [
+      "客户无需知道服务器的物理地址，实现位置透明",
+      "服务接口不变时，可以更改服务器的实现",
+      "不依赖平台，可由不同编程语言实现",
+      "Broker 作为中心节点，天然具备良好的容错性"
+    ],
+    "answer": [
+      0,
+      1,
+      2
+    ],
+    "explain": "D 恰是 Broker 的缺点：Broker 是中心查询点，容错性差、可能成为瓶颈。课件「评价-缺点」第一条就是「本地中介为中心查询处，容错性」。"
+  },
+  {
+    "type": "multiple",
+    "tag": "SOA",
+    "stem": "课件对 SOA 中的服务提出了多项要求，下列属于其中的有（多选）：",
+    "options": [
+      "无状态 stateless",
+      "位置透明 location transparency",
+      "互换性 exchangeability",
+      "强事务性 strong transactionality"
+    ],
+    "answer": [
+      0,
+      1,
+      2
+    ],
+    "explain": "课件列出的九条要求是：分布式、完整性、无状态、松耦合、互换性、位置透明、平台独立、接口、服务目录。强事务性不在其中，分布式服务反而常以最终一致替代强事务。"
+  },
+  {
+    "type": "multiple",
+    "tag": "MVC",
+    "stem": "MVC 模式内部实际用到了下列哪些设计模式（多选）：",
+    "options": [
+      "观察者模式（模型通知视图）",
+      "组合模式（视图树）",
+      "策略模式（视图/控制器可替换）",
+      "单例模式（保证模型唯一）"
+    ],
+    "answer": [
+      0,
+      1,
+      2
+    ],
+    "explain": "课件用三页分别讲了 MVC 中的观察者模式、组合模式与策略模式。MVC 并不要求模型是单例，单例也不是 MVC 的结构组成。"
+  },
+  {
+    "type": "boolean",
+    "tag": "辨析",
+    "stem": "Broker 模式与 Mediator 模式解决的是同一类问题，只是叫法不同。",
+    "answer": false,
+    "explain": "二者不同：Mediator 中的同事对象处在同一系统内，通过中介者通信，是 1:n 转发；Broker 负责在分布式系统中定位接收组件，是 1:1 的请求转发，还要处理序列化与位置透明。"
+  },
+  {
+    "type": "boolean",
+    "tag": "辨析",
+    "stem": "SOA 与微服务是同一种架构风格，只是微服务这个名称更新。",
+    "answer": false,
+    "explain": "SOA 强调中心化服务总线、较粗粒度与契约治理；微服务强调去中心化、细粒度、独立数据库与自动化运维。微服务是 SOA 的轻量化演进，但两者在治理方式、服务粒度、数据管理上都有实质差别。"
+  },
+  {
+    "type": "boolean",
+    "tag": "插件",
+    "stem": "装饰模式和策略模式也可以算作插件模式，因为它们都能在运行时替换行为。",
+    "answer": false,
+    "explain": "课件明确指出二者的区别：装饰与策略没有固定的、公开的、用于第三方在运行时扩展系统功能的接口；插件必须有扩展点，且插件不能独立运行、不依赖应用内部流程。"
+  },
+  {
+    "type": "boolean",
+    "tag": "分层",
+    "stem": "在严格分层中，下层可以通过接口调用上层的功能。",
+    "answer": false,
+    "explain": "严格分层的方向是单向的：上层通过下层提供的接口使用下层功能，下层不能使用上层。若允许反向调用，层间就形成了循环依赖，分层带来的可替换性随之消失。"
+  },
+  {
+    "type": "boolean",
+    "tag": "管道-过滤器",
+    "stem": "管道-过滤器风格中，过滤器之间需要共享状态才能保证处理结果正确。",
+    "answer": false,
+    "explain": "恰恰相反：每个过滤器都是独立实体，过滤器之间无需共享状态、无需知道其他过滤器，只通过管道传递数据。正因如此，最终结果才与各过滤器的执行顺序无关。"
+  },
+  {
+    "type": "boolean",
+    "tag": "MVC",
+    "stem": "在 MVC 的被动模式中，由控制器在数据改动后通知视图刷新。",
+    "answer": true,
+    "explain": "课件原文：被动模式（控制器通知视图数据的改动）；主动模式（模型自己广播，推和拉）。被动模式下模型完全被动，控制器承担协调职责。"
+  }
+]
+</script>
+<script type="application/json" id="cards-data">
+[
+  {
+    "front": "什么是架构模式？",
+    "back": "描述软件系统<b>基本的组织结构</b>：一组预定义的子系统、它们的职责，以及组织它们之间的规则。",
+    "tag": "定义"
+  },
+  {
+    "front": "架构模式的两种基本词汇？",
+    "back": "<b>构件</b>（计算/存储单元）与<b>连接件</b>（交互机制，如过程调用、管道、事件总线）。",
+    "tag": "定义"
+  },
+  {
+    "front": "课件把典型架构模式分成哪三族？",
+    "back": "<b>系统软件</b>：分层、管道-过滤器、黑板；<b>分布式软件</b>：Broker、C/S、P2P；<b>交互软件</b>：MVC、PAC。",
+    "tag": "结构"
+  },
+  {
+    "front": "架构风格、架构模式、设计模式的粒度关系？",
+    "back": "架构风格（最抽象的结构族）&gt; 架构模式（风格的具体化）&gt; 设计模式（类/对象级协作）。",
+    "tag": "辨析"
+  },
+  {
+    "front": "分层模式的两条核心规则？",
+    "back": "① 上层可以使用下层提供的服务，<b>下层不能使用上层</b>；② 每层<b>只对相邻层可见</b>，连接件是协议与过程调用。",
+    "tag": "分层"
+  },
+  {
+    "front": "严格分层与层桥接的差别？",
+    "back": "严格分层：第 n 层只依赖第 n−1 层，只服务上一层；层桥接：允许直接调用下方<b>所有层</b>，减少穿越开销但削弱抽象边界。",
+    "tag": "分层"
+  },
+  {
+    "front": "课件举的「非严格分层」实例？",
+    "back": "Windows NT：系统服务层、资源管理层、内核、硬件抽象层、硬件层；其中<b>内核与 I/O 管理需要直接访问硬件</b>，故为非严格分层。",
+    "tag": "分层"
+  },
+  {
+    "front": "分层系统的实现五步？",
+    "back": "①定抽象准则与层次；②命名并指定每层任务与服务；③定义接口、独立实现；④确定相邻层通信、降低耦合；⑤设计错误处理策略。",
+    "tag": "分层"
+  },
+  {
+    "front": "分层的三条主要缺点？",
+    "back": "①层次划分难、无唯一正确答案；②数据逐层传递导致<b>性能下降</b>；③多层调用难调试；性能压力下还可能被迫合并层，破坏逻辑独立性。",
+    "tag": "代价"
+  },
+  {
+    "front": "管道-过滤器中的两种元素及职责？",
+    "back": "<b>过滤器</b>（构件）：读取输入、加工转换、写出输出；<b>管道</b>（连接件）：传输并缓存数据，是被动元素。",
+    "tag": "管道"
+  },
+  {
+    "front": "过滤器对数据的三类加工？",
+    "back": "提取部分数据、补充部分数据（计算与附加）、修改部分数据。",
+    "tag": "管道"
+  },
+  {
+    "front": "管道-过滤器的三种拓扑变体？",
+    "back": "<b>管线</b>（限制为线性序列）、<b>有界管线</b>（限制管道容纳的数据量）、<b>类型定义管道</b>（明确相邻过滤器的数据类型）。",
+    "tag": "管道"
+  },
+  {
+    "front": "为什么管道-过滤器的结果与执行顺序无关？",
+    "back": "因为过滤器彼此独立：不共享状态、不知道上下游是谁，只按拓扑通过管道传递数据；结果只取决于<b>连接关系</b>。",
+    "tag": "管道"
+  },
+  {
+    "front": "管道-过滤器的四条优点？",
+    "back": "简单（整体行为=各过滤器行为组合）、可重用（不知上下游）、易维护扩展（增删换过滤器）、支持并发与流水线。",
+    "tag": "管道"
+  },
+  {
+    "front": "管道-过滤器的两条关键缺点？",
+    "back": "①本质是<b>批处理</b>，不适合交互式应用；②维持两条相关数据流之间的通信困难；有名管道还会增加解析/反馈开销。",
+    "tag": "代价"
+  },
+  {
+    "front": "插件模式的四个参与者？",
+    "back": "<b>应用（宿主）</b>、<b>插件管理者</b>、<b>插件接口（扩展点）</b>、<b>具体插件</b>。实现层面即 host + plug-in + contract。",
+    "tag": "插件"
+  },
+  {
+    "front": "为什么说「插件不是简单的功能扩展」？",
+    "back": "插件必须有<b>固定的、公开的、可在运行时扩展</b>的接口；插件不能独立运行、不依赖应用内部流程。装饰/策略没有这样的公开扩展点。",
+    "tag": "插件"
+  },
+  {
+    "front": "插件模式的优点？",
+    "back": "关注点分离（每个插件职责单一）、便于第三方扩展、保持系统精简、支持多版本并存、插件可独立测试。",
+    "tag": "插件"
+  },
+  {
+    "front": "插件模式的代价？",
+    "back": "初始加载开销高；运行期管理开销随插件增多；扩展必须通过接口，插件与接口强依赖；接口难改、需处理隔离与版本兼容。",
+    "tag": "代价"
+  },
+  {
+    "front": "Broker 的五个参与者？",
+    "back": "Client、Client-side Proxy、Broker、Server-side Proxy、Server。",
+    "tag": "Broker"
+  },
+  {
+    "front": "Broker 如何实现位置透明？",
+    "back": "服务器把服务登记到 Broker（逻辑名→实际地址），客户只按<b>逻辑名称</b>请求服务，由 Broker 定位并转发，客户无需知道物理地址。",
+    "tag": "Broker"
+  },
+  {
+    "front": "一次 Broker 调用的完整过程？",
+    "back": "服务登记 → 客户调本地代理 → 代理序列化 → Broker 查表转发 → 服务端代理反序列化并调用 → 返回值反向序列化回传。",
+    "tag": "Broker"
+  },
+  {
+    "front": "Broker 的主要缺点？",
+    "back": "Broker 是中心查询点，<b>容错性差、易成瓶颈</b>；间接调用增加通信开销；代理依赖 Broker，更换 Broker 必须重新适配。",
+    "tag": "代价"
+  },
+  {
+    "front": "Broker 与 Mediator 的三点差别？",
+    "back": "Mediator：同系统内、1:n 转发、对象间解耦；Broker：分布式系统、1:1 请求转发、负责定位与服务寻址，还要序列化与位置透明。",
+    "tag": "辨析"
+  },
+  {
+    "front": "SOA 的核心概念与层次？",
+    "back": "核心概念是<b>服务</b>；层次为业务流程 → 应用服务（应用场景）→ 基本服务。",
+    "tag": "SOA"
+  },
+  {
+    "front": "SOA 对服务的九条要求？",
+    "back": "分布式、完整性、无状态、松耦合、互换性、位置透明、平台独立、接口、服务目录。",
+    "tag": "SOA"
+  },
+  {
+    "front": "SOA 的优缺点各两条？",
+    "back": "优点：按业务流程组织服务、可复用、接口不变即可换实现；缺点：服务过细导致结构复杂、多层通信增加开销、对网络要求高、治理与文档成本大。",
+    "tag": "SOA"
+  },
+  {
+    "front": "SOA 的四种常见实现？",
+    "back": "基于 XML 的 Web 服务、RESTful、CORBA、OSGi。",
+    "tag": "SOA"
+  },
+  {
+    "front": "SOA 与微服务的三点差别？",
+    "back": "①治理：中心化总线 vs 去中心化；②粒度：较粗 vs 较细；③数据：常共享企业数据 vs 每服务独立数据库。",
+    "tag": "辨析"
+  },
+  {
+    "front": "MVC 三个角色的职责？",
+    "back": "<b>模型</b>：业务流程与业务数据；<b>视图</b>：展示模型数据，含控制元素，不解释事件；<b>控制器</b>：接收并解释输入，调用模型、控制视图状态。",
+    "tag": "MVC"
+  },
+  {
+    "front": "MVC 的依赖方向？",
+    "back": "View 依赖 Model，Controller 依赖 Model 与 View；<b>Model 不依赖 View 与 Controller</b>。",
+    "tag": "MVC"
+  },
+  {
+    "front": "MVC 通知视图的两种风格？",
+    "back": "<b>被动模式</b>：控制器在数据改动后通知视图；<b>主动模式</b>：模型自己广播（推或拉）。",
+    "tag": "MVC"
+  },
+  {
+    "front": "MVC 内部用到哪三个设计模式？",
+    "back": "<b>观察者</b>（模型通知视图）、<b>组合</b>（视图树）、<b>策略</b>（视图/控制器可替换）。",
+    "tag": "MVC"
+  },
+  {
+    "front": "MVC 的优缺点？",
+    "back": "优点：模型与界面分别设计、改界面不动模型、模型可单测、一套模型多套界面；缺点：频繁更新影响性能、小应用拆类增加开销、控制器易膨胀。",
+    "tag": "代价"
+  },
+  {
+    "front": "观察者、事件驱动、发布-订阅的区别？",
+    "back": "观察者：对象级，主题<b>直接持有</b>观察者引用；事件驱动：架构级，发布者不指定接收者；发布-订阅：必须有<b>消息代理</b>，双方互不相识。",
+    "tag": "辨析"
+  },
+  {
+    "front": "黑板模式的三个组成部分？",
+    "back": "<b>黑板</b>（共享数据结构）、<b>知识源</b>（独立求解器）、<b>控制器</b>（按黑板状态决定激活哪个知识源）。",
+    "tag": "黑板"
+  },
+  {
+    "front": "选型三问是什么？",
+    "back": "①变化点在哪？②哪个质量属性是硬约束？③团队能否承担该模式的代价？",
+    "tag": "选型"
+  }
+]
+</script>
+
+<script src="../../data/videos.js"></script>
+<script src="../../data/chapters.js"></script>
+<script src="../../assets/js/site.js"></script>
+</body>
+</html>

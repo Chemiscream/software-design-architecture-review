@@ -1,0 +1,2077 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page="chapter" data-chapter="ch1">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="第 1 章 面向对象设计的原理：抽象、封装、继承、多态，接口与实现分离，SOLID 五原则与合成复用、迪米特法则，UML 类图六种关系，6174 例题的设计解析。">
+<meta name="color-scheme" content="light dark">
+<title>第 1 章 面向对象设计的原理 · 软件设计与体系架构</title>
+<link rel="stylesheet" href="../../assets/css/site.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%232b4a6f'/%3E%3Cpath d='M6 8h12M6 12h12M6 16h7' stroke='%23fff' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
+<script>
+  /* 主题初始化：必须内联在 <head> 中，避免刷新时闪白 */
+  (function () {
+    try {
+      var t = JSON.parse(localStorage.getItem('sda.theme'));
+      if (t !== 'dark' && t !== 'light') {
+        t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      document.documentElement.setAttribute('data-theme', t);
+    } catch (e) {
+      document.documentElement.setAttribute('data-theme', 'light');
+    }
+  })();
+</script>
+<style>
+  /* 章节局部样式：仅服务于本章的 UML 图与课件重点页索引，其余一律复用 site.css */
+  .uml {
+    margin: 0 0 var(--sp-4);
+    padding: var(--sp-4) var(--sp-4) var(--sp-3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    overflow-x: auto;
+  }
+  .uml svg { display: block; width: 100%; min-width: 32rem; height: auto; }
+  .uml figcaption {
+    margin-top: var(--sp-2);
+    font-size: var(--fs-tiny);
+    color: var(--text-3);
+    text-align: center;
+    line-height: 1.6;
+  }
+  .uml .box { fill: var(--surface); stroke: var(--border-strong); stroke-width: 1.5; }
+  .uml .box--abs { stroke: var(--accent-ui); stroke-width: 1.8; }
+  .uml .divider { stroke: var(--border-strong); stroke-width: 1; }
+  .uml .name { fill: var(--text); font-family: var(--font-sans); font-size: 14px; font-weight: 700; }
+  .uml .stereo { fill: var(--text-3); font-family: var(--font-mono); font-size: 11px; }
+  .uml .member { fill: var(--text-2); font-family: var(--font-mono); font-size: 11.5px; }
+  .uml .edge { fill: none; stroke: var(--text-2); stroke-width: 1.5; }
+  .uml .edge--dash { stroke-dasharray: 6 4; }
+  .uml .tri { fill: var(--surface); stroke: var(--text-2); stroke-width: 1.4; }
+  .uml .arrow { fill: var(--text-2); stroke: none; }
+
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">跳到正文</a>
+
+<div class="progress-bar" aria-hidden="true"><div class="progress-bar__fill" id="progress-fill"></div></div>
+
+<header class="topbar" id="topbar-root"></header>
+
+<div class="wrap">
+  <div class="layout">
+    <aside class="sidebar" id="sidebar-root" aria-label="章节目录"></aside>
+
+    <main class="main" id="main">
+      <div class="main__inner">
+
+        <!-- ================================================================
+             1. overview —— 章首：hero + 学习目标 + 知识地图
+             ================================================================ -->
+        <section class="section" id="overview" data-title="本章导览">
+          <div class="hero">
+            <span class="hero__eyebrow">第 1 章 · 面向对象设计的原理</span>
+            <h1>从抽象到 SOLID：把「好设计」变成可判定的标准</h1>
+            <p class="hero__lead">
+              面向对象设计要回答的不是「怎么用继承」，而是「怎么让软件改得动」。
+              本章先给出四个「难维护」的症状，再逐个给出对应的设计原则，
+              最后用 UML 类图把这些意图画成别人看得懂的图。后面四章的每一个设计模式，都建立在这里。
+            </p>
+            <div class="hero__meta">
+              <span class="chip chip--accent"><svg class="icon" aria-hidden="true"><use href="#i-target"></use></svg>考试重点</span>
+              <span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-clock"></use></svg>约 45 分钟</span>
+              <span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-layers"></use></svg>术语底座</span>
+              <span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg>高频简答 + 设计题</span>
+            </div>
+            <div class="hero__actions">
+              <a class="btn btn--primary" href="#concepts">
+                <svg class="icon" aria-hidden="true"><use href="#i-play"></use></svg>开始阅读
+              </a>
+              <a class="btn" href="#quiz">
+                <svg class="icon" aria-hidden="true"><use href="#i-target"></use></svg>直接自测
+              </a>
+              <a class="btn" href="#slides">
+                <svg class="icon" aria-hidden="true"><use href="#i-print-doc"></use></svg>查看课件原图
+              </a>
+            </div>
+          </div>
+
+          <h2 class="section-title" style="margin-top:var(--sp-5)">
+            <svg class="icon" aria-hidden="true"><use href="#i-target"></use></svg>学习目标
+          </h2>
+          <p class="section-lead">读完后应能做到以下几点，每一条都可以自我检验。</p>
+          <ol class="objectives">
+            <li>能用「症状 → 原则 → 手段 → 结果」四段式，说明六大设计原则各自治的是哪一类可维护性问题。</li>
+            <li>能说清抽象、封装、信息隐藏三者的分工，并指出缺少其中任一者时程序会付出什么代价。</li>
+            <li>能读懂并画出类图中的泛化、实现、依赖、关联四种关系，尤其能说清依赖箭头的方向为什么不能画反。</li>
+            <li>能在给定代码里指出它违反了哪条原则，并写出符合开闭原则的改法（如 Shape、Copy、正方形/矩形三个反例）。</li>
+            <li>能把 6174 例题拆成职责单一、依赖抽象的对象设计，并说明每一步对应哪条原则。</li>
+          </ol>
+
+          <h2 class="section-title" style="margin-top:var(--sp-6)">
+            <svg class="icon" aria-hidden="true"><use href="#i-network"></use></svg>知识地图
+          </h2>
+          <p class="section-lead">本章是一条因果链：先有病，才有药；有药，才有可验证的结果。</p>
+          <div class="kmap">
+            <div class="kmap__col">
+              <p class="kmap__title">症状</p>
+              <ul class="kmap__list">
+                <li>过于僵硬 Rigidity</li>
+                <li>过于脆弱 Fragility</li>
+                <li>复用率低 Immobility</li>
+                <li>黏度过高 Viscosity</li>
+              </ul>
+            </div>
+            <div class="kmap__col">
+              <p class="kmap__title">原则</p>
+              <ul class="kmap__list">
+                <li>单一职责 SRP</li>
+                <li>开闭 OCP</li>
+                <li>里氏替换 LSP</li>
+                <li>依赖倒置 DIP</li>
+                <li>接口隔离 ISP</li>
+                <li>合成复用 + 迪米特</li>
+              </ul>
+            </div>
+            <div class="kmap__col">
+              <p class="kmap__title">手段</p>
+              <ul class="kmap__list">
+                <li>抽象与封装</li>
+                <li>接口与实现分离</li>
+                <li>依赖注入 / 面向接口编程</li>
+                <li>组合替代继承</li>
+                <li>契约与断言</li>
+                <li>适配器拆胖接口</li>
+              </ul>
+            </div>
+            <div class="kmap__col">
+              <p class="kmap__title">结果</p>
+              <ul class="kmap__list">
+                <li>可读性</li>
+                <li>正确性</li>
+                <li>可扩展性</li>
+                <li>可复用性</li>
+                <li>可维护性</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================================
+             2. concepts —— 核心概念：概念卡
+             ================================================================ -->
+        <section class="section" id="concepts" data-title="核心概念">
+          <div class="section-head">
+            <span class="section-head__num">02</span>
+            <h2 class="section-title">核心概念</h2>
+            <a class="section-anchor" href="#concepts" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">先把术语钉死。本章所有简答题的失分，一半来自术语混用。</p>
+
+          <div class="grid">
+            <div class="concept">
+              <p class="concept__term">抽象 <span class="concept__en">Abstraction</span></p>
+              <p class="concept__body">
+                抽出与当前问题相关的特征、忽略其余细节。<b>方法的接口</b>就是对象功能的抽象：
+                抽象只声明「能做什么」，由具体对象实现接口定义的方法。
+                抽象是开闭原则的关键——没有抽象，扩展就必须改调用方。
+              </p>
+              <div class="concept__tags">
+                <span class="chip chip--accent">单类设计</span>
+                <span class="chip">OCP 前提</span>
+              </div>
+            </div>
+
+            <div class="concept">
+              <p class="concept__term">封装 <span class="concept__en">Encapsulation</span></p>
+              <p class="concept__body">
+                把方法与数据封装成一个对象，对外只保留<b>接口</b>，内部实现细节不可见。
+                封装是信息隐藏的<b>实现机制</b>，信息隐藏是封装的<b>目标</b>。
+              </p>
+              <div class="concept__tags">
+                <span class="chip chip--accent">单类设计</span>
+              </div>
+            </div>
+
+            <div class="concept">
+              <p class="concept__term">信息隐藏 <span class="concept__en">Information Hiding</span></p>
+              <p class="concept__body">
+                封装内部属性，外部只能<b>通过接口访问</b>（外部属性），这就是保密原则。
+                好处是：内部实现可以独立更换，而不会波及使用它的代码。
+              </p>
+              <div class="concept__tags">
+                <span class="chip chip--warn">易混淆</span>
+              </div>
+            </div>
+
+            <div class="concept">
+              <p class="concept__term">继承 <span class="concept__en">Inheritance</span></p>
+              <p class="concept__body">
+                子类复用父类的结构与行为，并可用多态覆盖父类方法。
+                继承是<b>最强的耦合</b>：子类连父类的实现细节一起继承，
+                所以「滥用继承」是里氏替换原则要治的第一大病。
+              </p>
+              <div class="concept__tags">
+                <span class="chip chip--accent">单类设计</span>
+                <span class="chip chip--warn">易滥用</span>
+              </div>
+            </div>
+
+            <div class="concept">
+              <p class="concept__term">多态 <span class="concept__en">Polymorphism</span></p>
+              <p class="concept__body">
+                同一条消息，不同对象给出不同响应：调用方只写 <code>s.draw()</code>，
+                运行时才决定执行哪个子类实现。<b>多态程序的正确性</b>由里氏替换原则保证——
+                子类实现必须与客户对基类的期望一致。
+              </p>
+              <div class="concept__tags">
+                <span class="chip chip--accent">正确性</span>
+              </div>
+            </div>
+
+            <div class="concept">
+              <p class="concept__term">接口与实现分离 <span class="concept__en">Interface / Implementation</span></p>
+              <p class="concept__body">
+                客户代码只依赖接口，具体实现可以在不改客户代码的前提下替换。
+                这是开闭原则、依赖倒置原则、接口隔离原则共同的落地手段，
+                也是后续所有设计模式的技术基础。
+              </p>
+              <div class="concept__tags">
+                <span class="chip chip--accent">手段</span>
+              </div>
+            </div>
+
+            <div class="concept">
+              <p class="concept__term">职责 <span class="concept__en">Responsibility</span></p>
+              <p class="concept__body">
+                职责不是「方法有多少个」，而是<b>引起这个类变化的原因</b>。
+                单一职责的准确表述是：一组方法只能有<b>一个变化轴线</b>，
+                并且最好有一个概念统摄这组方法。
+              </p>
+              <div class="concept__tags">
+                <span class="chip chip--accent">SRP</span>
+                <span class="chip chip--warn">易错</span>
+              </div>
+            </div>
+
+            <div class="concept">
+              <p class="concept__term">内聚 <span class="concept__en">Cohesion</span></p>
+              <p class="concept__body">
+                子系统<b>内部</b>各成分相互合作、相互依赖的程度。内聚越高，
+                一个模块内部的改动越不容易外溢。目标是「高内聚」。
+              </p>
+              <div class="concept__tags">
+                <span class="chip">松耦合</span>
+              </div>
+            </div>
+
+            <div class="concept">
+              <p class="concept__term">耦合 <span class="concept__en">Coupling</span></p>
+              <p class="concept__body">
+                子系统<b>之间</b>互相影响的程度，也叫功能耦合。耦合越低，
+                替换或新增一个子系统时牵动的代码越少。目标是「低耦合」。
+              </p>
+              <div class="concept__tags">
+                <span class="chip">松耦合</span>
+                <span class="chip chip--warn">易与内聚混淆</span>
+              </div>
+            </div>
+
+            <div class="concept">
+              <p class="concept__term">契约式设计 <span class="concept__en">Design by Contract</span></p>
+              <p class="concept__body">
+                把客户类与服务器类的关系写成形式化的契约，用<b>断言</b>表达：
+                <b>前置条件</b>约束调用者（被调用者的权益）、<b>后置条件</b>约束被调用者（调用者的权益）、
+                <b>不变式</b>是对所有操作都成立的类级断言。
+              </p>
+              <div class="concept__tags">
+                <span class="chip chip--accent">正确性</span>
+                <span class="chip">LSP 的落地</span>
+              </div>
+            </div>
+
+            <div class="concept">
+              <p class="concept__term">胖接口与接口污染 <span class="concept__en">Fat Interface</span></p>
+              <p class="concept__body">
+                为了减少类的数目，往接口里塞不属于它的方法，接口就<b>被污染</b>、变胖。
+                后果是：复用这个接口的客户被迫实现并维护自己用不到的方法，
+                本来无关的客户之间产生了<b>意外耦合</b>。
+              </p>
+              <div class="concept__tags">
+                <span class="chip chip--accent">ISP</span>
+              </div>
+            </div>
+
+            <div class="concept">
+              <p class="concept__term">软件腐化的四个症状 <span class="concept__en">Rigidity / Fragility / Immobility / Viscosity</span></p>
+              <p class="concept__body">
+                <b>过于僵硬</b>：难加入新功能；<b>过于脆弱</b>：一改就牵一发动全身；
+                <b>复用率低</b>：想复用的代码被一堆依赖缠住拆不出来；
+                <b>黏度过高</b>：保持原设计意图的改法总比权宜之计更难走。
+              </p>
+              <div class="concept__tags">
+                <span class="chip chip--accent">问题域</span>
+                <span class="chip">Robert C. Martin</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================================
+             3. detail —— 展开讲解
+             ================================================================ -->
+        <section class="section" id="detail" data-title="原则逐条拆解">
+          <div class="section-head">
+            <span class="section-head__num">03</span>
+            <h2 class="section-title">原则逐条拆解</h2>
+            <a class="section-anchor" href="#detail" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">
+            六条原则不是并列的口号，而是「同一件事的六个切面」。下面按课件的顺序逐条拆，
+            每条都给出「它治什么病、靠什么手段、违反后长什么样」。
+          </p>
+
+          <div class="prose">
+            <h3>一、先有病，才有药：软件为什么会难维护</h3>
+            <p>
+              Robert C. Martin 把「软件难维护」归结为四个症状。它们不是四个独立的问题，
+              而是同一个病根的四种表现——<b>变化无法被隔离</b>。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>症状</th><th>英文</th><th>典型表现</th><th>对应的设计目标</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>过于僵硬</td><td>Rigidity</td><td>很难加入新性能，一加就要动老代码</td><td>可扩展性</td></tr>
+                  <tr><td>过于脆弱</td><td>Fragility</td><td>很难改动，牵一发动全身；与僵硬同时存在</td><td>灵活性</td></tr>
+                  <tr><td>复用率低</td><td>Immobility</td><td>类似的算法、函数、模块被一堆依赖缠住，拆不出来</td><td>可复用性</td></tr>
+                  <tr><td>黏度过高</td><td>Viscosity</td><td>保持原设计意图的改法总比权宜之计难走</td><td>可插入性</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              注意「复用率低」这一条课件里说得很直白：最好的复用方法变成了 Ctrl-C / Ctrl-V。
+              这句话是反讽——当代码拆不出来时，复制粘贴就成了唯一可行的「复用」，
+              而它带来的是同一份逻辑的多处副本，日后每一处都要单独改。
+            </p>
+            <p>
+              「黏度过高」的定义值得单独记：一个改动通常有两种走法，<b>a</b> 是保持原始设计意图与原始框架，
+              <b>b</b> 是权宜之计、牺牲中长期利益。如果系统里总是 <b>b</b> 更容易，这个系统的黏度就过高。
+              也就是说，黏度衡量的是「设计本身对正确做法的阻力」。
+            </p>
+
+            <h3>二、可读性、正确性、可扩展性：三条验收线</h3>
+            <p>
+              课件用三条线把原则分了组，这是最省力的记忆结构——考场上问「某原则解决什么问题」，
+              先想它挂在哪条线上。
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>质量目标</th><th>由哪些原则支撑</th><th>一句话理解</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>可读性</td>
+                    <td>封装、抽象与信息隐藏；关注点分离与单一职责原则</td>
+                    <td>别人（和三个月后的你）能不能看懂这段代码在干什么</td>
+                  </tr>
+                  <tr>
+                    <td>正确性</td>
+                    <td>里氏替换原则；契约式设计；多态程序的正确性</td>
+                    <td>多态调用在运行时选中的实现，是否仍然满足调用方的假设</td>
+                  </tr>
+                  <tr>
+                    <td>可扩展性</td>
+                    <td>接口隔离原则；松耦合；里氏替换原则；开闭原则；依赖倒置原则</td>
+                    <td>加功能时要不要改已有的、已经测过的代码</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              另一条更细的分组是按「几个类在合作」来分：<b>单个类</b>的设计原则是抽象、封装与信息隐藏、
+              关注点分离与单一职责、接口隔离；<b>多个合作类</b>的设计原则是松耦合、开闭、里氏替换、依赖倒置与契约式设计。
+              单类设计管「这个类自己别太胖」，多类设计管「类与类之间的线怎么连」。
+            </p>
+
+            <h3>三、抽象、封装与信息隐藏</h3>
+            <p>
+              这三个词经常被混着用，但课件把它们分得很清楚：
+            </p>
+            <ul>
+              <li><b>封装</b>是动作——把方法和数据封装成一个对象，实现「信息隐藏、接口对外」。</li>
+              <li><b>抽象</b>是取舍——方法的接口使对象功能抽象，具体对象负责实现接口定义的方法。</li>
+              <li><b>信息隐藏</b>是结果——封装内部属性，外部只能通过接口访问（也就是课件说的「外部属性」），这就是保密原则。</li>
+            </ul>
+            <p>
+              三者的关系是：封装提供了隐藏的<b>机制</b>，抽象提供了对外的<b>契约</b>，
+              信息隐藏是这套机制要达成的<b>目标</b>。缺了抽象，封装就只是把一堆细节锁进黑箱，
+              外面照样得知道黑箱里有什么；缺了封装，抽象就只是一纸声明，谁都能绕过接口直接改内部状态。
+            </p>
+
+            <div class="callout callout--tip">
+              <span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-bulb"></use></svg></span>
+              <div class="callout__body">
+                <p><span class="callout__title">答题技巧</span>
+                简答题问「封装与抽象的区别」，最稳的三段式是：
+                ① 封装是<b>实现层面</b>的机制，隐藏内部数据与实现；② 抽象是<b>认知层面</b>的取舍，只暴露与问题相关的特征；
+                ③ 二者共同服务于信息隐藏，最终目的是让变化被限制在类的内部。三句话，三个层次，不重叠。</p>
+              </div>
+            </div>
+
+            <h3>四、开闭原则 OCP：本章的核心</h3>
+            <p>
+              开闭原则由 Bertrand Meyer 于 1988 年提出，课件直接称它为「面向对象设计中最重要、最核心的原则之一」。
+              定义原文是：
+            </p>
+            <p>
+              <b>software entities (classes, modules, functions, etc.) should be open for extension, but closed for modification.</b>
+              即软件实体（类、模块、函数等）应当<b>对扩展开放</b>，<b>对修改关闭</b>。
+              这里的「软件实体」可以是一个软件模块、一个由多个类组成的局部结构，也可以是一个独立的类。
+            </p>
+            <p>它对应的三个设计目标，恰好是前面四个症状的反面：</p>
+            <ul>
+              <li><b>可扩展性（Extensibility）</b>——与「过于僵硬」相反；</li>
+              <li><b>灵活性（Flexibility）</b>——与「过于脆弱」相反，允许代码修改平稳发生，不波及别的模块；</li>
+              <li><b>可插入性（Pluggability）</b>——「黏度过高」的反面。</li>
+            </ul>
+
+            <h4>反例与正例：画圆和画矩形</h4>
+            <p>
+              课件的经典例子是一个在 GUI 上按特定顺序画圆和矩形的程序：对象按创建顺序组成链表，
+              程序遍历链表依次绘制。用 C 语言的过程式写法如下——
+            </p>
+
+            <figure class="code" data-lang="c" data-file="Listing 1 · 过程式解法">
+<pre><code>/* Procedural Solution to the Square/Circle Problem */
+enum ShapeType { circle, square };
+
+struct Shape  { ShapeType itsType; };
+struct Circle { ShapeType itsType; double itsRadius; Point itsCenter; };
+struct Square { ShapeType itsType; double itsSide;   Point itsTopLeft; };
+
+void DrawSquare(struct Square*);
+void DrawCircle(struct Circle*);
+typedef struct Shape *ShapePointer;
+
+void DrawAllShapes(ShapePointer list[], int n) {
+    int i;
+    for (i = 0; i &lt; n; i++) {
+        struct Shape* s = list[i];
+        switch (s-&gt;itsType) {              /* 每加一种图形，这里就要改 */
+        case square: DrawSquare((struct Square*)s); break;
+        case circle: DrawCircle((struct Circle*)s); break;
+        }
+    }
+}</code></pre>
+            </figure>
+
+            <p>
+              这段代码的问题不在于用了 C，而在于 <code>DrawAllShapes</code> 里有一个
+              <b>按类型分支的 switch</b>。每新增一种图形，就必须回来改这个函数——
+              已经编译、已经测试过的代码被重新打开，这正是「对修改开放」，与 OCP 相反。
+              面向对象的写法把它倒过来：
+            </p>
+
+            <figure class="code" data-lang="cpp" data-file="Listing 2 · OCP 下的解法">
+<pre><code>/* OOD solution to Square/Circle problem */
+class Shape {
+public:
+    virtual void Draw() const = 0;        /* 抽象出「能画」这件事 */
+};
+
+class Square : public Shape {
+public:
+    virtual void Draw() const;
+};
+
+class Circle : public Shape {
+public:
+    virtual void Draw() const;
+};
+
+void DrawAllShapes(Set&lt;Shape *&gt;&amp; list) {
+    for (Iterator&lt;Shape*&gt; i(list); i; i++)
+        (*i)-&gt;Draw();                     /* 不关心具体是哪种图形 */
+}</code></pre>
+            </figure>
+
+            <p>
+              <code>DrawAllShapes</code> 现在只依赖抽象 <code>Shape</code>。新增三角形时，
+              只要写一个 <code>Triangle : public Shape</code>，<b>不需要改动</b> <code>DrawAllShapes</code>。
+              这就是「对扩展开放、对修改关闭」的字面含义。
+            </p>
+
+            <h4>选择性的封闭：没有 100% 的封闭</h4>
+            <p>
+              课件紧接着给了一个更深的结论：<b>没有任何一个大的程序能做到 100% 的封闭</b>。
+              无论模块多么「封闭」，总存在一些无法封闭的变化。所以设计者必须做选择——
+              这个模块应该对<b>何种变化</b>封闭。这种有选择的封闭叫「选择性的封闭（Strategic Closure）」。
+            </p>
+            <p>
+              课件用一个反例说明：如果新增一个需求「所有的圆必须在矩形之前画出」，
+              Listing 2 的 <code>DrawAllShapes</code> 就无法对这种变化封闭了。
+              第一反应是给 <code>Shape</code> 加一个排序方法：
+            </p>
+
+            <figure class="code" data-lang="cpp" data-file="Listing 3 / 5 · 排序抽象与它的破绽">
+<pre><code>/* Shape with ordering methods */
+class Shape {
+public:
+    virtual void Draw() const = 0;
+    virtual bool Precedes(const Shape&amp;) const = 0;
+    bool operator&lt;(const Shape&amp; s) { return Precedes(s); }
+};
+
+/* DrawAllShapes with Ordering：拷进有序集合再排序 */
+void DrawAllShapes(Set&lt;Shape*&gt;&amp; list) {
+    OrderedSet&lt;Shape*&gt; orderedList = list;
+    orderedList.Sort();
+    for (Iterator&lt;Shape*&gt; i(orderedList); i; i++)
+        (*i)-&gt;Draw();
+}
+
+/* 但 Circle::Precedes 只能这么写—— */
+bool Circle::Precedes(const Shape&amp; s) const {
+    if (dynamic_cast&lt;Square*&gt;(&amp;s)) return true;
+    else return false;
+}</code></pre>
+            </figure>
+
+            <p>
+              <code>Circle::Precedes</code> 里出现了一个 <code>dynamic_cast&lt;Square*&gt;</code>。
+              课件对此的判断很干脆：<b>这个函数并不符合开闭原则</b>，
+              因为每创建一个新的 <code>Shape</code> 派生类，这个函数就得改写。
+              换句话说，「顺序」这个变化没有被真正抽象出来，只是从 <code>switch</code> 挪到了 <code>dynamic_cast</code>。
+            </p>
+            <p>
+              课件给出的最终解法是<b>数据驱动（表驱动）</b>：把类型顺序放进一张静态表
+              <code>typeOrderTable[] = {"Circle", "Square", 0}</code>，用类型名在表里的下标比较先后。
+              这样新增派生类时只改表，不改函数体——封闭性通过「数据」而不是「代码」获得。
+            </p>
+
+            <div class="callout callout--warn">
+              <span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg></span>
+              <div class="callout__body">
+                <p><span class="callout__title">注意</span>
+                OCP 的结论不是「用 OO 语言就自动满足 OCP」。课件明确说：
+                并不是仅仅使用一种面向对象编程语言就是遵循这个原则，
+                它依赖于设计者对程序中<b>他认为可能发生变化的部分</b>做出合理的抽象。
+                抽象选错了变化点，写再多 interface 也封不住。</p>
+              </div>
+            </div>
+
+            <h3>五、里氏替换原则 LSP：继承什么时候是错的</h3>
+            <p>
+              里氏替换原则由 Barbara Liskov 与 Jeannette Wing 于 1994 年提出
+              （Liskov 是 2008 年图灵奖得主、美国第一位计算机科学女博士）。
+              课件反复强调它针对的是一个相当普遍的现象：<b>滥用继承</b>。
+              「以为会用继承、会用多态，便很 OO」——这是误解；知道 ISA 关系还不够，
+              还得知道 ISA 真正的含义。
+            </p>
+            <p>定义只有一句：</p>
+            <p><b>Subtypes Must Be Substitutable For Their Base Types.</b> 子类型必须能够替换掉它们的基类型。</p>
+            <p>Liskov 1988 年的原始表述是：</p>
+            <p>
+              若对于每一个类型 S 的对象 o1，都存在一个类型 T 的对象 o2，使得在所有针对 T 编写的程序 P 中，
+              用 o1 替换 o2 后，程序 P 的<b>行为功能不变</b>，则 S 是 T 的子类型。
+            </p>
+            <p>
+              违背它的后果，课件讲得很清楚：如果某个函数使用了指向基类的指针或引用却违背 LSP，
+              那么这个函数<b>必须了解该基类的所有派生类</b>——而这显然又违背了 OCP。
+              两条原则在这里咬合：<b>LSP 是 OCP 能够成立的前提</b>。
+            </p>
+
+            <h4>反例一：按类型判断的 DrawShape</h4>
+            <figure class="code" data-lang="cpp" data-file="违背 LSP">
+<pre><code>void DrawShape(const Shape&amp; s) {
+    if (typeid(s) == typeid(Square))
+        DrawSquare(static_cast&lt;Square&amp;&gt;(s));
+    else if (typeid(s) == typeid(Circle))
+        DrawCircle(static_cast&lt;Circle&amp;&gt;(s));
+}</code></pre>
+            </figure>
+            <p>
+              每构建一个从 <code>Shape</code> 派生的新类，这个函数都必须改。
+              一旦代码里出现 <code>typeid</code> / <code>instanceof</code> 的长链，基本可以判定：抽象没做对。
+            </p>
+
+            <h4>反例二：正方形与矩形（更微妙的违规）</h4>
+            <p>从常识看，「正方形是一个（ISA）矩形」似乎无懈可击。课件的代码是这样的：</p>
+            <figure class="code" data-lang="cpp" data-file="Rectangle / Square">
+<pre><code>class Rectangle {
+public:
+    void SetWidth(double w)  { itsWidth = w; }
+    void SetHeight(double h) { itsHeight = h; }
+    double GetHeight() const { return itsHeight; }
+    double GetWidth()  const { return itsWidth;  }
+private:
+    double itsWidth;
+    double itsHeight;
+};
+
+/* Square 继承过来后，为了让长宽永远相等，只能这样覆盖 */
+void Square::SetWidth(double w) {
+    Rectangle::SetWidth(w);
+    Rectangle::SetHeight(w);
+}
+void Square::SetHeight(double h) {
+    Rectangle::SetHeight(h);
+    Rectangle::SetWidth(h);
+}</code></pre>
+            </figure>
+            <p>
+              课件先指出两个直观的别扭之处：<code>Square</code> 并不同时需要 <code>itsHeight</code> 和
+              <code>itsWidth</code> 两个成员变量，但还是继承了它们；<code>SetWidth</code> / <code>SetHeight</code>
+              这对函数对正方形来说也完全不适合。真正的杀伤力在这个函数：
+            </p>
+            <figure class="code" data-lang="cpp" data-file="真正的破绽">
+<pre><code>void f(Rectangle&amp; r) {
+    r.SetWidth(32);          /* 只改宽：对矩形合理，对正方形就是灾难 */
+}
+
+void g(Rectangle&amp; r) {
+    r.SetWidth(5);
+    r.SetHeight(4);
+    assert(r.GetWidth() * r.GetHeight() == 20);   /* 传入 Square 必然失败 */
+}</code></pre>
+            </figure>
+            <p>
+              也许有人会说，忘记把 <code>SetWidth</code> / <code>SetHeight</code> 声明为
+              <code>virtual</code> 才是真正的缺陷。课件特意做了这个修改——把两者都改成
+              <code>virtual</code> 之后，问题<b>依然存在</b>：<code>g()</code> 的断言照样失败。
+              所以问题不在虚函数，而在行为。
+            </p>
+            <div class="callout callout--danger">
+              <span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-stop"></use></svg></span>
+              <div class="callout__body">
+                <p><span class="callout__title">课件原话</span>
+                「一个正方形是一个矩形，但是一个 <b>Square 对象并非一个 Rectangle 对象</b>。」
+                原因在于 <code>Square</code> 对象的行为功能（behavior）与 <code>Rectangle</code> 对象并不相容，
+                而<b>行为功能才是软件所关注的问题</b>。LSP 指出，OOD 中的 ISA 关系是就行为功能而言的；
+                行为功能是外在、公开的，是客户程序所依赖的。</p>
+              </div>
+            </div>
+            <p>
+              结论：仅当派生类能<b>完全替换</b>基类时，才能放心地重用那些使用基类的函数，
+              才能安全地修改派生类型。
+            </p>
+
+            <h3>六、依赖倒置原则 DIP：把箭头的方向掰过来</h3>
+            <p>
+              依赖倒置原则出自 Robert C. Martin 1996 年为《C++ Reporter》所写专栏
+              Engineering Notebook 的第三篇，后收入其 2002 年的《Agile Software Development》。
+              课件从一个只有三个模块的小程序讲起：把键盘输入的字符拷贝到打印机上。
+            </p>
+            <figure class="code" data-lang="c" data-file="起点：Copy 依赖两个具体模块">
+<pre><code>void Copy() {
+    int c;
+    while ((c = ReadKeyboard()) != EOF)
+        WritePrinter(c);
+}</code></pre>
+            </figure>
+            <p>
+              三个模块里，两个底层模块（读键盘、写打印机）具有很好的可重用性；
+              而 <code>Copy</code> 模块在一个不涉及键盘和打印机的程序里<b>无法重用</b>。
+              可 <code>Copy</code> 恰恰封装了最有价值的高层策略——它知道如何从字符源把字符搬到接收器。
+              想把它复用到「键盘拷到磁盘文件」，就会被 <code>WritePrinter</code> 卡住。
+            </p>
+            <p>第一个「可行的改动」是这样的：</p>
+            <figure class="code" data-lang="c" data-file="错误的改法：加 if/else">
+<pre><code>enum OutputDevice { printer, disk };
+
+void Copy(OutputDevice dev) {
+    int c;
+    while ((c = ReadKeyboard()) != EOF)
+        if (dev == printer) WritePrinter(c);
+        else                WriteDisk(c);
+}</code></pre>
+            </figure>
+            <p>
+              课件对这个改动的评价是：设备一多，<code>Copy</code> 里就会充满 <code>if/else</code>，
+              意味着它依赖了越来越多的低层模块，最终使 <code>Copy</code> 变得<b>僵化而脆弱</b>。
+              注意它把「对修改开放」的病，从「换一行调用」升级成了「每加一个设备就改一次高层策略」。
+            </p>
+            <p>真正的解法是引入抽象，让高层与低层都依赖它：</p>
+            <figure class="code" data-lang="cpp" data-file="依赖倒置">
+<pre><code>class Reader {
+public:
+    virtual int Read() = 0;
+};
+
+class Writer {
+public:
+    virtual void Write(char) = 0;
+};
+
+void Copy(Reader&amp; r, Writer&amp; w) {
+    int c;
+    while ((c = r.Read()) != EOF)
+        w.Write(c);
+}</code></pre>
+            </figure>
+            <p>两条要点，考试必须原文级准确：</p>
+            <ol>
+              <li><b>高层模块不应该依赖于低层模块，二者都应该依赖于抽象。</b>
+                （High level modules should not depend upon low level modules. Both should depend upon abstractions.）</li>
+              <li><b>抽象不应该依赖于细节，细节应该依赖于抽象。</b>
+                （Abstractions should not depend upon details. Details should depend upon abstractions.）</li>
+            </ol>
+            <p>
+              「倒置」到底倒置了什么？课件说：很多传统软件开发方法（比如结构化分析与设计）总是倾向于创建
+              <b>高层模块依赖低层模块、抽象依赖细节</b>的结构；而一个设计良好的面向对象程序，
+              其依赖关系结构相对于传统过程式方法而言，就是被「倒置」了。
+              原来箭头从「策略」指向「机制」，现在两端都指向中间的抽象。
+            </p>
+
+            <h4>层次化：依赖是可传递的</h4>
+            <p>
+              Booch 说过：所有结构良好的面向对象架构都具有非常清晰的层次，
+              每一个层次通过一个被很好地定义和控制的接口向外提供一系列相互内聚的服务。
+              但如果只是简单地照这句话分层，会得到这样的结构：
+              Policy Layer 调用 Mechanism Layer，Mechanism Layer 再调用 Utility Layer。
+              课件点出了其中<b>隐伏的特性</b>：Policy Layer 对其下层次一直到 Utility Layer 的改动都非常敏感，
+              因为<b>依赖是可传递的</b>。
+            </p>
+            <p>
+              更合适的模型是在层与层之间插入抽象接口：Policy 依赖 Mechanism Interface（抽象），
+              Mechanism 实现它；Mechanism 依赖 Utility Interface（抽象），Utility 实现它。
+              这样 Utility 的变化被 Utility Interface 挡住，传不到 Policy。
+              这正是课件第 44、45 页那两张对照图要表达的东西。
+            </p>
+
+            <h3>七、接口隔离原则 ISP：别把不用的方法塞给客户</h3>
+            <p>
+              ISP 处理的是「胖接口」。当接口不内聚时，说明这个类具有胖接口；
+              胖接口可以分解成多组方法，每一组服务于一组不同的客户程序——
+              一些客户用这一组，另一些客户用另一组。
+            </p>
+            <p><b>定义：不应该强迫客户依赖于它们不使用的方法。</b></p>
+            <p>
+              换个说法：一个类对另一个类的依赖性应当建立在<b>最小的接口</b>上；
+              使用多个专门的接口比使用单一的总接口要好。
+            </p>
+
+            <h4>接口污染是怎么发生的</h4>
+            <ul>
+              <li>接口污染就是为接口添加了<b>不必要的职责</b>；</li>
+              <li>常见动机是「在接口中加一个新方法只是为了减少类的数目」；</li>
+              <li>持续这样做，接口就被不断污染、变胖；</li>
+              <li>课件明确指出：<b>类的数目不是问题</b>，接口污染才会带来维护与重用方面的问题；</li>
+              <li>最常见的问题是——为了重用被污染的接口，被迫实现并维护<b>不必要的方法</b>。</li>
+            </ul>
+
+            <h4>课件的门与定时器</h4>
+            <p>
+              一个安防系统里有 <code>Door</code> 接口（<code>Lock</code> / <code>Unlock</code> /
+              <code>IsDoorOpen</code>），还有一个 <code>Timer</code>，它通过
+              <code>TimerClient</code> 接口的 <code>TimeOut()</code> 回调通知超时。
+              <code>TimedDoor</code> 需要在门开太久时报警，于是最省事的做法是把
+              <code>TimeOut()</code> 直接加到 <code>Door</code> 上。课件列出四条反对理由：
+            </p>
+            <ol>
+              <li>并非所有种类的门都需要计时；</li>
+              <li>最初的 <code>Door</code> 抽象与计时<b>没有任何关系</b>；</li>
+              <li>与计时无关的 <code>Door</code> 派生类将被迫为 <code>TimeOut</code> 提供空实现（nil implementation）；</li>
+              <li>使用这些派生类的应用还必须 <code>#include</code> <code>TimerClient</code> 的定义，尽管它根本用不到。</li>
+            </ol>
+            <p>课件给这种状态的定性是：<b><code>Door</code> 的接口被它并不需要的接口污染了。</b></p>
+
+            <h4>三种分离手法</h4>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>手法</th><th>做法</th><th>结构特点</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>继承法</td>
+                    <td>让 <code>Door</code> 直接实现 <code>TimerClient</code>，<code>TimedDoor</code> 继承 <code>Door</code></td>
+                    <td>所有门都沾上了计时接口——只是把污染往上提了一层，并未消除</td>
+                  </tr>
+                  <tr>
+                    <td>委托法<br><span class="muted tiny">对象适配器</span></td>
+                    <td>写一个 <code>DoorTimerAdapter : public TimerClient</code>，内部持有 <code>TimedDoor&amp;</code>，<code>TimeOut()</code> 里转调 <code>itsTimedDoor.DoorTimeOut()</code></td>
+                    <td>用<b>组合</b>把两个接口接起来，<code>Door</code> 保持干净</td>
+                  </tr>
+                  <tr>
+                    <td>多继承<br><span class="muted tiny">接口法 / 类适配器</span></td>
+                    <td><code>class TimedDoor : public Door, public TimerClient</code>，只覆盖 <code>TimeOut()</code></td>
+                    <td>用<b>多继承</b>让需要计时的门同时具备两个身份</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              课件的结论把 ISP 与适配器模式连了起来：胖接口会导致<b>本应彼此隔离的客户之间产生意外耦合</b>；
+              借助 ADAPTER 模式——委托（对象形式）或多继承（类形式）——可以把胖接口拆成抽象基类，
+              切断客户之间不需要的耦合。这是本章与第 4 章之间的一条明线。
+            </p>
+
+            <h3>八、单一职责原则 SRP：最简也最难</h3>
+            <p>课件对 SRP 的定义有四句话，每一句都在纠偏：</p>
+            <ul>
+              <li>一个类应该有且仅有一个职责；</li>
+              <li>一个类的职责是指<b>引起该类变化的原因</b>；</li>
+              <li>并非极端到一个类只设定一个方法，而是<b>一组方法只能有一个变化轴线</b>；</li>
+              <li>最好有一个概念统摄该组方法。</li>
+            </ul>
+            <p>
+              所以 SRP 的判据不是「方法数量」，而是「变化的原因有几个」。一个类如果有两个不同的变化原因，
+              就相当于把两个职责耦合在一起：其中一个职责变化时，可能影响另一个职责的运作。
+              课件也给出了代价：一个类（或大到模块、小到方法）承担的职责越多，它被复用的可能性越小。
+            </p>
+            <p>
+              课件对 SRP 的评价很有意思——它是实现高内聚、低耦合的指导方针，
+              在很多代码重构手法中都能找到它的存在，<b>它是最简单但又最难运用的原则</b>。
+              难在「发现类的多重职责」这一步，这需要较强的分析设计能力与相关重构经验。
+            </p>
+
+            <h4>例 1：Rectangle 的两个方法</h4>
+            <p>
+              <code>Rectangle</code> 类有两个方法：一个把矩形画到屏幕上，另一个计算矩形面积。
+              看起来都是「矩形的事」，但客户不是同一批：
+              Computational Geometry Application 只用 <code>area()</code>，
+              Graphical Application 只用 <code>draw()</code>。而两个应用都要连到 <code>GUI</code>，
+              于是几何计算应用也被迫依赖了绘图代码。按职责拆开之后，
+              <code>Geometric Rectangle</code> 只保留 <code>area()</code>，
+              <code>Rectangle</code> 只保留 <code>draw()</code>，两条依赖线各走各的。
+            </p>
+
+            <h4>例 2：Modem 接口</h4>
+            <figure class="code" data-lang="java" data-file="SRP Violation">
+<pre><code>interface Modem {
+    public void dial(String pno);
+    public void hangup();
+    public void send(char c);
+    public char recv();
+}</code></pre>
+            </figure>
+            <p>
+              四个方法里其实藏着两个职责：<code>dial</code> / <code>hangup</code> 是<b>连接管理</b>，
+              <code>send</code> / <code>recv</code> 是<b>数据通信</b>。两者变化的原因不同
+              （换连接协议 vs 换编码方式），应当拆成两个接口。
+            </p>
+
+            <h4>例 3：Automobile 的七个方法</h4>
+            <p>
+              <code>Automobile</code> 上有 <code>start()</code>、<code>stop()</code>、
+              <code>changeTires(Tire[])</code>、<code>drive()</code>、<code>wash()</code>、
+              <code>checkOil()</code>、<code>getOil(): int</code>。用 SRP 分析一遍，会发现
+              「这七个方法真的都是 Automobile 的职责吗」——答案是否。
+              课件给出的迁移结果：
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>原方法</th><th>迁到哪个类</th><th>理由</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td><code>drive()</code></td><td><code>Driver</code> → <code>drive(Automobile)</code></td><td>驾驶汽车是司机的责任，不是汽车本身的职责</td></tr>
+                  <tr><td><code>wash()</code></td><td><code>CarWash</code> → <code>wash(Automobile)</code></td><td>CarWash 能处理汽车的清洗</td></tr>
+                  <tr><td><code>changeTires()</code>、<code>checkOil()</code></td><td><code>Mechanic</code> → <code>changeTires(Automobile, Tire[])</code>、<code>checkOil(Automobile)</code></td><td>技工负责为汽车换轮胎并检查机油</td></tr>
+                  <tr><td><code>start()</code>、<code>stop()</code>、<code>getOil()</code></td><td>留在 <code>Automobile</code></td><td>现在 Automobile 只有单一的职责：处理它自己的基本功能</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              课件还给了一句很实用的自检：假如你所说的方法并不合理，那么这个方法就可能违反了 SRP。
+              换句话说，如果你没法为「这个方法为什么在这个类里」讲出一个单一的理由，它就放错了地方。
+            </p>
+
+            <h4>例 4：烦人的手机</h4>
+            <p>
+              手机把拍照、摄像、游戏、GPS 全塞进一个设备，结果是功能多、不专业：
+              拍摄不如照相机和摄像机，游戏不如 PSP，导航不如专业 GPS。
+              这个生活化的例子说明的道理是——职责堆叠不会让一个类变强，只会让它每一方面都变弱。
+            </p>
+
+            <h3>九、合成复用原则与迪米特法则</h3>
+            <p>
+              <b>合成复用原则（组合优先原则，CRP）</b>：在系统中应该尽量多使用组合和聚合关联关系，
+              尽量少使用甚至不使用继承关系。原因还是耦合：继承把子类和父类的<b>实现</b>绑死
+              （连 <code>itsWidth</code> / <code>itsHeight</code> 这种私有成员都继承过来了），
+              而组合只依赖被组合对象的<b>接口</b>，替换实现不影响外层。
+            </p>
+            <p>
+              <b>迪米特法则（最少知识原则，LoD）</b>：一个软件实体对其他实体的引用越少越好；
+              或者说，如果两个类不必彼此直接通信，那么这两个类就不应当发生直接的相互作用，
+              而应通过引入一个第三者发生间接交互。它在课件里的重要性评级是三星（★★★☆☆），
+              是六条里最低的，但「引入第三者」这个说法在后面中介者模式、外观模式里会反复出现。
+            </p>
+
+            <h4>松耦合与高内聚</h4>
+            <p>课件用两个词把「好结构」量化了：</p>
+            <ul>
+              <li><b>功能耦合</b>：子系统<b>之间</b>互相影响的程度；</li>
+              <li><b>内聚性</b>：<b>内部</b>互相依赖的程度，或子系统内部相互合作的程度。</li>
+            </ul>
+            <p>
+              目标就是一句话：设计松耦合的子系统，同时实现每个子系统高内聚。
+              松耦合能增加子系统之间连接的灵活性。注意这两个词的方向完全相反——
+              一个量「之间」，一个量「之内」，考试里把它们用反是最常见的失分点。
+            </p>
+
+            <h3>十、契约式设计：把 LSP 写成可执行的断言</h3>
+            <p>
+              契约式设计（Design by Contract）描述的是客户类与服务器类之间的 C-S 关系，
+              要求具有形式上的一致性与精确的定义：在什么情况下执行哪种正确的程序流程。
+              落地手段是<b>断言</b>，分三类：
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>断言</th><th>约束谁</th><th>保护谁的权益</th><th>含义</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>前置条件</td><td>调用者</td><td>被调用者</td><td>调用前必须满足什么；对调用者提出要求</td></tr>
+                  <tr><td>后置条件</td><td>被调用者</td><td>调用者</td><td>返回时必须保证什么；是被调用者的责任</td></tr>
+                  <tr><td>不变式</td><td>类</td><td>所有客户</td><td>与类有关的断言，对所有操作都有效</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              把它和 LSP 接起来，就得到「覆写要遵守契约」这条规则，
+              也就是课件第 70、71 页那两张椭圆图（图 1-7、图 1-8）的结论：
+            </p>
+            <ul>
+              <li><b>前置条件只能弱化，不能强化。</b>子类方法可以接受比父类更宽松的输入，
+                这样原来能传父类的地方传子类也没问题；反过来就会拒掉合法的调用。</li>
+              <li><b>后置条件只能强化，不能弱化。</b>子类方法必须承诺至少和父类一样多，
+                这样调用者按父类契约写的后续逻辑才不会落空。</li>
+            </ul>
+            <p>
+              一句话记忆：<b>子类要「要求更少、承诺更多」</b>。这正是里氏替换原则在方法层面的可操作版本。
+            </p>
+
+            <h3>十一、UML 类图：六种关系的读法</h3>
+            <p>
+              课件里所有的结构图都是类图，用的是同一套 UML 记号：空心三角表示泛化（继承），
+              带虚线箭头的表示依赖，<code>«interface»</code> 是接口构造型，
+              <code>0..*</code> 是多重性。读懂这六种关系，等于拿到了后续所有模式类图的钥匙。
+            </p>
+
+            <figure class="uml">
+              <svg viewBox="0 0 700 330" role="img" aria-label="类图示例：Client 依赖抽象 Shape，Circle 与 Square 泛化自 Shape">
+                <defs>
+                  <marker id="arrow-open" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                    <path d="M0,0 L10,5 L0,10 z" fill="context-stroke"></path>
+                  </marker>
+                </defs>
+
+                <!-- Client -->
+                <rect class="box" x="14" y="40" width="196" height="80" rx="4"></rect>
+                <line class="divider" x1="14" y1="76" x2="210" y2="76"></line>
+                <text class="name" x="112" y="64" text-anchor="middle">Client</text>
+                <text class="member" x="24" y="98">+drawAll(list: Shape[])</text>
+
+                <!-- 依赖：Client ..&gt; Shape -->
+                <line class="edge edge--dash" x1="210" y1="92" x2="256" y2="92" marker-end="url(#arrow-open)"></line>
+                <text class="stereo" x="210" y="86">依赖</text>
+
+                <!-- Shape -->
+                <rect class="box box--abs" x="256" y="26" width="250" height="106" rx="4"></rect>
+                <line class="divider" x1="256" y1="86" x2="506" y2="86"></line>
+                <text class="stereo" x="381" y="46" text-anchor="middle">«abstract»</text>
+                <text class="name" x="381" y="70" text-anchor="middle">Shape</text>
+                <text class="member" x="268" y="106">+draw() : void</text>
+                <text class="member" x="268" y="124">+precedes(s: Shape) : bool</text>
+
+                <!-- 泛化：Circle -&gt; Shape -->
+                <line class="edge" x1="320" y1="236" x2="320" y2="150"></line>
+                <polygon class="tri" points="320,132 308,150 332,150"></polygon>
+
+                <!-- 泛化：Square -&gt; Shape -->
+                <line class="edge" x1="482" y1="236" x2="482" y2="150"></line>
+                <polygon class="tri" points="482,132 470,150 494,150"></polygon>
+
+                <!-- Circle -->
+                <rect class="box" x="248" y="236" width="144" height="84" rx="4"></rect>
+                <line class="divider" x1="248" y1="272" x2="392" y2="272"></line>
+                <text class="name" x="320" y="260" text-anchor="middle">Circle</text>
+                <text class="member" x="258" y="290">+draw()</text>
+                <text class="member" x="258" y="308">+precedes(s) : bool</text>
+
+                <!-- Square -->
+                <rect class="box" x="410" y="236" width="144" height="84" rx="4"></rect>
+                <line class="divider" x1="410" y1="272" x2="554" y2="272"></line>
+                <text class="name" x="482" y="260" text-anchor="middle">Square</text>
+                <text class="member" x="420" y="290">+draw()</text>
+                <text class="member" x="420" y="308">+precedes(s) : bool</text>
+              </svg>
+              <figcaption>
+                图 1-1 · 开闭原则的类图表达。<b>虚线开口箭头</b>是从使用者指向被依赖者的依赖关系，
+                Client 只依赖抽象 Shape；<b>实线空心三角</b>是从子类指向父类的泛化，
+                Circle 与 Square 都泛化自 Shape。新增一种图形只需加一个子类，Client 一行不改。
+              </figcaption>
+            </figure>
+
+            <figure class="uml">
+              <svg viewBox="0 0 700 300" role="img" aria-label="类图示例：组合、聚合与普通关联的区别">
+                <defs>
+                  <marker id="arrow-open2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                    <path d="M0,0 L10,5 L0,10 z" fill="context-stroke"></path>
+                  </marker>
+                </defs>
+
+                <!-- 组合：Car --&gt; Engine（实心菱形在整体端） -->
+                <rect class="box" x="20" y="24" width="152" height="54" rx="4"></rect>
+                <text class="name" x="96" y="57" text-anchor="middle">Car 汽车</text>
+                <line class="edge" x1="96" y1="78" x2="96" y2="186"></line>
+                <polygon class="arrow" points="96,78 108,90 96,102 84,90"></polygon>
+                <rect class="box" x="20" y="186" width="152" height="54" rx="4"></rect>
+                <text class="name" x="96" y="219" text-anchor="middle">Engine 发动机</text>
+                <text class="stereo" x="96" y="262" text-anchor="middle">组合（实心菱形）</text>
+                <text class="stereo" x="96" y="280" text-anchor="middle">部分随整体消亡</text>
+
+                <!-- 聚合：Team --&gt; Student（空心菱形在整体端） -->
+                <rect class="box" x="274" y="24" width="152" height="54" rx="4"></rect>
+                <text class="name" x="350" y="57" text-anchor="middle">Team 班级</text>
+                <line class="edge" x1="350" y1="78" x2="350" y2="186"></line>
+                <polygon class="tri" points="350,78 362,90 350,102 338,90"></polygon>
+                <rect class="box" x="274" y="186" width="152" height="54" rx="4"></rect>
+                <text class="name" x="350" y="219" text-anchor="middle">Student 学生</text>
+                <text class="stereo" x="350" y="262" text-anchor="middle">聚合（空心菱形）</text>
+                <text class="stereo" x="350" y="280" text-anchor="middle">部分可独立存在</text>
+
+                <!-- 关联：Teacher --&gt; Course（普通实线 + 多重性） -->
+                <rect class="box" x="528" y="24" width="152" height="54" rx="4"></rect>
+                <text class="name" x="604" y="57" text-anchor="middle">Teacher 教师</text>
+                <line class="edge" x1="604" y1="78" x2="604" y2="186" marker-end="url(#arrow-open2)"></line>
+                <text class="stereo" x="612" y="112">1</text>
+                <text class="stereo" x="612" y="178">0..*</text>
+                <rect class="box" x="528" y="186" width="152" height="54" rx="4"></rect>
+                <text class="name" x="604" y="219" text-anchor="middle">Course 课程</text>
+                <text class="stereo" x="604" y="262" text-anchor="middle">关联（实线 + 多重性）</text>
+                <text class="stereo" x="604" y="280" text-anchor="middle">长期的结构性联系</text>
+              </svg>
+              <figcaption>
+                图 1-2 · 组合、聚合、关联的区别。三者都是「整体—部分」，差别在<b>生命周期是否绑定</b>：
+                实心菱形（组合）部分随整体消亡，空心菱形（聚合）部分可独立存在，
+                普通实线（关联）只是彼此知晓、长期保持联系。
+              </figcaption>
+            </figure>
+
+            <p>六种关系按耦合强度从弱到强排列，考场上按这个顺序回忆最不容易漏：</p>
+            <ul>
+              <li><b>依赖（Dependency）</b>：虚线 + 开口箭头，指向被依赖方。最弱，通常表现为「局部变量、方法参数、静态调用」。</li>
+              <li><b>关联（Association）</b>：实线（可带箭头），表示长期的结构性联系，可标多重性。</li>
+              <li><b>聚合（Aggregation）</b>：空心菱形在整体端，部分可脱离整体独立存在。</li>
+              <li><b>组合（Composition）</b>：实心菱形在整体端，部分的生命周期由整体决定，是最强的「整体—部分」。</li>
+              <li><b>泛化（Generalization）</b>：实线 + 空心三角，指向父类，即继承。</li>
+              <li><b>实现（Realization）</b>：虚线 + 空心三角，指向接口，即 implements。</li>
+            </ul>
+
+            <h3>十二、例题解析：6174 的面向对象走法</h3>
+            <p>
+              课件第 3 页给出的题目是：给定一个四位数（数字不完全相同），把这四个数字排成最大四位数与最小四位数，
+              求差；若不是 6174 则重复上述过程，最终会得到 6174，验证这个过程。
+              这道题本身是算法题，但它是最好的设计练习题——因为它一眼看去「没有对象」。
+            </p>
+
+            <h4>第一步：先看过程式写法长什么样</h4>
+            <figure class="code" data-lang="java" data-file="6174 · 过程式初版">
+<pre><code>public class Kaprekar {
+    public static void main(String[] args) {
+        int n = 3524;
+        while (n != 6174) {
+            char[] cs = String.format("%04d", n).toCharArray();
+            java.util.Arrays.sort(cs);
+            int lo = Integer.parseInt(new String(cs));
+            int hi = Integer.parseInt(new StringBuilder(new String(cs)).reverse().toString());
+            n = hi - lo;
+            System.out.println(hi + " - " + lo + " = " + n);
+        }
+    }
+}</code></pre>
+            </figure>
+            <p>
+              这段代码能跑，但用本章的尺子量，它同时踩了三条：
+              <b>职责过多</b>（<code>main</code> 里混了「拆数字、排序、求差、驱动循环、打印」五件事）；
+              <b>对修改开放</b>（想改成验证三位数的 495、或换成五位数，必须改 <code>main</code>）；
+              <b>无法复用</b>（求差逻辑被锁在 <code>main</code> 里，别的程序拿不到）。
+            </p>
+
+            <h4>第二步：按 SRP 拆职责</h4>
+            <p>先用「变化的原因」这把刀切。四个变化原因，对应四个角色：</p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>变化的原因</th><th>职责</th><th>落到哪个角色</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>数字怎么拆、怎么补零</td><td>把数表示为固定位数的数字序列</td><td><code>DigitNumber</code></td></tr>
+                  <tr><td>排序规则变了（升/降、按位还是按数值）</td><td>由数字序列求出最大数与最小数</td><td><code>Extremes</code></td></tr>
+                  <tr><td>变换规则变了（6174 之外还有别的常数）</td><td>一次变换：给定数，产出下一个数</td><td><code>KaprekarStep</code></td></tr>
+                  <tr><td>终止条件与迭代策略变了</td><td>驱动迭代直到收敛，并记录过程</td><td><code>Convergence</code></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              拆完之后每个类的变化轴线只有一条：改位数只动 <code>DigitNumber</code>，
+              改常数只动 <code>KaprekarStep</code>，改输出方式完全不动前面任何一个。
+              这就是 SRP 带来的直接好处——课件说的「职责越多，被复用的可能性越小」反过来成立。
+            </p>
+
+            <h4>第三步：按 DIP 定依赖方向</h4>
+            <p>
+              驱动循环是高层策略（「一直迭代到稳定」），求差是低层机制。
+              按 DIP，高层不应依赖低层，二者都应依赖抽象。于是先抽出两个接口：
+            </p>
+            <figure class="code" data-lang="java" data-file="抽象先行">
+<pre><code>/** 一次变换：把 n 变成下一个数 */
+public interface Step {
+    int next(int n);
+}
+
+/** 终止判定：n 是否已经到达目标 */
+public interface Predicate {
+    boolean reached(int n);
+}
+
+/** 驱动：只依赖两个抽象，不知道自己算的是 6174 还是 495 */
+public class Convergence {
+    private final Step step;
+    private final Predicate done;
+
+    public Convergence(Step step, Predicate done) {
+        this.step = step;
+        this.done = done;
+    }
+
+    public java.util.List&lt;Integer&gt; run(int start) {
+        java.util.List&lt;Integer&gt; trail = new java.util.ArrayList&lt;&gt;();
+        int n = start;
+        trail.add(n);
+        while (!done.reached(n)) {
+            n = step.next(n);
+            trail.add(n);
+        }
+        return trail;
+    }
+}</code></pre>
+            </figure>
+            <p>
+              注意 <code>Convergence</code> 里<b>没有</b>任何 <code>6174</code>、没有任何位数信息。
+              这就是依赖倒置的效果：驱动逻辑现在可以原封不动地拿去跑三位数的 495、五位数的常数，
+              甚至拿去跑一个完全无关的不动点迭代。
+            </p>
+
+            <h4>第四步：实现具体策略，验证 OCP</h4>
+            <figure class="code" data-lang="java" data-file="KaprekarStep.java">
+<pre><code>/** 四位数卡普雷卡变换：max - min */
+public class KaprekarStep implements Step {
+    private final int digits;
+
+    public KaprekarStep(int digits) {
+        this.digits = digits;
+    }
+
+    public int next(int n) {
+        int[] ds = split(n);
+        java.util.Arrays.sort(ds);              // 升序
+        int lo = join(ds);
+        int hi = join(reverse(ds));
+        return hi - lo;
+    }
+
+    private int[] split(int n) {
+        int[] ds = new int[digits];
+        for (int i = digits - 1; i &gt;= 0; i--) {
+            ds[i] = n % 10;
+            n /= 10;
+        }
+        return ds;
+    }
+
+    private int join(int[] ds) {
+        int v = 0;
+        for (int d : ds) v = v * 10 + d;
+        return v;
+    }
+
+    private int[] reverse(int[] ds) {
+        int[] r = new int[ds.length];
+        for (int i = 0; i &lt; ds.length; i++) r[i] = ds[ds.length - 1 - i];
+        return r;
+    }
+}</code></pre>
+            </figure>
+            <p>
+              此时若要加「三位数验证 495」，只需新增
+              <code>new Convergence(new KaprekarStep(3), n -&gt; n == 495)</code>，
+              <b><code>Convergence</code> 与 <code>KaprekarStep</code> 都不改一行</b>——这就是对扩展开放、对修改关闭。
+              如果要加「记录每一步的算式」，就再包一层装饰器，同样不动已有代码。
+            </p>
+
+            <h4>第五步：用真实数据核对</h4>
+            <p>
+              课件只要求「验证这个过程」，所以必须拿具体数字走一遍。以 3524 为例：
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>步骤</th><th>最大数</th><th>最小数</th><th>差</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>1</td><td>5432</td><td>2345</td><td>3087</td></tr>
+                  <tr><td>2</td><td>8730</td><td>0378</td><td>8352</td></tr>
+                  <tr><td>3</td><td>8532</td><td>2358</td><td>6174</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              三步收敛。换一个起点 1004（这是四位数里收敛最慢的起点之一）：
+              1004 → 4086 → 8172 → 7443 → 3996 → 6264 → 4176 → 6174，共 7 步。
+              注意第二步 <code>4100 - 0014 = 4086</code>：最小数必须<b>补足前导零</b>再相减，
+              否则位数会错——这正是把「拆数字」单独做成 <code>DigitNumber</code> 职责的价值，
+              补零的规则被关在一个类里，不会被别的代码绕过。
+            </p>
+
+            <div class="callout callout--info">
+              <span class="callout__icon"><svg class="icon" aria-hidden="true"><use href="#i-info"></use></svg></span>
+              <div class="callout__body">
+                <p><span class="callout__title">这道题对应本章哪些原则</span>
+                ① SRP：拆成数字表示 / 极值 / 变换 / 驱动四个职责；
+                ② OCP：新增位数或新常数只加实现类，不改驱动；
+                ③ DIP：<code>Convergence</code> 依赖 <code>Step</code>、<code>Predicate</code> 两个抽象；
+                ④ LSP：任何 <code>Step</code> 实现都必须满足「输入任意四位数（数字不全同）都能产出下一个四位数」的契约，
+                否则 <code>Convergence</code> 的行为就不可预期；
+                ⑤ 合成复用：<code>Convergence</code> 组合一个 <code>Step</code>，而不是继承它。
+                一道小题，五条原则全部落到位——这就是课件把它放在第一章开头的用意。</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================================
+             4. compare —— 对比表
+             ================================================================ -->
+        <section class="section" id="compare" data-title="横向对比">
+          <div class="section-head">
+            <span class="section-head__num">04</span>
+            <h2 class="section-title">横向对比</h2>
+            <a class="section-anchor" href="#compare" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">选择题最爱在这里出题：成对的概念放在一起，只差一个维度就足以判错。</p>
+
+          <h3>六条设计原则总表</h3>
+          <p>这张表是全章骨架，建议默写。重要性星级来自课件原文。</p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>原则</th><th>一句话定义</th><th>治什么病</th><th>重要性</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>单一职责 SRP</td>
+                  <td>类的职责要单一，不能把太多职责放在一个类中</td>
+                  <td>职责耦合导致复用率低</td>
+                  <td>★★★★☆</td>
+                </tr>
+                <tr>
+                  <td>开闭 OCP</td>
+                  <td>对扩展开放、对修改关闭，即不修改实体就能扩展其功能</td>
+                  <td>过于僵硬、黏度过高</td>
+                  <td>★★★★★</td>
+                </tr>
+                <tr>
+                  <td>里氏替换 LSP</td>
+                  <td>能接受基类对象的地方必然能接受子类对象</td>
+                  <td>滥用继承导致的正确性缺陷</td>
+                  <td>★★★★☆</td>
+                </tr>
+                <tr>
+                  <td>依赖倒置 DIP</td>
+                  <td>针对抽象层编程，不要针对具体类编程</td>
+                  <td>高层策略被低层机制绑死</td>
+                  <td>★★★★★</td>
+                </tr>
+                <tr>
+                  <td>合成复用 CRP</td>
+                  <td>多用组合与聚合，尽量少用甚至不用继承</td>
+                  <td>继承带来的强耦合</td>
+                  <td>★★★★☆</td>
+                </tr>
+                <tr>
+                  <td>迪米特法则 LoD</td>
+                  <td>对其他实体的引用越少越好，必要时引入第三者间接交互</td>
+                  <td>对象间直接通信过密</td>
+                  <td>★★★☆☆</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>继承 vs 组合</h3>
+          <p>这是「合成复用原则」的全部理由，也是第 4 章桥接、装饰器、策略等模式的共同底座。</p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>维度</th><th>继承（白箱复用）</th><th>组合 / 聚合（黑箱复用）</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>复用的是什么</td><td>父类的<b>实现细节</b>，连私有成员一起继承</td><td>被组合对象的<b>接口</b>，看不见内部</td></tr>
+                <tr><td>耦合强度</td><td>强：父类改动直接影响子类</td><td>弱：换一个实现类即可</td></tr>
+                <tr><td>何时确定</td><td>编译期静态绑定，无法运行时更换</td><td>运行期可替换，可动态注入</td></tr>
+                <tr><td>封装性</td><td>破坏封装，子类能看到父类实现</td><td>保持封装，只通过接口交互</td></tr>
+                <tr><td>典型风险</td><td>正方形/矩形式的 LSP 违规；继承层次膨胀</td><td>对象数量增多，需要管理生命周期</td></tr>
+                <tr><td>本章结论</td><td>尽量少用甚至不用</td><td>优先使用</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>封装 vs 抽象 vs 信息隐藏</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>维度</th><th>封装</th><th>抽象</th><th>信息隐藏</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>是什么</td><td>把方法和数据封成一个对象</td><td>只保留与问题相关的特征</td><td>内部属性不可见，只能经接口访问</td></tr>
+                <tr><td>层次</td><td>实现机制</td><td>认知取舍</td><td>设计目标</td></tr>
+                <tr><td>对外给什么</td><td>给出接口，藏起实现</td><td>给出「能做什么」，不给「怎么做」</td><td>给出受控的访问通道</td></tr>
+                <tr><td>缺了它会怎样</td><td>内部状态任人修改，无法维护不变式</td><td>调用方必须了解所有细节，扩展就要改调用方</td><td>内部表示一改，所有客户代码全崩</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>内聚 vs 耦合</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>维度</th><th>内聚 Cohesion</th><th>耦合 Coupling</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>衡量对象</td><td>子系统<b>内部</b>各成分的相互合作程度</td><td>子系统<b>之间</b>的相互影响程度（功能耦合）</td></tr>
+                <tr><td>期望方向</td><td>越高越好（高内聚）</td><td>越低越好（低耦合）</td></tr>
+                <tr><td>谁负责</td><td>SRP：一个类只管一个变化轴线</td><td>DIP / ISP / LoD：依赖抽象、最小接口、少引用</td></tr>
+                <tr><td>失衡的后果</td><td>类变成大杂烩，改一处牵连多处</td><td>改一个模块要连带改一片，无法独立发布</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>四条原则的「手段—目标」对照</h3>
+          <p>简答题写「作用」时，把「手段」和「目标」分开写，比笼统说「提高可维护性」得分高得多。</p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>原则</th><th>核心手段</th><th>直接目标</th><th>违反后的典型代码气味</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>SRP</td><td>按「变化的原因」拆分职责</td><td>高内聚</td>
+                  <td>一个类里既有业务计算又有界面绘制</td>
+                </tr>
+                <tr>
+                  <td>OCP</td><td>抽象出变化点，用扩展代替修改</td><td>可扩展性、可插入性</td>
+                  <td>每加一种类型就要改 <code>switch</code> / <code>if-else</code> 链</td>
+                </tr>
+                <tr>
+                  <td>LSP</td><td>子类只强化后置条件、只弱化前置条件</td><td>多态程序的正确性</td>
+                  <td>用 <code>typeid</code> / <code>instanceof</code> 判断具体子类</td>
+                </tr>
+                <tr>
+                  <td>DIP</td><td>高层与低层都依赖抽象接口</td><td>可复用性、可替换性</td>
+                  <td>高层模块 <code>new</code> 出低层具体类</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>UML 六种关系一览</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>关系</th><th>记号</th><th>语义</th><th>代码里通常表现为</th><th>耦合强度</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>依赖</td><td>虚线 + 开口箭头</td><td>使用关系，箭尾用箭头</td><td>方法参数、局部变量、静态调用</td><td>最弱</td></tr>
+                <tr><td>关联</td><td>实线（可带箭头）+ 多重性</td><td>长期的结构性联系</td><td>成员变量（对方作为属性持有）</td><td>弱</td></tr>
+                <tr><td>聚合</td><td>空心菱形在整体端</td><td>整体—部分，部分可独立存在</td><td>成员变量，由外部传入</td><td>中</td></tr>
+                <tr><td>组合</td><td>实心菱形在整体端</td><td>整体—部分，生命周期绑定</td><td>成员变量，由整体内部创建</td><td>强</td></tr>
+                <tr><td>泛化</td><td>实线 + 空心三角</td><td>继承（is-a）</td><td><code>extends</code></td><td>强</td></tr>
+                <tr><td>实现</td><td>虚线 + 空心三角</td><td>实现接口（can-do）</td><td><code>implements</code></td><td>强</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>前置条件 vs 后置条件 vs 不变式</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>维度</th><th>前置条件</th><th>后置条件</th><th>不变式</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>约束谁</td><td>调用者</td><td>被调用者</td><td>类自身（对所有操作有效）</td></tr>
+                <tr><td>保护谁</td><td>被调用者</td><td>调用者</td><td>所有客户</td></tr>
+                <tr><td>子类覆写时</td><td>只能<b>弱化</b>（要求更少）</td><td>只能<b>强化</b>（承诺更多）</td><td>必须保持</td></tr>
+                <tr><td>反例后果</td><td>合法调用被子类拒绝</td><td>调用者依赖的保证落空</td><td>对象进入非法状态</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ================================================================
+             5. pitfalls —— 易错点
+             ================================================================ -->
+        <section class="section" id="pitfalls" data-title="易错点">
+          <div class="section-head">
+            <span class="section-head__num">05</span>
+            <h2 class="section-title">易错点</h2>
+            <a class="section-anchor" href="#pitfalls" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">这些是阅卷时真正扣分的地方，不是知识点的重复。</p>
+
+          <ul class="pitfalls">
+            <li><strong>把「会用继承和多态」当成「很 OO」。</strong>
+              课件原话是「以为会用继承，会用多态，便很 OO」——这是被点名的误解。
+              知道 ISA 关系还不够，还要知道 ISA 的真正含义：ISA 是就<b>行为功能</b>而言的，
+              不是就现实世界的分类而言的。正方形在现实中是矩形，但 Square 对象不能替换 Rectangle 对象。</li>
+
+            <li><strong>把 OCP 理解成「代码永远不许改」。</strong>
+              课件明确说没有任何一个大程序能做到 100% 的封闭，因此要「选择性的封闭」——
+              先判断这个模块应该对<b>哪种变化</b>封闭，再设计抽象。
+              写简答题时如果只说「不修改代码」，会显得没读过后半段。</li>
+
+            <li><strong>把「加 virtual」当成 LSP 的解药。</strong>
+              课件专门验证过这条思路：把 <code>SetWidth</code> / <code>SetHeight</code> 都改成虚函数之后，
+              <code>g()</code> 的断言仍然失败。问题不在绑定方式，而在子类<b>行为</b>与基类契约不相容。
+              同样，加了 <code>virtual</code> 也不代表就满足了里氏替换。</li>
+
+            <li><strong>把依赖箭头的方向画反。</strong>
+              依赖箭头从<b>使用者</b>指向<b>被依赖者</b>；泛化 / 实现的空心三角从<b>子类</b>指向<b>父类</b>。
+              画反了，整张图的「谁依赖抽象」就完全说反，OCP / DIP 的论证也就跟着反了。</li>
+
+            <li><strong>把内聚和耦合用反。</strong>
+              内聚量的是「之内」，耦合量的是「之间」。常见错误是写「提高耦合度、降低内聚」——
+              正好说反。正确表述永远是「高内聚、低耦合」。</li>
+
+            <li><strong>把 SRP 理解成「一个类只能有一个方法」。</strong>
+              课件特意否定了这个极端：并非为一个类只设定一个方法，而是<b>一组方法只能有一个变化轴线</b>，
+              最好还有一个概念统摄这组方法。<code>Modem</code> 拆分的依据是两个变化原因（连接管理 vs 数据通信），
+              不是方法个数。</li>
+
+            <li><strong>把 ISP 和 SRP 混为一谈。</strong>
+              SRP 管的是<b>类的职责</b>（一个类一个变化轴线），ISP 管的是<b>接口对客户的暴露面</b>
+              （不强迫客户依赖它不用的方法）。<code>Door</code> 加 <code>TimeOut</code> 的例子里，
+              每个类自身职责并不乱，问题出在接口把不相关的能力捆给了所有客户。</li>
+
+            <li><strong>以为「减少类的数目」是好事。</strong>
+              课件原话：实际上，类的数目不是问题；接口污染才会带来维护和重用方面的问题。
+              为了少建一个类而把方法塞进现有接口，是用未来的维护成本换眼前的行数。</li>
+
+            <li><strong>把「合成复用」理解成「禁止继承」。</strong>
+              课件的表述是「尽量少使用甚至不使用继承关系」，是优先级排序而非禁令。
+              当子类能完全替换基类（满足 LSP）且确实是 is-a 行为关系时，继承仍然合理。</li>
+
+            <li><strong>忘了契约的方向。</strong>
+              子类覆写时应当「要求更少、承诺更多」——即前置条件弱化、后置条件强化。
+              写反成「前置条件强化、后置条件弱化」，正是 LSP 违规在方法层面的精确形态。</li>
+          </ul>
+        </section>
+
+        <!-- ================================================================
+             6. quiz —— 自测（数据在页面底部 #quiz-data）
+             ================================================================ -->
+        <section class="section" id="quiz" data-title="本章自测">
+          <div class="section-head">
+            <span class="section-head__num">06</span>
+            <h2 class="section-title">本章自测</h2>
+            <a class="section-anchor" href="#quiz" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">题目数据来自本页底部 <code>&lt;script id="quiz-data"&gt;</code>，由 site.js 渲染判分。</p>
+          <div class="quiz" id="quiz-root"></div>
+        </section>
+
+        <!-- ================================================================
+             7. cards —— 记忆卡片（数据在页面底部 #cards-data）
+             ================================================================ -->
+        <section class="section" id="cards" data-title="记忆卡片">
+          <div class="section-head">
+            <span class="section-head__num">07</span>
+            <h2 class="section-title">记忆卡片</h2>
+            <a class="section-anchor" href="#cards" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">点击卡片翻面；标记「已掌握」会记住进度，下次接着看。</p>
+          <div class="flash" id="cards-root"></div>
+        </section>
+
+        <!-- ================================================================
+             8. slides —— 课件原图
+             ================================================================ -->
+        <section class="section" id="slides" data-title="课件原图">
+          <div class="section-head">
+            <span class="section-head__num">08</span>
+            <h2 class="section-title">课件原图</h2>
+            <a class="section-anchor" href="#slides" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">
+            全部 75 页课件已导出到本目录 <code>slides/</code>，点击任意缩略图可放大，支持 ← → 翻页。
+            下面先按考点标出最值得反复看的 10 页。
+          </p>
+
+          <h3>重点页速览</h3>
+          <p>下表按考点标出最值得反复看的 10 页，点击「查看原图」可直接打开该页大图；
+            也可以在下方的完整课件区翻页浏览。</p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>页</th><th>主题</th><th>为什么重要</th><th>图</th></tr>
+              </thead>
+              <tbody>
+                  <tr>
+                    <td>P3</td>
+                    <td>6174 题目</td>
+                    <td>本章唯一的算法例题，用来演练职责拆分与依赖倒置</td>
+                    <td><a href="slides/slide-003.jpg">打开</a></td>
+                  </tr>
+                  <tr>
+                    <td>P4</td>
+                    <td>软件系统的可维护性</td>
+                    <td>四个症状：僵硬 / 脆弱 / 复用率低 / 黏度过高</td>
+                    <td><a href="slides/slide-004.jpg">打开</a></td>
+                  </tr>
+                  <tr>
+                    <td>P5</td>
+                    <td>面向对象设计原则概述</td>
+                    <td>六条原则的定义与重要性星级，必背</td>
+                    <td><a href="slides/slide-005.jpg">打开</a></td>
+                  </tr>
+                  <tr>
+                    <td>P8</td>
+                    <td>封装、抽象和信息隐藏</td>
+                    <td>三者分工的原文出处</td>
+                    <td><a href="slides/slide-008.jpg">打开</a></td>
+                  </tr>
+                  <tr>
+                    <td>P13</td>
+                    <td>OCP 正反对照</td>
+                    <td>Client 直连 Server 对比引入抽象后的结构</td>
+                    <td><a href="slides/slide-013.jpg">打开</a></td>
+                  </tr>
+                  <tr>
+                    <td>P16</td>
+                    <td>OCP 下的解决方案</td>
+                    <td>Listing 2：多态分派取代 switch 分支</td>
+                    <td><a href="slides/slide-016.jpg">打开</a></td>
+                  </tr>
+                  <tr>
+                    <td>P33</td>
+                    <td>LSP 真正的问题</td>
+                    <td>g() 的断言为什么对 Square 必然失败</td>
+                    <td><a href="slides/slide-033.jpg">打开</a></td>
+                  </tr>
+                  <tr>
+                    <td>P45</td>
+                    <td>DIP 更合适的层次模型</td>
+                    <td>插入抽象接口后，依赖不再可传递</td>
+                    <td><a href="slides/slide-045.jpg">打开</a></td>
+                  </tr>
+                  <tr>
+                    <td>P67</td>
+                    <td>多重职责到单一职责</td>
+                    <td>Automobile 的七个方法如何分给 Driver / CarWash / Mechanic</td>
+                    <td><a href="slides/slide-067.jpg">打开</a></td>
+                  </tr>
+                  <tr>
+                    <td>P71</td>
+                    <td>覆写要遵守契约</td>
+                    <td>前置条件弱化、后置条件强化的椭圆图（图 1-7 / 1-8）</td>
+                    <td><a href="slides/slide-071.jpg">打开</a></td>
+                  </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3 style="margin-top:var(--sp-6)">全部课件</h3>
+          <div class="slides"
+               data-slides-dir="slides"
+               data-count="75"
+               data-prefix="slide"
+               data-ext="jpg"
+               data-pad="3"
+               data-start="1"
+               data-title="第 1 章 · 面向对象设计的原理 · 课件原图"></div>
+        </section>
+
+        <!-- ================================================================
+             9. summary —— 本章小结与自测清单（追加小节）
+             ================================================================ -->
+        <section class="section" id="videos" data-title="视频讲解">
+          <div class="section-head">
+            <span class="section-head__num">09</span>
+            <h2 class="section-title">视频讲解</h2>
+            <a class="section-anchor" href="#videos" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">
+            5 段视频覆盖本章最关键的设计原则（SRP / OCP / LSP / DIP / ISP）：每段先讲「为什么需要这条原则」，再落到代码。看完一节再读上面的正文，理解会顺很多；视频与课件原图是同一批课件的两种讲法。
+          </p>
+          <div class="videos" id="videos-root"></div>
+          <p class="muted tiny" style="margin-top:var(--sp-3)">共 5 段，均为 1080p 讲解视频；点封面播放，<kbd>Esc</kbd> 关闭。</p>
+        </section>
+
+        <section class="section" id="summary" data-title="本章小结">
+          <div class="section-head">
+            <span class="section-head__num">10</span>
+            <h2 class="section-title">本章小结</h2>
+            <a class="section-anchor" href="#summary" aria-label="本节链接">#</a>
+          </div>
+          <p class="section-lead">把全章压缩成能背下来的话，再逐条自检。</p>
+
+          <div class="prose">
+            <h3>一页纸小结</h3>
+            <ul>
+              <li>面向对象设计的目标是<b>可维护性 + 可复用性</b>；复用能提高开发效率、提高质量、节约成本，恰当的复用还能改善可维护性。</li>
+              <li>难维护的四个症状：过于僵硬、过于脆弱、复用率低、黏度过高；对应三个设计目标：可扩展性、灵活性、可插入性。</li>
+              <li><b>封装</b>给机制，<b>抽象</b>给契约，<b>信息隐藏</b>是目标；三者共同支撑可读性。</li>
+              <li><b>单一职责</b>：一个类只负责一个功能领域中的相应职责，判据是「变化的原因」而非方法个数。</li>
+              <li><b>开闭</b>：对扩展开放、对修改关闭，即在不修改源代码的基础上扩展行为；关键是抽象，且只能做到选择性的封闭。</li>
+              <li><b>里氏替换</b>：能用基类对象的地方一定能用子类对象；ISA 是就行为功能而言，不是就现实分类而言。</li>
+              <li><b>依赖倒置</b>：抽象不依赖细节，细节依赖抽象；针对接口编程，不要针对实现编程。</li>
+              <li><b>接口隔离</b>：客户端不应依赖它不用的接口，把大接口细化成小接口；胖接口要用适配器拆。</li>
+              <li><b>合成复用</b>：多用组合聚合、少用继承；<b>迪米特</b>：少引用、必要时引入第三者。</li>
+              <li>UML 六种关系按耦合从弱到强：依赖 → 关联 → 聚合 → 组合 → 泛化 / 实现。</li>
+              <li>契约式设计把 LSP 变成断言：子类覆写只能弱化前置条件、强化后置条件。</li>
+            </ul>
+
+            <h3>自测清单</h3>
+            <p>逐条打勾。任何一条打不上，回到对应小节重读。</p>
+            <ul class="objectives">
+              <li>能不看资料说出四个「难维护」症状的中英文与各自对应的设计目标。</li>
+              <li>能默写 OCP 的英文定义，并说明「选择性的封闭」为什么必要。</li>
+              <li>能用 Listing 1 / Listing 2 的对比，讲清 switch 分支与多态分派的本质差别。</li>
+              <li>能完整讲出正方形/矩形反例：f() 怎么搞乱对象、g() 的断言为什么必然失败、加 virtual 为什么没用。</li>
+              <li>能画出 DIP 改造前后的层次依赖图，并说明「依赖是可传递的」意味着什么风险。</li>
+              <li>能说出 <code>Door</code> / <code>TimerClient</code> 案例里 ISP 的三条反对理由与三种分离手法。</li>
+              <li>能对 <code>Automobile</code> 的七个方法逐个判断该不该留在原类，并给出理由。</li>
+              <li>能区分内聚与耦合、SRP 与 ISP、封装与抽象三对概念，各说出一个判据。</li>
+              <li>能默画 UML 六种关系的记号，并说清依赖箭头与泛化三角的方向规则。</li>
+              <li>能把 6174 题目拆成四个职责并给出接口设计，说明它如何满足 OCP 与 DIP。</li>
+            </ul>
+          </div>
+        </section>
+
+        <nav class="pager" id="pager-root" aria-label="章节导航"></nav>
+      </div>
+    </main>
+  </div>
+</div>
+
+<footer class="footer" id="footer-root"></footer>
+
+<!-- ==========================================================================
+     数据块 1：自测题（JSON 数组）
+     字段：type = single | multiple | boolean
+           stem / options / answer / explain / tag
+     注意：answer 是 0-based 选项下标：单选写 1 表示第二个选项；多选写数组；判断题写 true/false
+     ========================================================================== -->
+<script type="application/json" id="quiz-data">
+[
+  {
+    "type": "single",
+    "stem": "开闭原则（OCP）的核心含义是？",
+    "options": [
+      "每个类只应有一个引起它变化的原因",
+      "软件实体应当对扩展开放、对修改关闭",
+      "高层模块不应依赖低层模块，二者都应依赖抽象",
+      "子类型必须能够替换掉它们的基类型"
+    ],
+    "answer": 1,
+    "explain": "这是 Bertrand Meyer 1988 年给出的定义：software entities should be open for extension, but closed for modification。A 是单一职责，C 是依赖倒置，D 是里氏替换。",
+    "tag": "OCP"
+  },
+  {
+    "type": "single",
+    "stem": "下列哪一项不属于依赖倒置原则（DIP）的内容？",
+    "options": [
+      "高层模块不应该依赖低层模块，二者都应该依赖抽象",
+      "抽象不应该依赖细节，细节应该依赖抽象",
+      "要针对抽象层编程，不要针对具体类编程",
+      "子类覆写方法时只能弱化前置条件、强化后置条件"
+    ],
+    "answer": 3,
+    "explain": "D 是契约式设计在覆写规则上的体现，服务于里氏替换原则，不是 DIP 的两条要点。DIP 的原文只有两条：高层与低层都依赖抽象；抽象不依赖细节、细节依赖抽象。",
+    "tag": "DIP"
+  },
+  {
+    "type": "single",
+    "stem": "课件中「正方形继承矩形」的经典案例，主要违反了哪条原则？",
+    "options": [
+      "单一职责原则",
+      "开闭原则",
+      "里氏替换原则",
+      "接口隔离原则"
+    ],
+    "answer": 2,
+    "explain": "向接受 Rectangle 引用的函数 g() 传入 Square 后，g() 中「宽乘高等于 20」的断言必然失败，说明 Square 对象不能替换 Rectangle 对象，直接违反 LSP。它同时会连累 OCP（调用方必须了解所有派生类），但最直接的违规是 LSP。",
+    "tag": "LSP"
+  },
+  {
+    "type": "single",
+    "stem": "接口隔离原则（ISP）的直接表述是？",
+    "options": [
+      "不应该强迫客户依赖于它们不使用的方法",
+      "一个类应该有且仅有一个变化轴线",
+      "软件实体对扩展开放、对修改关闭",
+      "一个软件实体对其他实体的引用越少越好"
+    ],
+    "answer": 0,
+    "explain": "ISP 处理的是「胖接口」：接口不内聚时会被分解成多组方法，每组服务于一组不同的客户。B 是 SRP，C 是 OCP，D 是迪米特法则。",
+    "tag": "ISP"
+  },
+  {
+    "type": "single",
+    "stem": "判断一个类是否违反单一职责原则（SRP），最准确的判据是？",
+    "options": [
+      "这个类是否同时使用了继承与组合",
+      "这个类的方法个数是否超过 5 个",
+      "这个类是否有不止一个引起它变化的原因",
+      "这个类是否被多个客户程序使用"
+    ],
+    "answer": 2,
+    "explain": "课件明确指出：并非极端为一个类只设定一个方法，而是一组方法只能有一个变化轴线。SRP 的判据是「变化的原因」而不是方法数量，也不是被几个客户使用。",
+    "tag": "SRP"
+  },
+  {
+    "type": "single",
+    "stem": "关于内聚与耦合，下列说法正确的是？",
+    "options": [
+      "两者都衡量子系统内部的关系，只是粒度不同",
+      "内聚衡量子系统之间的相互影响，耦合衡量子系统内部的合作程度",
+      "内聚衡量子系统内部的合作程度，耦合衡量子系统之间的相互影响",
+      "两者都衡量子系统之间的关系，只是角度不同"
+    ],
+    "answer": 2,
+    "explain": "功能耦合指子系统之间互相影响的程度；内聚性指子系统内部相互依赖、相互合作的程度。设计目标是「高内聚、低耦合」——内聚要往高走，耦合要往低走，方向相反。",
+    "tag": "松耦合"
+  },
+  {
+    "type": "multiple",
+    "stem": "下列属于 SOLID 五原则的有（多选）：",
+    "options": [
+      "单一职责原则",
+      "开闭原则",
+      "里氏替换原则",
+      "迪米特法则"
+    ],
+    "answer": [
+      0,
+      1,
+      2
+    ],
+    "explain": "SOLID 是 SRP、OCP、LSP、ISP、DIP 五条。迪米特法则（最少知识原则）虽然也是重要的面向对象设计原则，但不属于 SOLID；课件把它与合成复用原则一起单列，重要性评级为三星。",
+    "tag": "SOLID"
+  },
+  {
+    "type": "multiple",
+    "stem": "下列现象中，属于「对修改开放」（即违反 OCP）的迹象有（多选）：",
+    "options": [
+      "每新增一种图形类型，DrawAllShapes 里的 switch 就要加一个 case",
+      "Client 只依赖 Shape 抽象，新增子类时 Client 一行不改",
+      "DrawShape 里用 typeid 判断具体子类后分别处理",
+      "Copy 模块里用 if/else 判断输出设备是打印机还是磁盘"
+    ],
+    "answer": [
+      0,
+      2,
+      3
+    ],
+    "explain": "A、C、D 都是「按类型分支」，每增加一种新类型就必须回来改已有代码，正是对修改开放。B 才是 OCP 期望的效果：扩展点由子类提供，调用方一行不改。",
+    "tag": "OCP"
+  },
+  {
+    "type": "multiple",
+    "stem": "关于 UML 类图关系，下列说法正确的有（多选）：",
+    "options": [
+      "聚合用实心菱形，表示部分可以独立存在",
+      "依赖用虚线加开口箭头，箭头指向被依赖的一方",
+      "泛化用实线加空心三角，三角指向父类",
+      "组合用实心菱形，表示部分随整体消亡"
+    ],
+    "answer": [
+      1,
+      2,
+      3
+    ],
+    "explain": "A 错在记号：聚合用空心菱形、组合用实心菱形，两者不能互换。两者的区别在生命周期——组合中部分由整体创建和销毁，聚合中部分可脱离整体独立存在；依赖箭头指向被依赖方，泛化三角指向父类，B、C、D 都正确。",
+    "tag": "UML"
+  },
+  {
+    "type": "multiple",
+    "stem": "契约式设计中，子类覆写父类方法时正确的做法有（多选）：",
+    "options": [
+      "前置条件只能弱化，不能强化",
+      "后置条件只能强化，不能弱化",
+      "前置条件与后置条件都可以随意改写，只要功能正确即可",
+      "类的不变式必须保持"
+    ],
+    "answer": [
+      0,
+      1,
+      3
+    ],
+    "explain": "口诀是「要求更少、承诺更多」：弱化前置条件意味着原来合法的调用仍然合法；强化后置条件意味着调用方按父类契约写的后续逻辑不会落空；类的不变式必须保持。C 恰恰是 LSP 违规的精确形态。",
+    "tag": "契约"
+  },
+  {
+    "type": "single",
+    "stem": "可维护性四症状中，「一个改动有两种做法时，权宜之计总比保持原始设计意图更容易走通」描述的是？",
+    "options": [
+      "过于僵硬 Rigidity",
+      "过于脆弱 Fragility",
+      "复用率低 Immobility",
+      "黏度过高 Viscosity"
+    ],
+    "answer": 3,
+    "explain": "课件定义：改动有 a（保持原始设计意图与框架）与 b（权宜之计、牺牲中长期利益）两种方式，如果系统里总是 b 更容易，则称为黏度过高。它衡量的是「设计本身对正确做法的阻力」。",
+    "tag": "可维护性"
+  },
+  {
+    "type": "single",
+    "stem": "课件中 Door 接口被加入 TimeOut() 方法这一案例，为什么被判定为违反 ISP？",
+    "options": [
+      "因为 TimedDoor 承担的职责太多，违反 SRP",
+      "因为 Door 接口被它并不需要的计时接口污染，与计时无关的门被迫提供空实现",
+      "因为 Timer 类依赖了具体类而不是抽象",
+      "因为 Door 没有定义为抽象类"
+    ],
+    "answer": 1,
+    "explain": "课件的四条理由是：并非所有门需要计时；最初的 Door 抽象与计时无关；与计时无关的派生类将被迫实现 nil 的 TimeOut；使用这些派生类的应用还必须 include TimerClient 的定义。这就是接口污染。",
+    "tag": "ISP"
+  },
+  {
+    "type": "single",
+    "stem": "开闭原则中「选择性的封闭（Strategic Closure）」指的是？",
+    "options": [
+      "没有任何大程序能做到 100% 封闭，必须选择该模块对何种变化封闭",
+      "只在编译期封闭，运行期开放",
+      "只对基类封闭，对派生类开放",
+      "只对部分客户程序封闭，对另一些客户开放"
+    ],
+    "answer": 0,
+    "explain": "课件明确说：无论模块多么「封闭」，都会存在一些无法封闭的变化；不可能完全封闭，就必须对设计的模块应该对何种变化封闭做出选择。例如给 Shape 加上「圆必须在矩形之前画出」的需求后，Listing 2 的 DrawAllShapes 就无法封闭这种变化。",
+    "tag": "OCP"
+  },
+  {
+    "type": "single",
+    "stem": "6174 例题中，把 Convergence 设计成依赖 Step 与 Predicate 两个接口，主要体现了哪条原则？",
+    "options": [
+      "单一职责原则",
+      "迪米特法则",
+      "依赖倒置原则",
+      "接口隔离原则"
+    ],
+    "answer": 2,
+    "explain": "驱动迭代属于高层策略，求差属于低层机制。让 Convergence 依赖 Step / Predicate 两个抽象，而不是直接依赖 KaprekarStep，正是「高层与低层都依赖抽象」。好处是同一份驱动逻辑可以原封不动地用于三位数 495 或五位数常数。",
+    "tag": "例题"
+  },
+  {
+    "type": "boolean",
+    "stem": "合成复用原则要求系统中完全禁止使用继承。",
+    "answer": false,
+    "explain": "课件的表述是「尽量多使用组合和聚合关联关系，尽量少使用甚至不使用继承关系」，是优先级排序而非禁令。当子类能完全替换基类（满足 LSP）且确实是行为上的 is-a 关系时，继承仍然合理。",
+    "tag": "CRP"
+  },
+  {
+    "type": "boolean",
+    "stem": "里氏替换原则中的 ISA 关系是就行为功能而言的，而不是就现实世界的分类而言的。",
+    "answer": true,
+    "explain": "这正是课件对正方形/矩形案例的结论：一个正方形在现实中是矩形，但 Square 对象并非 Rectangle 对象，因为两者的行为功能并不相容。行为功能是外在、公开的，是客户程序所依赖的。",
+    "tag": "LSP"
+  },
+  {
+    "type": "boolean",
+    "stem": "只要把父类的 SetWidth / SetHeight 声明为 virtual，正方形继承矩形就不再违反 LSP。",
+    "answer": false,
+    "explain": "课件专门验证过这条思路：改成虚函数后，g() 中「5 × 4 == 20」的断言依然失败。问题不在绑定方式（静态还是动态），而在子类行为与基类契约不相容。加 virtual 只是让错误更容易发生。",
+    "tag": "LSP"
+  },
+  {
+    "type": "boolean",
+    "stem": "为了减少类的数目而往已有接口里添加方法，是接口隔离原则所反对的做法。",
+    "answer": true,
+    "explain": "课件把这种动机点名为接口污染的来源之一，并强调：实际上类的数目不是问题，接口污染才会带来维护与重用方面的问题。最常见后果是——为了重用被污染的接口，被迫实现并维护不必要的方法。",
+    "tag": "ISP"
+  },
+  {
+    "type": "boolean",
+    "stem": "抽象与封装是同一件事的两种说法，只是用词不同。",
+    "answer": false,
+    "explain": "课件分得很清楚：封装是「方法和数据封装成一个对象，实现信息隐藏、接口对外」，是机制；抽象是「方法的接口使对象功能抽象，对象实现接口定义的方法」，是取舍。两者共同服务于信息隐藏这个目标。",
+    "tag": "封装/抽象"
+  },
+  {
+    "type": "multiple",
+    "stem": "关于 6174 例题的面向对象设计，下列说法正确的有（多选）：",
+    "options": [
+      "把拆数字、求极值、变换、驱动迭代拆成不同职责，体现单一职责原则",
+      "必须让 KaprekarStep 继承 Convergence 才能复用驱动逻辑",
+      "新增三位数 495 的验证只需新增 Step 实现、不改 Convergence，体现开闭原则",
+      "Convergence 依赖 Step 与 Predicate 两个抽象，体现依赖倒置原则"
+    ],
+    "answer": [
+      0,
+      2,
+      3
+    ],
+    "explain": "B 说反了：驱动逻辑通过「组合」被复用（Convergence 持有一个 Step），这正是合成复用原则的建议；用继承反而会把驱动逻辑与具体变换绑死。其余三项分别对应 SRP、OCP、DIP。",
+    "tag": "例题"
+  }
+]
+</script>
+
+<!-- ==========================================================================
+     数据块 2：记忆卡片（JSON 数组）
+     字段：front（正面问题）/ back（背面答案，可含少量 HTML）/ tag（可选分类）
+     ========================================================================== -->
+<script type="application/json" id="cards-data">
+[
+  {
+    "front": "开闭原则（OCP）的英文定义？",
+    "back": "Software entities (classes, modules, functions, etc.) should be <b>open for extension, but closed for modification</b>. 由 Bertrand Meyer 于 1988 年提出。",
+    "tag": "SOLID"
+  },
+  {
+    "front": "开闭原则对应的三个设计目标？",
+    "back": "① <b>可扩展性</b> Extensibility（与僵硬相反）；② <b>灵活性</b> Flexibility（与脆弱相反）；③ <b>可插入性</b> Pluggability（黏度过高的反面）。",
+    "tag": "SOLID"
+  },
+  {
+    "front": "什么是「选择性的封闭」？",
+    "back": "没有任何大程序能做到 <b>100% 封闭</b>，总存在无法封闭的变化。因此必须选择「本模块应该对何种变化封闭」，这种有选择的封闭叫 Strategic Closure。",
+    "tag": "OCP"
+  },
+  {
+    "front": "里氏替换原则（LSP）的定义？",
+    "back": "<b>Subtypes must be substitutable for their base types.</b> 子类型必须能够替换掉它们的基类型，且不改变程序的行为功能。",
+    "tag": "SOLID"
+  },
+  {
+    "front": "LSP 中的 ISA 关系指的是什么？",
+    "back": "ISA 是就<b>行为功能</b>而言，不是就现实世界分类而言。行为功能是外在、公开的，是客户程序所依赖的——所以「正方形是矩形」在现实中成立，在 OOD 中不成立。",
+    "tag": "LSP"
+  },
+  {
+    "front": "违背 LSP 会连带违背哪条原则？为什么？",
+    "back": "连带违背 <b>OCP</b>。若函数用基类指针却违背 LSP，它就必须了解基类的<b>所有派生类</b>，每加一个新派生类都要改它——于是对修改开放。",
+    "tag": "LSP"
+  },
+  {
+    "front": "依赖倒置原则（DIP）的两条要点？",
+    "back": "① 高层模块不应依赖低层模块，二者都应依赖<b>抽象</b>；<br>② 抽象不应依赖细节，细节应依赖抽象。",
+    "tag": "SOLID"
+  },
+  {
+    "front": "DIP 的「倒置」倒置了什么？",
+    "back": "传统结构化方法倾向于「高层依赖低层、抽象依赖细节」。OO 设计要求两端都依赖中间的抽象，依赖箭头方向相对传统结构被<b>倒置</b>了。",
+    "tag": "DIP"
+  },
+  {
+    "front": "为什么说「依赖是可传递的」是一种风险？",
+    "back": "分层后 Policy → Mechanism → Utility，Policy 会对其下一直到 Utility 的改动都<b>非常敏感</b>。解法是在层间插入抽象接口，让变化被接口挡住。",
+    "tag": "DIP"
+  },
+  {
+    "front": "接口隔离原则（ISP）的定义？",
+    "back": "Clients should not be forced to depend upon interfaces that they do not use. <b>不应该强迫客户依赖于它们不使用的方法</b>；用多个专门接口优于单一总接口。",
+    "tag": "SOLID"
+  },
+  {
+    "front": "什么是接口污染？它最常见的后果？",
+    "back": "为接口添加<b>不必要的职责</b>（常见动机是「减少类的数目」）。最常见后果：为了重用被污染的接口，被迫实现并<b>维护不必要的方法</b>。",
+    "tag": "ISP"
+  },
+  {
+    "front": "拆解胖接口的三种手法？",
+    "back": "① <b>继承法</b>（把接口加到父类，污染上移）；② <b>委托法</b>——对象适配器，写 Adapter 持有一个引用；③ <b>多继承 / 接口法</b>——类适配器，同时继承两个接口。",
+    "tag": "ISP"
+  },
+  {
+    "front": "单一职责原则（SRP）的四句核心含意？",
+    "back": "① 一个类有且仅有一个职责；② 职责 = <b>引起该类变化的原因</b>；③ 不是只设一个方法，而是<b>一组方法只有一个变化轴线</b>；④ 最好有一个概念统摄这组方法。",
+    "tag": "SOLID"
+  },
+  {
+    "front": "SRP 为什么「最简单又最难运用」？",
+    "back": "简单在于表述，难在<b>发现类的多重职责</b>——界定单一职责需要较强的分析设计能力与重构经验。它是高内聚、低耦合的指导方针。",
+    "tag": "SRP"
+  },
+  {
+    "front": "封装、抽象、信息隐藏三者的分工？",
+    "back": "<b>封装</b>=把方法与数据封成对象（机制）；<b>抽象</b>=只保留与问题相关的特征，暴露接口（契约）；<b>信息隐藏</b>=内部属性不可见，只能经接口访问（目标）。",
+    "tag": "概念"
+  },
+  {
+    "front": "内聚与耦合分别衡量什么？",
+    "back": "<b>内聚</b>：子系统<b>内部</b>相互合作、相互依赖的程度（越高越好）；<b>耦合</b>（功能耦合）：子系统<b>之间</b>互相影响的程度（越低越好）。",
+    "tag": "概念"
+  },
+  {
+    "front": "软件难维护的四个症状？",
+    "back": "① 过于<b>僵硬</b> Rigidity（难加新功能）；② 过于<b>脆弱</b> Fragility（牵一发动全身）；③ <b>复用率低</b> Immobility（拆不出来）；④ <b>黏度过高</b> Viscosity（权宜之计总比正确做法容易）。",
+    "tag": "可维护性"
+  },
+  {
+    "front": "合成复用原则（CRP）的要求？",
+    "back": "系统中应尽量多使用<b>组合和聚合</b>关联关系，尽量少使用甚至不使用<b>继承</b>关系。因为继承把实现细节一并绑死，组合只依赖接口。",
+    "tag": "SOLID"
+  },
+  {
+    "front": "迪米特法则（LoD）的定义？",
+    "back": "一个软件实体对其他实体的<b>引用越少越好</b>；如果两个类不必直接通信，就不应发生直接相互作用，而应通过引入一个<b>第三者</b>间接交互。",
+    "tag": "SOLID"
+  },
+  {
+    "front": "契约式设计中的三类断言？",
+    "back": "<b>前置条件</b>：对调用者提要求，保护被调用者的权益；<br><b>后置条件</b>：被调用者的责任，保护调用者的权益；<br><b>不变式</b>：与类有关的断言，对所有操作有效。",
+    "tag": "契约"
+  },
+  {
+    "front": "子类覆写方法时，前置/后置条件的正确方向？",
+    "back": "前置条件只能<b>弱化</b>（要求更少），后置条件只能<b>强化</b>（承诺更多）。口诀：<b>要求更少、承诺更多</b>。写反就是 LSP 违规。",
+    "tag": "契约"
+  },
+  {
+    "front": "UML 六种关系按耦合从弱到强怎么排？",
+    "back": "依赖 → 关联 → 聚合 → 组合 → 泛化 / 实现。前四者是「使用 / 整体-部分」，后两者是「is-a / can-do」。",
+    "tag": "UML"
+  },
+  {
+    "front": "依赖箭头与泛化三角的方向规则？",
+    "back": "<b>依赖</b>：从使用者指向被依赖者（虚线 + 开口箭头）；<b>泛化 / 实现</b>：从子类指向父类（空心三角）。方向画反，整张图的论证就反了。",
+    "tag": "UML"
+  },
+  {
+    "front": "聚合与组合的记号与语义差别？",
+    "back": "<b>聚合</b>：空心菱形在整体端，部分可<b>独立存在</b>；<b>组合</b>：实心菱形在整体端，部分的生命周期<b>由整体决定</b>，随整体消亡。",
+    "tag": "UML"
+  },
+  {
+    "front": "OCP 的核心手段是什么？",
+    "back": "<b>抽象</b>。课件原话：关键——抽象。没有抽象，扩展就必须改调用方；有了抽象，新增行为只需新增实现类。",
+    "tag": "OCP"
+  },
+  {
+    "front": "为什么「会用继承和多态」不等于「很 OO」？",
+    "back": "课件把这种想法点名为误解：滥用继承是亵渎 OO 的精髓。知道 ISA 还不够，还要知道 ISA 的真正含义——<b>行为功能</b>上可替换，而不只是名词上可归类。",
+    "tag": "易错"
+  },
+  {
+    "front": "6174 例题可以拆成哪四个职责？",
+    "back": "① 数字表示（含补零）；② 求最大/最小数；③ 一次变换 max−min；④ 驱动迭代直到收敛。分别对应 SRP 的四个变化原因。",
+    "tag": "例题"
+  }
+]
+</script>
+
+<!-- 脚本顺序不可调整：先清单，后引擎 -->
+<script src="../../data/videos.js"></script>
+<script src="../../data/chapters.js"></script>
+<script src="../../assets/js/site.js"></script>
+</body>
+</html>
